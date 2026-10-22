@@ -101,7 +101,7 @@ async function runResearch(
   for (let i = 0; i <= MAX_CONTINUATIONS; i++) {
     const msg = await client.messages.create({
       model: MODELS.main,
-      max_tokens: 6000,
+      max_tokens: 10_000,
       system: SYSTEM,
       tools: [tool],
       messages,

@@ -10,14 +10,14 @@ export const ReviewIssueSchema = z.object({
   field: z.string().describe("Pole profilu albo miejsce, którego dotyczy usterka (np. 'social_proof', 'target_audience.age_from')."),
   severity: z.enum(["krytyczna", "ważna", "drobna"]),
   problem: z.string().describe("Co jest nie tak — konkretnie, jednym-dwoma zdaniami."),
-  fix: z.string().describe("Jak to naprawić (albo jakie pytanie zadać użytkownikowi)."),
+  fix: z.string().describe("Jak to naprawić — konkretne działanie dla Reżysera, jednym zdaniem."),
 });
 export type ReviewIssue = z.infer<typeof ReviewIssueSchema>;
 
 export const ReviewSchema = z.object({
   verdict: z.enum(["ok", "do_poprawy"]),
-  issues: z.array(ReviewIssueSchema),
-  checked: z.array(z.string()).describe("Krótka lista punktów, które faktycznie sprawdziłeś."),
+  issues: z.array(ReviewIssueSchema).describe("Najwyżej 12 usterek, najważniejsze najpierw."),
+  checked: z.array(z.string()).describe("3–6 krótkich punktów (po kilka słów), które faktycznie sprawdziłeś."),
 });
 export type Review = z.infer<typeof ReviewSchema>;
 
@@ -39,7 +39,9 @@ Czego NIE zgłaszasz:
 Jak naprawić (pole "fix") — zawsze działanie dla Reżysera, nigdy „zapytaj użytkownika”: „usuń”, „dopisz 4 kąty dla persony X na poziomie świadomości problemu”, „zamień ogólnik na konkret: …”.
 
 Wagi: krytyczna = zmyślony twardy fakt, ryzyko zasad Meta, sprzeczność, która zepsuje reklamy; ważna = za mało person/problemów/kątów, kąty do siebie podobne, ogólniki w problemach lub hookach; drobna = pisownia, drobne doprecyzowanie.
-verdict = "ok", gdy nie ma usterek krytycznych ani ważnych. Piszesz po polsku.`;
+verdict = "ok", gdy nie ma usterek krytycznych ani ważnych. Piszesz po polsku.
+
+Zwięźle: najwyżej 12 usterek (najważniejsze najpierw, podobne łącz w jedną), "problem" i "fix" po jednym zdaniu. Nie przepisujesz profilu i nie piszesz nic poza wywołaniem narzędzia.`;
 
 export async function reviewProfile(
   apiKey: string,
@@ -52,7 +54,7 @@ export async function reviewProfile(
     apiKey,
     system,
     schema: ReviewSchema,
-    maxTokens: 6000,
+    maxTokens: 12_000,
     content: [
       {
         type: "text",

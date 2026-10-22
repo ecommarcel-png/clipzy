@@ -18,6 +18,8 @@ export function claudeClient(apiKey: string) {
 type ContentBlock = Anthropic.Messages.ContentBlockParam;
 
 const RESULT_TOOL = "zapisz_wynik";
+const TOO_LONG =
+  "Poprzednia odpowiedź przekroczyła limit długości i została ucięta. Oddaj wynik zwięźlej: krótsze zdania, bez powtórzeń, listy bez zbędnych pozycji — ale kompletny i zgodny ze schematem.";
 
 // JSON Schema for the tool input. Profiles are too big for strict structured
 // outputs (the API refuses to compile the grammar), so the schema is sent as
@@ -68,6 +70,7 @@ export async function structuredCall<S extends z.ZodType>(opts: {
   ];
   const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: opts.content }];
 
+  let truncatedOnce = false;
   try {
     for (let attempt = 0; attempt < 2; attempt++) {
       const message = await client.messages.create({
@@ -83,7 +86,17 @@ export async function structuredCall<S extends z.ZodType>(opts: {
       });
 
       if (message.stop_reason === "max_tokens") {
-        throw new ClaudeError("Odpowiedź modelu była za długa i została ucięta. Spróbuj ponownie.");
+        if (attempt > 0 || truncatedOnce) {
+          throw new ClaudeError("Odpowiedź modelu była za długa i została ucięta. Spróbuj ponownie.");
+        }
+        // A cut-off tool call can't be repaired; ask again from scratch for a tighter result.
+        truncatedOnce = true;
+        messages.splice(0, messages.length, {
+          role: "user",
+          content: [...opts.content, { type: "text", text: TOO_LONG }],
+        });
+        attempt--;
+        continue;
       }
       if (message.stop_reason === "refusal") {
         throw new ClaudeError("Model odmówił przetworzenia tych danych.");

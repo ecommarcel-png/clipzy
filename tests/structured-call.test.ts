@@ -77,8 +77,17 @@ describe("structuredCall", () => {
     await expect(structuredCall({ apiKey: "k", system: "s", content: [], schema: Schema })).rejects.toThrow(/złym formacie/);
   });
 
-  it("reports a cut-off answer", async () => {
-    script.push({ stop_reason: "max_tokens", content: [] });
+  it("asks for a shorter result once when the answer is cut off", async () => {
+    script.push({ stop_reason: "max_tokens", content: [] }, toolReply({ name: "MAMIQO", age: 3 }));
+    const out = await structuredCall({ apiKey: "k", system: "s", content: [{ type: "text", text: "x" }], schema: Schema });
+    expect(out.age).toBe(3);
+    expect(calls[1].messages).toHaveLength(1);
+    const blocks = calls[1].messages[0].content as Array<{ text: string }>;
+    expect(blocks.at(-1)?.text).toMatch(/zwięźlej/);
+  });
+
+  it("reports a cut-off answer that stays too long", async () => {
+    script.push({ stop_reason: "max_tokens", content: [] }, { stop_reason: "max_tokens", content: [] });
     await expect(structuredCall({ apiKey: "k", system: "s", content: [], schema: Schema })).rejects.toThrow(/ucięta/);
   });
 });
