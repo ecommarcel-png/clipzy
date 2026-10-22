@@ -19,7 +19,7 @@ export default async function BrandSetupPage({ params }: PageProps<"/brands/[bra
     <>
       <PageHeader
         title={`Profil marki: ${brand.name}`}
-        description="Sprawdź szkic, popraw to, co się nie zgadza, i odpowiedz na pytania. Claude dopyta tyle razy, ile trzeba, żeby profil był kompletny."
+        description="Claude przygotował profil na podstawie strony. Sprawdź grupę docelową i problemy — jeśli się zgadzają, zatwierdź. Styl dopracujesz później feedbackiem do gotowych reklam."
         actions={<Link href={`/brands/${brand.id}`} className={buttonClass("ghost")}>← Wróć do marki</Link>}
       />
       <BrandEditor
@@ -27,7 +27,6 @@ export default async function BrandSetupPage({ params }: PageProps<"/brands/[bra
         sections={BRAND_FORM}
         profile={brand.profile}
         questions={brand.questions}
-        completeness={brand.completeness}
         summary={brand.summary}
         review={brand.review}
         logoUrl={logoUrl}

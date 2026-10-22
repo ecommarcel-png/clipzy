@@ -12,8 +12,7 @@ import type { ProductSource } from "@/lib/scrape/product";
 
 export const ProductAnalysisSchema = z.object({
   profile: ProductProfileSchema,
-  questions: z.array(QuestionSchema),
-  completeness: z.number().describe("0-100"),
+  questions: z.array(QuestionSchema).describe("0–3 pytań, tylko z dozwolonych tematów. Zwykle 0–2."),
   summary: z.string(),
 });
 export type ProductAnalysis = z.infer<typeof ProductAnalysisSchema>;
@@ -23,7 +22,12 @@ async function systemPrompt(brand: BrandProfile) {
 
 ${PROFILE_RULES}
 
-Szczególnie ważne pola (z bazy wiedzy): problem i to, jak go POKAZAĆ; unikalny mechanizm (wg „wypalenia obietnicy”); poziom wypalenia rynku; język klienta (jak klienci sami opisują problem — tylko z opinii/źródeł, nie zmyślaj); czy da się uczciwie pokazać przed/po; czy jest efekt WOW do hooka; obiekcje z odpowiedziami; oferta; emocja i nastrój muzyki. Przed/po i efekt WOW zaznaczaj tylko, jeśli są realne — nigdy nie wymyślaj efektów, których produkt nie daje. Kąty reklamowe i pomysły na hooki mają się wyraźnie od siebie różnić (inna osoba, inny poziom świadomości, inna emocja, inny obraz).
+Gdzie wkładasz pracę:
+- problems: co najmniej 8 konkretnych problemów, które produkt rozwiązuje, językiem klienta.
+- ad_angles: 10–15 kątów, naprawdę różnych: rozłóż je na persony marki, różne problemy i wszystkie poziomy świadomości (od nieświadomego problemu po najbardziej świadomego). Każdy kąt ma gotowy hook — pierwsze zdanie i co widać w pierwszej sekundzie.
+- mechanism: pewnie i konkretnie, dlaczego ten produkt działa — w duchu „wypalenia obietnicy” z bazy wiedzy.
+- objections: co najmniej 4 obiekcje z odpowiedzią, którą da się powiedzieć w reklamie.
+- Przed/po i efekt WOW to wnioski ze zdjęć i opisu — zaznacz, jeśli wynikają z natury produktu; analiza nagrań potwierdzi je później. Nie pytaj o nie.
 
 <profil_marki>
 ${JSON.stringify(brand, null, 1)}
@@ -76,7 +80,7 @@ export async function analyzeProduct(
       ...imageBlocks(input.imageUrls),
       {
         type: "text",
-        text: `Zbuduj pierwszą wersję profilu produktu „${input.nameHint}”. Powyżej zdjęcia produktu (jeśli są) — wykorzystaj je, żeby zrozumieć, jak produkt wygląda i co da się pokazać na wideo.\n\n${productEvidence(input.source, input.notes)}`,
+        text: `Zbuduj kompletny profil produktu „${input.nameHint}” — sam, na podstawie źródeł. Powyżej zdjęcia produktu (jeśli są) — wykorzystaj je, żeby zrozumieć, jak produkt wygląda i co da się pokazać na wideo. Pytania tylko wyjątkowo (maksymalnie 3, tylko z dozwolonych tematów).\n\n${productEvidence(input.source, input.notes)}`,
       },
     ],
   });
@@ -93,10 +97,15 @@ export async function refineProduct(
     notes: string;
     controlIssues?: ReviewIssue[];
     openQuestions?: Question[];
+    /** What the completeness rule says is still missing — fill it in yourself. */
+    focus?: string[];
   },
 ): Promise<ProductAnalysis> {
+  const focus = (input.focus ?? []).length
+    ? `\n\n<do_uzupelnienia>\nW profilu wciąż brakuje: ${(input.focus ?? []).join(", ")}. Uzupełnij to sam, na podstawie źródeł i wiedzy o tej grupie klientów — nie zadawaj o to pytań.\n</do_uzupelnienia>`
+    : "";
   const pending = (input.openQuestions ?? []).length
-    ? `\n\n<otwarte_pytania>\n${JSON.stringify(input.openQuestions, null, 1)}\n</otwarte_pytania>\nZachowaj otwarte pytania, które wciąż są aktualne.`
+    ? `\n\n<otwarte_pytania>\n${JSON.stringify(input.openQuestions, null, 1)}\n</otwarte_pytania>\nTe pytania użytkownik już widzi — nie powtarzaj ich innymi słowami. Zostaw tylko te, które wciąż są naprawdę potrzebne.`
     : "";
   return structuredCall({
     apiKey,
@@ -106,7 +115,7 @@ export async function refineProduct(
       ...imageBlocks(input.imageUrls),
       {
         type: "text",
-        text: `Oto aktualny profil produktu (z ręcznymi poprawkami użytkownika). Wpisz odpowiedzi użytkownika w odpowiednie pola, zachowaj jego poprawki, oceń kompletność i dopytaj tylko o to, czego nadal brakuje.\n\n<profil>\n${JSON.stringify(input.profile, null, 1)}\n</profil>\n\n${productEvidence(input.source, input.notes, input.answers)}${pending}${controlIssuesBlock(input.controlIssues ?? [])}`,
+        text: `Oto aktualny profil produktu (z ręcznymi poprawkami użytkownika). Wpisz odpowiedzi użytkownika w odpowiednie pola, wykorzystaj je do rozbudowy problemów i kątów, zachowaj poprawki użytkownika. Nowe pytania tylko wyjątkowo (maksymalnie 3, nigdy powtórki).\n\n<profil>\n${JSON.stringify(input.profile, null, 1)}\n</profil>\n\n${productEvidence(input.source, input.notes, input.answers)}${focus}${pending}${controlIssuesBlock(input.controlIssues ?? [])}`,
       },
     ],
   });

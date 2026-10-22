@@ -17,8 +17,10 @@ Każdy profil marki i produktu przechodzi pętlę jakości (`knowledge/rezyser/S
 
 - Logowanie i rejestracja (Supabase Auth).
 - **Ustawienia:** klucze API z testem połączenia.
-- **Marki:** link do sklepu → Clipzy czyta stronę główną, „o nas”, FAQ, kolory, logo i listę produktów (Shopify) → Claude buduje profil marki i zadaje pytania → kolejne rundy pytań, aż profil będzie kompletny.
-- **Produkty:** link do produktu → pobranie opisu, ceny i zdjęć (Shopify, JSON-LD, meta) → Claude ogląda zdjęcia i buduje profil: problem i jak go pokazać, mechanizm, przed/po, efekt WOW, obiekcje, kąty reklamowe → pytania uzupełniające. Własne zdjęcia można dowgrać.
+- **Marki:** link do sklepu → Clipzy czyta stronę główną, „o nas”, FAQ, kolory, logo i listę produktów (Shopify) → Claude sam buduje profil: grupa docelowa, 3–6 person, problemy i pragnienia klientów. Najwyżej 3 pytania, wszystkie opcjonalne.
+- **Produkty:** link do produktu → pobranie opisu, ceny i zdjęć (Shopify, JSON-LD, meta) → Claude ogląda zdjęcia i buduje profil: wszystkie problemy, które produkt rozwiązuje, mechanizm, korzyści, obiekcje i 10–15 kątów reklamowych (persona × problem × poziom świadomości) z gotowymi hookami. Własne zdjęcia można dowgrać.
+- **Gotowość do reklam** liczona z tego, co sprzedaje (grupa docelowa, persony, problemy, kąty) — nie spada po odpowiedziach. „Rozbuduj profil” każe Claude uzupełnić braki samemu.
+- Profil nie pyta o styl, lektora ani muzykę — to wybór w module sklejek, a styl dopracowuje feedback do gotowych reklam (zapisywany w profilu marki jako preferencje).
 
 W kolejnych etapach: sklejki, AI nagrania, image ads, usuwanie napisów, integracja z Meta API.
 

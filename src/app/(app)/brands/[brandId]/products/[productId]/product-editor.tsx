@@ -15,7 +15,6 @@ export function ProductEditor(props: {
   sections: FieldSection[];
   profile: ProductProfile;
   questions: Question[];
-  completeness: number;
   summary: string;
   review: ControlReport | null;
   images: Array<{ id: string; url: string }>;
@@ -65,10 +64,10 @@ export function ProductEditor(props: {
       </Card>
 
       <ProfileEditor
+        kind="product"
         sections={props.sections}
         initialProfile={props.profile as unknown as Record<string, unknown>}
         initialQuestions={props.questions}
-        initialCompleteness={props.completeness}
         initialSummary={props.summary}
         initialReview={props.review}
         refine={(profile, answers) => refineProductAction(props.brandId, props.productId, profile, answers)}

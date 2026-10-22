@@ -10,13 +10,12 @@ import type { BrandSource } from "@/lib/scrape/site";
 
 export const BrandAnalysisSchema = z.object({
   profile: BrandProfileSchema,
-  questions: z.array(QuestionSchema),
-  completeness: z.number().describe("0-100"),
+  questions: z.array(QuestionSchema).describe("0–3 pytań, tylko z dozwolonych tematów. Zwykle 0–2."),
   summary: z.string(),
   logo_url: z.string().describe("Najbardziej prawdopodobny adres logo spośród kandydatów ze źródła (pusty, jeśli żaden nie pasuje)."),
 });
 export type BrandAnalysis = z.infer<typeof BrandAnalysisSchema>;
-export type BrandDraft = { profile: BrandProfile; questions: Question[]; completeness: number; summary: string };
+export type BrandDraft = { profile: BrandProfile; questions: Question[]; summary: string };
 
 const RefineSchema = BrandAnalysisSchema.omit({ logo_url: true });
 
@@ -26,6 +25,8 @@ async function systemPrompt() {
 ${PROFILE_RULES}
 
 Wskazówki do pól:
+- personas: 3–6 naprawdę różnych typów kupujących — to z nich powstaną różne kierunki reklam.
+- target_audience.pains: co najmniej 8 konkretnych problemów; desires: co najmniej 5.
 - caption_profile wybierz na podstawie grupy docelowej: kobiety 25–50 (beauty/bielizna/dom) → kobiety_25_50; młodzi do ~27 lat → gen_z; 50+ → 50_plus; pozostali / rodzice → uniwersalny.
 - colors: wybierz z kandydatów kolorów (theme-color, zmienne CSS, najczęstsze barwy) te, które są kolorami marki, a nie szarościami interfejsu. caption_text: kolor marki, jeśli dobrze czyta się na wideo; w przeciwnym razie #ffffff.
 - tone_of_voice.example_phrases: cytuj prawdziwe zdania ze strony, jeśli brzmią jak marka.${knowledgeBlock(await brandKnowledge())}`;
@@ -78,7 +79,7 @@ export async function analyzeBrand(
     content: [
       {
         type: "text",
-        text: `Zbuduj pierwszą wersję profilu marki${input.nameHint ? ` „${input.nameHint}”` : ""}. Zadaj pytania o wszystko, czego nie da się pewnie ustalić.\n\n${brandEvidence(input.source, input.notes)}`,
+        text: `Zbuduj kompletny profil marki${input.nameHint ? ` „${input.nameHint}”` : ""} — sam, na podstawie źródeł. Pytania tylko wyjątkowo (maksymalnie 3, tylko z dozwolonych tematów).\n\n${brandEvidence(input.source, input.notes)}`,
       },
     ],
   });
@@ -94,10 +95,15 @@ export async function refineBrand(
     notes: string;
     controlIssues?: ReviewIssue[];
     openQuestions?: Question[];
+    /** What the completeness rule says is still missing — fill it in yourself. */
+    focus?: string[];
   },
 ): Promise<BrandDraft> {
+  const focus = (input.focus ?? []).length
+    ? `\n\n<do_uzupelnienia>\nW profilu wciąż brakuje: ${(input.focus ?? []).join(", ")}. Uzupełnij to sam, na podstawie źródeł i wiedzy o tej grupie klientów — nie zadawaj o to pytań.\n</do_uzupelnienia>`
+    : "";
   const pending = (input.openQuestions ?? []).length
-    ? `\n\n<otwarte_pytania>\n${JSON.stringify(input.openQuestions, null, 1)}\n</otwarte_pytania>\nZachowaj otwarte pytania, które wciąż są aktualne.`
+    ? `\n\n<otwarte_pytania>\n${JSON.stringify(input.openQuestions, null, 1)}\n</otwarte_pytania>\nTe pytania użytkownik już widzi — nie powtarzaj ich innymi słowami. Zostaw tylko te, które wciąż są naprawdę potrzebne.`
     : "";
   return structuredCall({
     apiKey,
@@ -106,7 +112,7 @@ export async function refineBrand(
     content: [
       {
         type: "text",
-        text: `Oto aktualny profil marki (z ręcznymi poprawkami użytkownika). Wpisz odpowiedzi użytkownika w odpowiednie pola, zachowaj jego poprawki, oceń kompletność i zadaj kolejne pytania tylko o to, czego nadal brakuje.\n\n<profil>\n${JSON.stringify(input.profile, null, 1)}\n</profil>\n\n${brandEvidence(input.source, input.notes, input.answers)}${pending}${controlIssuesBlock(input.controlIssues ?? [])}`,
+        text: `Oto aktualny profil marki (z ręcznymi poprawkami użytkownika). Wpisz odpowiedzi użytkownika w odpowiednie pola, wykorzystaj je do rozbudowy person i problemów, zachowaj poprawki użytkownika. Nowe pytania tylko wyjątkowo (maksymalnie 3, nigdy powtórki).\n\n<profil>\n${JSON.stringify(input.profile, null, 1)}\n</profil>\n\n${brandEvidence(input.source, input.notes, input.answers)}${focus}${pending}${controlIssuesBlock(input.controlIssues ?? [])}`,
       },
     ],
   });

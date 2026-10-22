@@ -11,7 +11,8 @@ import { controlLoop } from "@/lib/ai/control";
 import { scrapeProductPage, type ProductSource } from "@/lib/scrape/product";
 import { writeWithReview } from "@/lib/data";
 import { EMPTY_BRAND_PROFILE, type BrandProfile } from "@/lib/profiles/brand";
-import { EMPTY_PRODUCT_PROFILE, ProductProfileSchema } from "@/lib/profiles/product";
+import { EMPTY_PRODUCT_PROFILE, ProductProfileSchema, upgradeProductProfile } from "@/lib/profiles/product";
+import { productCompleteness } from "@/lib/profiles/completeness";
 import { cleanLists, withDefaults, type AnsweredQuestion } from "@/lib/profiles/common";
 import { BUCKET, importImage, isClaudeReadableImage, productFolder, signedUrls } from "@/lib/storage";
 import { userMessage } from "@/lib/errors";
@@ -22,10 +23,6 @@ export type NewProductState = { error?: string };
 
 const MAX_IMPORTED_IMAGES = 8;
 
-function clampPct(n: number) {
-  return Math.max(0, Math.min(100, Math.round(Number.isFinite(n) ? n : 0)));
-}
-
 async function brandProfile(supabase: SupabaseClient, brandId: string) {
   const { data } = await supabase.from("brands").select("id, profile").eq("id", brandId).maybeSingle();
   return data ? withDefaults(EMPTY_BRAND_PROFILE, data.profile) : null;
@@ -34,8 +31,15 @@ async function brandProfile(supabase: SupabaseClient, brandId: string) {
 // Leave room for the final re-check inside the 300 s page limit.
 const CONTROL_BUDGET_MS = 170_000;
 
+// Questions are optional and capped: the profile must be usable without them.
+const MAX_QUESTIONS = 3;
+
 function normalizeDraft(d: ProductAnalysis): ProductAnalysis {
-  return { ...d, profile: cleanLists(withDefaults(EMPTY_PRODUCT_PROFILE, d.profile)), completeness: clampPct(d.completeness) };
+  return {
+    ...d,
+    profile: cleanLists(withDefaults(EMPTY_PRODUCT_PROFILE, upgradeProductProfile(d.profile))),
+    questions: d.questions.slice(0, MAX_QUESTIONS),
+  };
 }
 
 // Draft → independent Controller → correction → final check.
@@ -113,7 +117,7 @@ export async function createProduct(brandId: string, _prev: NewProductState, for
       product_url: source?.url ?? null,
       profile,
       questions: result.questions,
-      completeness: result.completeness,
+      completeness: productCompleteness(profile).score,
       summary: result.summary,
       review: report,
       source: { ...(source ?? {}), notes },
@@ -142,7 +146,7 @@ async function productImageUrls(supabase: SupabaseClient, productId: string) {
 }
 
 function parseProfile(raw: unknown) {
-  const parsed = ProductProfileSchema.safeParse(cleanLists(withDefaults(EMPTY_PRODUCT_PROFILE, raw)));
+  const parsed = ProductProfileSchema.safeParse(cleanLists(withDefaults(EMPTY_PRODUCT_PROFILE, upgradeProductProfile(raw))));
   return parsed.success ? parsed.data : null;
 }
 
@@ -168,7 +172,8 @@ export async function refineProductAction(
     const notes = stored.notes ?? "";
     const imageUrls = await productImageUrls(supabase, productId);
 
-    const draft = await refineProduct(apiKey, { brand, profile, answers, imageUrls, source, notes });
+    const focus = productCompleteness(profile).missing;
+    const draft = await refineProduct(apiKey, { brand, profile, answers, imageUrls, source, notes, focus });
     const { result, report } = await controlProduct(apiKey, draft, { brand, source, notes, answers, imageUrls, startedAt });
 
     const { error } = await writeWithReview(
@@ -177,7 +182,7 @@ export async function refineProductAction(
         profile: result.profile,
         name: result.profile.name || undefined,
         questions: result.questions,
-        completeness: result.completeness,
+        completeness: productCompleteness(result.profile).score,
         summary: result.summary,
         review: report,
       },
@@ -188,7 +193,6 @@ export async function refineProductAction(
       ok: true,
       profile: result.profile as unknown as Record<string, unknown>,
       questions: result.questions,
-      completeness: result.completeness,
       summary: result.summary,
       review: report,
     };
@@ -210,7 +214,7 @@ export async function saveProductAction(
 
   const { error } = await supabase
     .from("products")
-    .update({ profile, name: profile.name, ...(finish ? { status: "ready" } : {}) })
+    .update({ profile, name: profile.name, completeness: productCompleteness(profile).score, ...(finish ? { status: "ready" } : {}) })
     .eq("id", productId)
     .eq("brand_id", brandId);
   if (error) return { ok: false, error: `Nie udało się zapisać: ${error.message}` };

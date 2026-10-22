@@ -11,6 +11,7 @@ import { scrapeBrandSite, type BrandSource } from "@/lib/scrape/site";
 import { normalizeUrl } from "@/lib/scrape/safe-fetch";
 import { BrandProfileSchema, EMPTY_BRAND_PROFILE } from "@/lib/profiles/brand";
 import { cleanLists, withDefaults, type AnsweredQuestion } from "@/lib/profiles/common";
+import { brandCompleteness } from "@/lib/profiles/completeness";
 import { brandFolder, importImage } from "@/lib/storage";
 import { writeWithReview } from "@/lib/data";
 import { userMessage } from "@/lib/errors";
@@ -21,12 +22,11 @@ export type NewBrandState = { error?: string };
 // Leave room for the final re-check inside the 300 s page limit.
 const CONTROL_BUDGET_MS = 170_000;
 
-function clampPct(n: number) {
-  return Math.max(0, Math.min(100, Math.round(Number.isFinite(n) ? n : 0)));
-}
+// Questions are optional and capped: the profile must be usable without them.
+const MAX_QUESTIONS = 3;
 
 function normalizeDraft(d: BrandDraft): BrandDraft {
-  return { ...d, profile: cleanLists(withDefaults(EMPTY_BRAND_PROFILE, d.profile)), completeness: clampPct(d.completeness) };
+  return { ...d, profile: cleanLists(withDefaults(EMPTY_BRAND_PROFILE, d.profile)), questions: d.questions.slice(0, MAX_QUESTIONS) };
 }
 
 // Draft → independent Controller → correction → final check.
@@ -87,7 +87,7 @@ export async function createBrand(_prev: NewBrandState, formData: FormData): Pro
         website_url: source?.url ?? null,
         profile,
         questions: result.questions,
-        completeness: result.completeness,
+        completeness: brandCompleteness(profile).score,
         summary: result.summary,
         review: report,
         source: { ...(source ?? {}), notes },
@@ -138,7 +138,8 @@ export async function refineBrandAction(
     const source = stored.url ? (stored as BrandSource) : null;
     const notes = stored.notes ?? "";
 
-    const draft = await refineBrand(apiKey, { profile, answers, source, notes });
+    const focus = brandCompleteness(profile).missing;
+    const draft = await refineBrand(apiKey, { profile, answers, source, notes, focus });
     const { result, report } = await controlBrand(apiKey, draft, { source, notes, answers, startedAt });
 
     const { error } = await writeWithReview(
@@ -147,7 +148,7 @@ export async function refineBrandAction(
         profile: result.profile,
         name: result.profile.name || undefined,
         questions: result.questions,
-        completeness: result.completeness,
+        completeness: brandCompleteness(result.profile).score,
         summary: result.summary,
         review: report,
       },
@@ -159,7 +160,6 @@ export async function refineBrandAction(
       ok: true,
       profile: result.profile as unknown as Record<string, unknown>,
       questions: result.questions,
-      completeness: result.completeness,
       summary: result.summary,
       review: report,
     };
@@ -176,7 +176,7 @@ export async function saveBrandAction(brandId: string, rawProfile: Record<string
 
   const { error } = await supabase
     .from("brands")
-    .update({ profile, name: profile.name, ...(finish ? { status: "ready" } : {}) })
+    .update({ profile, name: profile.name, completeness: brandCompleteness(profile).score, ...(finish ? { status: "ready" } : {}) })
     .eq("id", brandId);
   if (error) return { ok: false, error: `Nie udało się zapisać: ${error.message}` };
 

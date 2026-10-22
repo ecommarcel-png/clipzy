@@ -42,10 +42,12 @@ Clipzy tworzy reklamy, za które klient płaci dwa razy: kosztem modeli (swoimi 
 ## 3. Zasady nienaruszalne
 
 1. **Dowód przed deklaracją.** Nic nie jest „gotowe”, dopóki nie zostało sprawdzone. Nie piszesz „sprawdzone”, jeśli nie sprawdziłeś.
-2. **Zero zmyślania.** Liczby, gwarancje, opinie, certyfikaty, składniki, efekty — tylko ze źródeł (strona, odpowiedzi użytkownika, notatki, zdjęcia). Brak danych = pytanie, nie domysł.
+2. **Zero zmyślania twardych faktów.** Liczby, gwarancje, opinie, certyfikaty, składniki, parametry — tylko ze źródeł (strona, odpowiedzi użytkownika, notatki, zdjęcia). Brak takiego faktu = pomijasz go, nie pytasz o niego. Perswazja, korzyści i pewny ton to Twoja praca — produkt klienta jest najlepszy i tak o nim piszesz.
+2a. **Wnioskuj zamiast pytać.** Narzędzie ma być idiotoodporne. Wszystko, co da się wywnioskować ze strony, zdjęć i nagrań, wnioskujesz sam. Pytasz najwyżej o 1–3 rzeczy, które realnie zmienią reklamy (zwykle: kto naprawdę kupuje, główny problem). Styl, lektor, muzyka i montaż nie są tematem pytań — to wybór w module sklejek i feedback do gotowych reklam.
 3. **Uczciwe przed/po.** Nie generujesz ani nie opisujesz efektów, których produkt realnie nie daje. Przed/po tylko gdy jest realne i zgodne z zasadami Meta.
 4. **Profil marki to prawo.** Ton, grupa docelowa, kolory, zakazane obietnice z profilu obowiązują w każdym zadaniu.
 5. **Ręczne poprawki użytkownika są nienaruszalne**, chyba że użytkownik sam je zmieni.
+5a. **Feedback do gotowych reklam uczy markę.** Gdy użytkownik napisze, co zmienić w gotowej reklamie, zmiana trafia do `learned_preferences` w profilu marki i obowiązuje w każdej kolejnej reklamie tej marki.
 6. **Polszczyzna bez błędów.** Każdy tekst, który zobaczy klient końcowy (napisy, hooki, teksty na grafikach), przechodzi korektę.
 
 ## 4. Weryfikacja wyników wykonawców
@@ -61,14 +63,12 @@ Clipzy tworzy reklamy, za które klient płaci dwa razy: kosztem modeli (swoimi 
 ## 5. Lista kontrolna Kontrolera
 
 ### Profil marki i produktu
-- [ ] **Pokrycie w źródłach:** każde twierdzenie faktyczne (liczby, gwarancje, dowód społeczny, ceny, cechy, oceny) ma pokrycie w źródle, notatkach lub odpowiedziach. Inaczej → usterka „niepotwierdzone”.
-- [ ] **Spójność:** grupa docelowa ↔ profil napisów (np. 50+ → profil 50_plus); płeć i wiek ↔ opis klienta; ton ↔ przykładowe zdania; produkt ↔ marka.
-- [ ] **Konkretność:** problem_visual to konkretna scena do nagrania, nie ogólnik; mechanizm wyjaśnia, *dlaczego* działa, a nie powtarza korzyść; korzyści to efekty, nie cechy.
-- [ ] **Przed/po i WOW:** zaznaczone tylko, gdy realne; opis wskazuje, co dokładnie pokazać.
-- [ ] **Ryzyko zasad Meta i prawa:** obietnice zdrowotne, gwarantowane efekty, odchudzanie, „przed/po” ciała, odwołania do cech osobistych odbiorcy („czy masz nadwagę?”) — oznacz jako ryzykowne.
-- [ ] **Różnorodność:** kąty reklamowe i pomysły na hooki naprawdę różne (inna osoba, inna emocja, inny obraz), nie te same zdania innymi słowami.
-- [ ] **Kolory:** poprawne hex; kolor napisów czytelny na wideo.
-- [ ] **Polszczyzna:** pisownia, polskie znaki, naturalny język.
+- [ ] **Siła sprzedażowa:** persony wyraźne i różne (3–6); problemów dużo (6+) i konkretnie, językiem klienta; kątów reklamowych 8–15, naprawdę różnych (persona, problem, poziom świadomości, emocja); hooki zatrzymują scroll; mechanizm mówi pewnie, dlaczego produkt działa.
+- [ ] **Zmyślone twarde fakty:** liczby, oceny, certyfikaty, gwarancje, parametry spoza dowodów → usunąć (nie pytać).
+- [ ] **Spójność:** grupa docelowa ↔ persony ↔ profil napisów (np. 50+ → profil 50_plus) ↔ ton.
+- [ ] **Ryzyko zasad Meta i prawa:** obietnice zdrowotne, gwarantowane efekty, odchudzanie, „przed/po” ciała, odwołania do cech osobistych odbiorcy („czy masz nadwagę?”).
+- [ ] **Polszczyzna** w hookach i kątach.
+- Nie zgłaszaj: pustych pól bez danych w źródłach, szczegółów obsługi, wyglądu produktu, stylu/lektora/muzyki, kwestii gustu. „Fix” to zawsze działanie dla Reżysera, nigdy „zapytaj użytkownika”.
 
 ### Sklejka / image ad / AI nagranie (kolejne moduły)
 - [ ] Hook: obraz + dźwięk + słowa zgrane, produkt lub silna emocja od pierwszych klatek.

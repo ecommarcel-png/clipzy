@@ -1,12 +1,13 @@
 import { z } from "zod";
 
-// A follow-up question Claude asks when something can't be read from the website.
+// An optional follow-up question. Claude asks one only when the answer can't be
+// inferred and would clearly change the ads (see PROFILE_RULES).
 export const QuestionSchema = z.object({
   id: z.string().describe("Krótki, unikalny identyfikator, np. 'q_grupa_wiek'."),
   field: z.string().describe("Którego pola profilu dotyczy (ścieżka, np. 'target_audience.age_from')."),
   question: z.string().describe("Pytanie po polsku, konkretne, jedno na raz."),
   why: z.string().describe("Jedno zdanie: dlaczego to ważne dla reklam."),
-  suggestions: z.array(z.string()).describe("0-4 propozycje odpowiedzi do kliknięcia (mogą być puste)."),
+  suggestions: z.array(z.string()).describe("2-4 propozycje odpowiedzi do kliknięcia."),
 });
 export type Question = z.infer<typeof QuestionSchema>;
 
@@ -18,9 +19,10 @@ export type FieldDef =
   | { path: string; label: string; hint?: string; type: "list" }
   | { path: string; label: string; hint?: string; type: "select"; options: Array<{ value: string; label: string }> }
   | { path: string; label: string; hint?: string; type: "boolean" }
-  | { path: string; label: string; hint?: string; type: "pairs"; keys: [string, string]; labels: [string, string] };
+  | { path: string; label: string; hint?: string; type: "records"; keys: string[]; labels: string[]; addLabel?: string };
 
-export type FieldSection = { title: string; description?: string; fields: FieldDef[] };
+// `collapsed` sections sit behind "Więcej szczegółów" — filled automatically, rarely edited.
+export type FieldSection = { title: string; description?: string; collapsed?: boolean; fields: FieldDef[] };
 
 export function getAt(obj: unknown, path: string): unknown {
   return path.split(".").reduce<unknown>((acc, key) => (acc && typeof acc === "object" ? (acc as Record<string, unknown>)[key] : undefined), obj);

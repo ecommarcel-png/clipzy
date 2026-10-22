@@ -40,7 +40,6 @@ export default async function ProductPage({ params }: PageProps<"/brands/[brandI
         sections={PRODUCT_FORM}
         profile={product.profile}
         questions={product.questions}
-        completeness={product.completeness}
         summary={product.summary}
         review={product.review}
         images={images.map((i) => ({ id: i.id, url: urls[i.storage_path] ?? "" }))}

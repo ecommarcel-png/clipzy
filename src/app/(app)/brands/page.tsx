@@ -43,7 +43,7 @@ export default async function BrandsPage() {
                     </div>
                   </div>
                   <div className="mt-4 flex flex-wrap items-center gap-2">
-                    {b.status === "ready" ? <Badge tone="ok">Gotowa</Badge> : <Badge tone="warn">Szkic · {b.completeness}%</Badge>}
+                    {b.status === "ready" ? <Badge tone="ok">Gotowa</Badge> : <Badge tone="warn">Do zatwierdzenia · {b.completeness}%</Badge>}
                     <Badge>{productCount} {plural(productCount, "produkt", "produkty", "produktów")}</Badge>
                   </div>
                 </Card>

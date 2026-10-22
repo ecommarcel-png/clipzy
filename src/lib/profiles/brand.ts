@@ -1,8 +1,10 @@
 import { z } from "zod";
 import type { FieldSection } from "./common";
 
-// Everything the models need to speak in the brand's voice.
-// Field descriptions double as instructions for Claude's structured output.
+// Everything the models need to sell for the brand. What matters most:
+// who buys (personas), their problems and desires. The rest is filled
+// automatically from the website. Field descriptions double as instructions
+// for Claude's structured output.
 
 export const CAPTION_PROFILES = [
   { value: "kobiety_25_50", label: "Kobiety 25–50 (beauty, bielizna, dom) — min. 3 słowa na planszę, spokojnie, bez tandety" },
@@ -21,10 +23,20 @@ export const BrandProfileSchema = z.object({
     age_from: z.number().describe("Dolna granica wieku głównej grupy."),
     age_to: z.number().describe("Górna granica wieku głównej grupy."),
     description: z.string().describe("Kim dokładnie jest klient (sytuacja życiowa, styl życia)."),
-    pains: z.array(z.string()).describe("Problemy i frustracje klienta, które marka rozwiązuje."),
-    desires: z.array(z.string()).describe("Czego klient pragnie (efekt, emocja, status)."),
+    pains: z.array(z.string()).describe("Problemy i frustracje klienta, które marka rozwiązuje — co najmniej 8, konkretnie, językiem klienta."),
+    desires: z.array(z.string()).describe("Czego klient pragnie (efekt, emocja, status) — co najmniej 5."),
     objections: z.array(z.string()).describe("Typowe obiekcje przed zakupem."),
   }),
+  personas: z
+    .array(
+      z.object({
+        name: z.string().describe("Krótka nazwa typu kupującego, np. 'Zabiegana mama dwójki'."),
+        who: z.string().describe("Kim jest, w jakiej jest sytuacji."),
+        main_problem: z.string().describe("Jej/jego najważniejszy problem, który rozwiązuje marka."),
+        trigger: z.string().describe("Co sprawia, że kupuje teraz (moment, emocja, okazja)."),
+      }),
+    )
+    .describe("3–6 różnych typów kupujących. Każdy to osobny kierunek reklam."),
   caption_profile: z
     .enum(["kobiety_25_50", "gen_z", "50_plus", "uniwersalny"])
     .describe("Profil stylu napisów w sklejkach — wynika z grupy docelowej (patrz baza wiedzy, rozdz. 6)."),
@@ -51,6 +63,9 @@ export const BrandProfileSchema = z.object({
   music_mood_default: z.string().describe("Domyślny nastrój muzyki w reklamach marki."),
   competitors: z.array(z.string()).describe("Konkurenci lub alternatywy, z którymi klient porównuje."),
   notes: z.string().describe("Inne ważne informacje dla twórcy reklam."),
+  learned_preferences: z
+    .array(z.string())
+    .describe("Preferencje zebrane z feedbacku do gotowych reklam (uzupełnia moduł sklejek). Zostaw bez zmian."),
 });
 
 export type BrandProfile = z.infer<typeof BrandProfileSchema>;
@@ -61,6 +76,7 @@ export const EMPTY_BRAND_PROFILE: BrandProfile = {
   niche: "",
   products_overview: "",
   target_audience: { gender: "wszyscy", age_from: 18, age_to: 65, description: "", pains: [], desires: [], objections: [] },
+  personas: [],
   caption_profile: "uniwersalny",
   tone_of_voice: { description: "", address_form: "ty", energy: "umiarkowana", words_to_use: [], words_to_avoid: [], example_phrases: [] },
   colors: { primary: "#000000", secondary: "#ffffff", accent: "#ff5a36", caption_text: "#ffffff" },
@@ -73,22 +89,16 @@ export const EMPTY_BRAND_PROFILE: BrandProfile = {
   music_mood_default: "",
   competitors: [],
   notes: "",
+  learned_preferences: [],
 };
 
 export const BRAND_FORM: FieldSection[] = [
   {
-    title: "Podstawy",
+    title: "Dla kogo jest marka",
+    description: "Najważniejsza część profilu — od niej zależą kąty reklamowe, hooki, ton i styl napisów.",
     fields: [
       { path: "name", label: "Nazwa marki", type: "text" },
-      { path: "tagline", label: "Czym jest marka (jedno zdanie)", type: "textarea" },
       { path: "niche", label: "Nisza", type: "text" },
-      { path: "products_overview", label: "Co sprzedaje", type: "textarea" },
-    ],
-  },
-  {
-    title: "Grupa docelowa",
-    description: "Od tego zależy styl napisów, tempo montażu i ton reklam.",
-    fields: [
       {
         path: "target_audience.gender",
         label: "Płeć",
@@ -102,14 +112,33 @@ export const BRAND_FORM: FieldSection[] = [
       { path: "target_audience.age_from", label: "Wiek od", type: "number" },
       { path: "target_audience.age_to", label: "Wiek do", type: "number" },
       { path: "target_audience.description", label: "Kim jest klient", type: "textarea" },
+      {
+        path: "personas",
+        label: "Typy kupujących (persony)",
+        hint: "Każda persona to osobny kierunek reklam.",
+        type: "records",
+        keys: ["name", "who", "main_problem", "trigger"],
+        labels: ["Nazwa", "Kim jest", "Główny problem", "Co sprawia, że kupuje teraz"],
+        addLabel: "+ Dodaj personę",
+      },
+    ],
+  },
+  {
+    title: "Problemy i pragnienia",
+    description: "Im więcej konkretnych problemów, tym więcej kątów reklamowych.",
+    fields: [
       { path: "target_audience.pains", label: "Problemy klienta", hint: "Jeden w linii.", type: "list" },
       { path: "target_audience.desires", label: "Pragnienia klienta", hint: "Jedno w linii.", type: "list" },
       { path: "target_audience.objections", label: "Obiekcje przed zakupem", hint: "Jedna w linii.", type: "list" },
     ],
   },
   {
-    title: "Styl i komunikacja",
+    title: "Komunikacja i styl",
+    description: "Uzupełniane automatycznie ze strony. Styl dopracujesz feedbackiem do gotowych reklam.",
+    collapsed: true,
     fields: [
+      { path: "tagline", label: "Czym jest marka (jedno zdanie)", type: "textarea" },
+      { path: "products_overview", label: "Co sprzedaje", type: "textarea" },
       {
         path: "caption_profile",
         label: "Profil napisów w sklejkach",
@@ -143,11 +172,13 @@ export const BRAND_FORM: FieldSection[] = [
       { path: "tone_of_voice.example_phrases", label: "Przykładowe zdania w głosie marki", type: "list" },
       { path: "typography_style", label: "Charakter kroju pisma", type: "text" },
       { path: "music_mood_default", label: "Domyślny nastrój muzyki", type: "text" },
+      { path: "learned_preferences", label: "Preferencje z feedbacku do reklam", hint: "Uzupełnia się samo, gdy dajesz feedback do gotowych sklejek.", type: "list" },
     ],
   },
   {
     title: "Kolory",
-    description: "Kolor napisów idzie z palety marki; profil napisów decyduje o reszcie stylu.",
+    description: "Pobrane ze strony. Kolor napisów idzie z palety marki.",
+    collapsed: true,
     fields: [
       { path: "colors.primary", label: "Główny", type: "color" },
       { path: "colors.secondary", label: "Drugi", type: "color" },
@@ -157,6 +188,8 @@ export const BRAND_FORM: FieldSection[] = [
   },
   {
     title: "Oferta i zaufanie",
+    description: "Pobrane ze strony — tylko to, co tam faktycznie jest.",
+    collapsed: true,
     fields: [
       { path: "usps", label: "Unikalne przewagi", type: "list" },
       { path: "risk_reversal", label: "Gwarancje i odwrócenie ryzyka", type: "list" },

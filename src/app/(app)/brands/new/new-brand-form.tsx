@@ -32,7 +32,7 @@ export function NewBrandForm() {
             {pending ? <Spinner /> : null}
             {pending ? "Czytam stronę i buduję profil…" : "Przeanalizuj markę"}
           </Button>
-          {pending ? <span className="text-xs text-muted">To zwykle trwa 30–90 sekund.</span> : null}
+          {pending ? <span className="text-xs text-muted">Analiza i kontrola jakości trwają zwykle 1–3 minuty.</span> : null}
         </div>
       </form>
     </Card>

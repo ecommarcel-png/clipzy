@@ -15,7 +15,7 @@ export default async function NewProductPage({ params }: PageProps<"/brands/[bra
     <>
       <PageHeader
         title={`Nowy produkt — ${brand.name}`}
-        description="Wklej link do strony produktu. Clipzy pobierze opis, cenę i zdjęcia, obejrzy je i przygotuje profil: problem, mechanizm, przed/po, efekt WOW, obiekcje. Potem dopyta o resztę."
+        description="Wklej link do strony produktu. Clipzy pobierze opis, cenę i zdjęcia, obejrzy je i sam przygotuje profil: problemy, które produkt rozwiązuje, mechanizm, obiekcje i 10–15 kątów reklamowych z hookami."
         actions={<Link href={`/brands/${brand.id}`} className={buttonClass("ghost")}>← Wróć</Link>}
       />
       <NewProductForm brandId={brand.id} />

@@ -1,23 +1,26 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import type { FieldDef, FieldSection, Question } from "@/lib/profiles/common";
 import type { ControlReport } from "@/lib/ai/control";
+import type { BrandProfile } from "@/lib/profiles/brand";
+import type { ProductProfile } from "@/lib/profiles/product";
+import { brandCompleteness, productCompleteness } from "@/lib/profiles/completeness";
 import { plural } from "@/lib/plural";
 import { getAt, setAt } from "@/lib/profiles/common";
 import { Badge, Button, Card, Input, Label, Notice, Select, Spinner, Textarea, cx } from "@/components/ui";
 
 export type RefineResult =
-  | { ok: true; profile: Record<string, unknown>; questions: Question[]; completeness: number; summary: string; review: ControlReport | null }
+  | { ok: true; profile: Record<string, unknown>; questions: Question[]; summary: string; review: ControlReport | null }
   | { ok: false; error: string };
 
 export type SaveResult = { ok: true; message: string } | { ok: false; error: string };
 
 type Props = {
+  kind: "brand" | "product";
   sections: FieldSection[];
   initialProfile: Record<string, unknown>;
   initialQuestions: Question[];
-  initialCompleteness: number;
   initialSummary: string;
   initialReview: ControlReport | null;
   refine: (profile: Record<string, unknown>, answers: Array<Question & { answer: string }>) => Promise<RefineResult>;
@@ -29,14 +32,25 @@ export function ProfileEditor(props: Props) {
   const [profile, setProfile] = useState(props.initialProfile);
   const [questions, setQuestions] = useState(props.initialQuestions);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [completeness, setCompleteness] = useState(props.initialCompleteness);
   const [summary, setSummary] = useState(props.initialSummary);
   const [review, setReview] = useState(props.initialReview);
   const [message, setMessage] = useState<{ tone: "ok" | "danger"; text: string } | null>(null);
   const [busy, setBusy] = useState<"refine" | "save" | "finish" | null>(null);
   const [, startTransition] = useTransition();
 
+  // Recomputed live as the user edits — the same rule the server stores.
+  const completeness = useMemo(
+    () =>
+      props.kind === "brand"
+        ? brandCompleteness(profile as unknown as BrandProfile)
+        : productCompleteness(profile as unknown as ProductProfile),
+    [profile, props.kind],
+  );
+
   const update = (path: string, value: unknown) => setProfile((p) => setAt(p, path, value));
+  const main = props.sections.filter((s) => !s.collapsed);
+  const more = props.sections.filter((s) => s.collapsed);
+  const answeredCount = questions.filter((q) => (answers[q.id] ?? "").trim()).length;
 
   function runRefine() {
     setBusy("refine");
@@ -50,10 +64,9 @@ export function ProfileEditor(props: Props) {
         setProfile(res.profile);
         setQuestions(res.questions);
         setAnswers({});
-        setCompleteness(res.completeness);
         setSummary(res.summary);
         setReview(res.review);
-        setMessage({ tone: "ok", text: res.questions.length ? "Profil zaktualizowany. Claude ma kolejne pytania." : "Profil zaktualizowany. Claude nie ma więcej pytań." });
+        setMessage({ tone: "ok", text: "Profil zaktualizowany i sprawdzony." });
       } else {
         setMessage({ tone: "danger", text: res.error });
       }
@@ -71,43 +84,66 @@ export function ProfileEditor(props: Props) {
     });
   }
 
-  const answeredCount = questions.filter((q) => (answers[q.id] ?? "").trim()).length;
-
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
       <div className="space-y-6">
-        {props.sections.map((section) => (
-          <Card key={section.title}>
-            <h2 className="font-semibold">{section.title}</h2>
-            {section.description ? <p className="mt-1 text-sm text-muted">{section.description}</p> : null}
-            <div className="mt-5 grid gap-5 sm:grid-cols-2">
-              {section.fields.map((field) => (
-                <FieldInput key={field.path} field={field} value={getAt(profile, field.path)} onChange={(v) => update(field.path, v)} />
+        {main.map((section) => (
+          <SectionCard key={section.title} section={section} profile={profile} update={update} />
+        ))}
+        {more.length > 0 ? (
+          <details className="group rounded-2xl border border-border bg-surface">
+            <summary className="flex cursor-pointer list-none items-center justify-between p-6 font-semibold">
+              <span>
+                Więcej szczegółów
+                <span className="ml-2 text-sm font-normal text-muted">uzupełnione automatycznie — zwykle nie trzeba nic zmieniać</span>
+              </span>
+              <span className="text-muted transition group-open:rotate-180">▾</span>
+            </summary>
+            <div className="space-y-6 px-6 pb-6">
+              {more.map((section) => (
+                <SectionBody key={section.title} section={section} profile={profile} update={update} />
               ))}
             </div>
-          </Card>
-        ))}
+          </details>
+        ) : null}
       </div>
 
       <aside className="order-first space-y-4 lg:sticky lg:top-6 lg:order-none lg:self-start">
         <Card>
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Kompletność profilu</span>
-            <Badge tone={completeness >= 90 ? "ok" : completeness >= 60 ? "warn" : "danger"}>{completeness}%</Badge>
+            <span className="text-sm font-medium">Gotowość do reklam</span>
+            <Badge tone={completeness.score >= 85 ? "ok" : completeness.score >= 55 ? "warn" : "danger"}>{completeness.score}%</Badge>
           </div>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-2">
-            <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${completeness}%` }} />
+            <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${completeness.score}%` }} />
           </div>
           {summary ? <p className="mt-3 text-sm text-muted">{summary}</p> : null}
+          {completeness.missing.length > 0 ? (
+            <p className="mt-2 text-xs text-muted">Brakuje: {completeness.missing.join(", ")}. Kliknij „Rozbuduj profil” — Claude uzupełni to sam.</p>
+          ) : null}
+
+          <Button className="mt-4 w-full" onClick={() => runSave(true)} disabled={busy !== null}>
+            {busy === "finish" ? <Spinner /> : null}
+            {props.finishLabel}
+          </Button>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <Button variant="secondary" onClick={runRefine} disabled={busy !== null}>
+              {busy === "refine" ? <Spinner /> : null}
+              {busy === "refine" ? "Pracuję…" : answeredCount > 0 ? "Wyślij odpowiedzi" : "Rozbuduj profil"}
+            </Button>
+            <Button variant="secondary" onClick={() => runSave(false)} disabled={busy !== null}>
+              {busy === "save" ? <Spinner /> : null}
+              Zapisz
+            </Button>
+          </div>
+          {busy === "refine" ? <p className="mt-2 text-xs text-muted">Claude rozbudowuje profil, a Kontroler go sprawdza. To trwa ok. 1–2 minuty.</p> : null}
+          {message ? <div className="mt-3"><Notice tone={message.tone}>{message.text}</Notice></div> : null}
         </Card>
 
-        <ControlCard review={review} />
-
-        <Card>
-          <h2 className="font-semibold">Pytania od Claude</h2>
-          {questions.length === 0 ? (
-            <p className="mt-2 text-sm text-muted">Brak otwartych pytań. Możesz poprawić pola ręcznie albo poprosić o ponowne sprawdzenie profilu.</p>
-          ) : (
+        {questions.length > 0 ? (
+          <Card>
+            <h2 className="font-semibold">Doprecyzuj (opcjonalnie)</h2>
+            <p className="mt-1 text-xs text-muted">Możesz pominąć — profil działa i bez odpowiedzi.</p>
             <div className="mt-4 space-y-5">
               {questions.map((q) => (
                 <div key={q.id}>
@@ -131,7 +167,7 @@ export function ProfileEditor(props: Props) {
                   ) : null}
                   <Textarea
                     id={`q-${q.id}`}
-                    className="min-h-16"
+                    className="min-h-14"
                     value={answers[q.id] ?? ""}
                     onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
                     placeholder="Twoja odpowiedź…"
@@ -139,34 +175,42 @@ export function ProfileEditor(props: Props) {
                 </div>
               ))}
             </div>
-          )}
+          </Card>
+        ) : null}
 
-          <Button className="mt-5 w-full" onClick={runRefine} disabled={busy !== null}>
-            {busy === "refine" ? <Spinner /> : null}
-            {busy === "refine" ? "Claude analizuje i sprawdza…" : questions.length ? `Wyślij odpowiedzi (${answeredCount}/${questions.length})` : "Sprawdź profil ponownie"}
-          </Button>
-          <p className="mt-2 text-xs text-muted">Claude uwzględni też Twoje ręczne zmiany w polach.</p>
-        </Card>
-
-        <Card className="space-y-2">
-          <Button variant="secondary" className="w-full" onClick={() => runSave(false)} disabled={busy !== null}>
-            {busy === "save" ? <Spinner /> : null}
-            Zapisz zmiany
-          </Button>
-          <Button variant="secondary" className="w-full" onClick={() => runSave(true)} disabled={busy !== null}>
-            {busy === "finish" ? <Spinner /> : null}
-            {props.finishLabel}
-          </Button>
-          {message ? <Notice tone={message.tone}>{message.text}</Notice> : null}
-        </Card>
+        <ControlCard review={review} />
       </aside>
+    </div>
+  );
+}
+
+type SectionProps = { section: FieldSection; profile: Record<string, unknown>; update: (path: string, value: unknown) => void };
+
+function SectionCard(props: SectionProps) {
+  return (
+    <Card>
+      <SectionBody {...props} />
+    </Card>
+  );
+}
+
+function SectionBody({ section, profile, update }: SectionProps) {
+  return (
+    <div>
+      <h2 className="font-semibold">{section.title}</h2>
+      {section.description ? <p className="mt-1 text-sm text-muted">{section.description}</p> : null}
+      <div className="mt-5 grid gap-5 sm:grid-cols-2">
+        {section.fields.map((field) => (
+          <FieldInput key={field.path} field={field} value={getAt(profile, field.path)} onChange={(v) => update(field.path, v)} />
+        ))}
+      </div>
     </div>
   );
 }
 
 function FieldInput({ field, value, onChange }: { field: FieldDef; value: unknown; onChange: (v: unknown) => void }) {
   const id = `f-${field.path}`;
-  const wide = field.type === "textarea" || field.type === "list" || field.type === "pairs";
+  const wide = field.type === "textarea" || field.type === "list" || field.type === "records";
 
   let control: React.ReactNode;
   switch (field.type) {
@@ -213,6 +257,7 @@ function FieldInput({ field, value, onChange }: { field: FieldDef; value: unknow
       control = (
         <Textarea
           id={id}
+          rows={Math.min(12, Math.max(4, items.length + 1))}
           value={items.join("\n")}
           onChange={(e) => onChange(e.target.value.split("\n"))}
           onBlur={(e) => onChange(e.target.value.split("\n").map((s) => s.trim()).filter(Boolean))}
@@ -221,19 +266,36 @@ function FieldInput({ field, value, onChange }: { field: FieldDef; value: unknow
       );
       break;
     }
-    case "pairs": {
+    case "records": {
       const rows = Array.isArray(value) ? (value as Array<Record<string, string>>) : [];
-      const [k1, k2] = field.keys;
+      const setCell = (i: number, key: string, v: string) => onChange(rows.map((r, j) => (j === i ? { ...r, [key]: v } : r)));
       control = (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {rows.map((row, i) => (
-            <div key={i} className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-[1fr_1fr_auto]">
-              <Input aria-label={field.labels[0]} placeholder={field.labels[0]} value={row[k1] ?? ""} onChange={(e) => onChange(rows.map((r, j) => (j === i ? { ...r, [k1]: e.target.value } : r)))} />
-              <Input aria-label={field.labels[1]} placeholder={field.labels[1]} value={row[k2] ?? ""} onChange={(e) => onChange(rows.map((r, j) => (j === i ? { ...r, [k2]: e.target.value } : r)))} />
-              <Button variant="ghost" type="button" onClick={() => onChange(rows.filter((_, j) => j !== i))}>Usuń</Button>
+            <div key={i} className="rounded-xl border border-border p-3">
+              <div className="grid gap-2 sm:grid-cols-2">
+                {field.keys.map((key, k) => {
+                  const long = (row[key] ?? "").length > 60 || k === field.keys.length - 1;
+                  return (
+                    <div key={key} className={long ? "sm:col-span-2" : undefined}>
+                      <span className="mb-1 block text-xs text-muted">{field.labels[k]}</span>
+                      {long ? (
+                        <Textarea className="min-h-14" value={row[key] ?? ""} onChange={(e) => setCell(i, key, e.target.value)} />
+                      ) : (
+                        <Input value={row[key] ?? ""} onChange={(e) => setCell(i, key, e.target.value)} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-2 text-right">
+                <Button variant="ghost" type="button" onClick={() => onChange(rows.filter((_, j) => j !== i))}>Usuń</Button>
+              </div>
             </div>
           ))}
-          <Button variant="secondary" type="button" onClick={() => onChange([...rows, { [k1]: "", [k2]: "" }])}>+ Dodaj</Button>
+          <Button variant="secondary" type="button" onClick={() => onChange([...rows, Object.fromEntries(field.keys.map((k) => [k, ""]))])}>
+            {field.addLabel ?? "+ Dodaj"}
+          </Button>
         </div>
       );
       break;
@@ -264,34 +326,27 @@ function ControlCard({ review }: { review: ControlReport | null }) {
         ) : serious.length === 0 ? (
           <Badge tone="ok">Bez zastrzeżeń</Badge>
         ) : (
-          <Badge tone="warn">{serious.length} do decyzji</Badge>
+          <Badge tone="warn">{serious.length} {plural(serious.length, "uwaga", "uwagi", "uwag")}</Badge>
         )}
       </div>
       <p className="mt-2 text-sm text-muted">
-        Niezależny Kontroler sprawdził profil z dowodami (strona, Twoje odpowiedzi) i zasadami reklam.
+        Niezależny Kontroler sprawdził, czy z profilu powstaną reklamy, które sprzedają.
         {fixedCount > 0 ? ` Znalazł ${fixedCount} ${plural(fixedCount, "usterkę", "usterki", "usterek")} — Claude ${fixedCount === 1 ? "ją" : "je"} poprawił, a Kontroler sprawdził ponownie.` : ""}
       </p>
       {review.error ? <p className="mt-2 text-xs text-warn">{review.error}</p> : null}
       {review.remaining.length > 0 ? (
-        <ul className="mt-3 space-y-2">
-          {review.remaining.map((issue, i) => (
-            <li key={i} className="rounded-lg border border-border p-2.5 text-sm">
-              <div className="flex items-center gap-2">
-                <Badge tone={SEVERITY_TONE[issue.severity]}>{issue.severity}</Badge>
-                <span className="font-mono text-xs text-muted">{issue.field}</span>
-              </div>
-              <p className="mt-1.5">{issue.problem}</p>
-              <p className="mt-1 text-xs text-muted">Jak naprawić: {issue.fix}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {review.checked.length > 0 ? (
-        <details className="mt-3 text-xs text-muted">
-          <summary className="cursor-pointer hover:text-text">Co sprawdzono ({review.checked.length})</summary>
-          <ul className="mt-2 list-disc space-y-1 pl-4">
-            {review.checked.map((c, i) => (
-              <li key={i}>{c}</li>
+        <details className="mt-3 text-sm">
+          <summary className="cursor-pointer text-xs text-muted hover:text-text">Pokaż uwagi ({review.remaining.length})</summary>
+          <ul className="mt-2 space-y-2">
+            {review.remaining.map((issue, i) => (
+              <li key={i} className="rounded-lg border border-border p-2.5">
+                <div className="flex items-center gap-2">
+                  <Badge tone={SEVERITY_TONE[issue.severity]}>{issue.severity}</Badge>
+                  <span className="font-mono text-xs text-muted">{issue.field}</span>
+                </div>
+                <p className="mt-1.5">{issue.problem}</p>
+                <p className="mt-1 text-xs text-muted">Poprawka: {issue.fix}</p>
+              </li>
             ))}
           </ul>
         </details>
@@ -299,4 +354,3 @@ function ControlCard({ review }: { review: ControlReport | null }) {
     </Card>
   );
 }
-

@@ -33,7 +33,7 @@ export function NewProductForm({ brandId }: { brandId: string }) {
             {pending ? <Spinner /> : null}
             {pending ? "Analizuję produkt…" : "Przeanalizuj produkt"}
           </Button>
-          {pending ? <span className="text-xs text-muted">To zwykle trwa 30–90 sekund.</span> : null}
+          {pending ? <span className="text-xs text-muted">Analiza i kontrola jakości trwają zwykle 1–3 minuty.</span> : null}
         </div>
       </form>
     </Card>

@@ -2,7 +2,7 @@ import "server-only";
 import { notFound } from "next/navigation";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { EMPTY_BRAND_PROFILE, type BrandProfile } from "@/lib/profiles/brand";
-import { EMPTY_PRODUCT_PROFILE, type ProductProfile } from "@/lib/profiles/product";
+import { EMPTY_PRODUCT_PROFILE, upgradeProductProfile, type ProductProfile } from "@/lib/profiles/product";
 import { withDefaults, type Question } from "@/lib/profiles/common";
 import type { ControlReport } from "@/lib/ai/control";
 
@@ -31,7 +31,8 @@ export async function getBrand(supabase: SupabaseClient, id: string): Promise<Br
   return {
     ...data,
     profile: withDefaults(EMPTY_BRAND_PROFILE, data.profile),
-    questions: (data.questions as Question[]) ?? [],
+    // Older profiles could hold dozens of questions; show at most three.
+    questions: ((data.questions as Question[]) ?? []).slice(0, 3),
     review: (data.review as ControlReport | undefined) ?? null,
     source: (data.source as Record<string, unknown>) ?? {},
   } as BrandRow;
@@ -57,8 +58,9 @@ export async function getProduct(supabase: SupabaseClient, brandId: string, id: 
   if (!data) notFound();
   return {
     ...data,
-    profile: withDefaults(EMPTY_PRODUCT_PROFILE, data.profile),
-    questions: (data.questions as Question[]) ?? [],
+    profile: withDefaults(EMPTY_PRODUCT_PROFILE, upgradeProductProfile(data.profile)),
+    // Older profiles could hold dozens of questions; show at most three.
+    questions: ((data.questions as Question[]) ?? []).slice(0, 3),
     review: (data.review as ControlReport | undefined) ?? null,
     source: (data.source as Record<string, unknown>) ?? {},
   } as ProductRow;

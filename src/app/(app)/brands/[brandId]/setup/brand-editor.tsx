@@ -15,7 +15,6 @@ export function BrandEditor(props: {
   sections: FieldSection[];
   profile: BrandProfile;
   questions: Question[];
-  completeness: number;
   summary: string;
   review: ControlReport | null;
   logoUrl?: string;
@@ -45,10 +44,10 @@ export function BrandEditor(props: {
       </Card>
 
       <ProfileEditor
+        kind="brand"
         sections={props.sections}
         initialProfile={props.profile as unknown as Record<string, unknown>}
         initialQuestions={props.questions}
-        initialCompleteness={props.completeness}
         initialSummary={props.summary}
         initialReview={props.review}
         refine={(profile, answers) => refineBrandAction(props.brandId, profile, answers)}

@@ -9,7 +9,7 @@ export default function NewBrandPage() {
     <>
       <PageHeader
         title="Nowa marka"
-        description="Wklej link do sklepu. Clipzy przeczyta stronę (strona główna, „o nas”, FAQ, kolory, logo, produkty), przygotuje szkic profilu i zada pytania o wszystko, czego nie da się wyczytać."
+        description="Wklej link do sklepu. Clipzy przeczyta stronę (strona główna, „o nas”, FAQ, kolory, logo, produkty) i sam przygotuje profil: grupę docelową, persony i problemy klientów. Pytań będzie najwyżej kilka i wszystkie są opcjonalne."
       />
       <NewBrandForm />
     </>

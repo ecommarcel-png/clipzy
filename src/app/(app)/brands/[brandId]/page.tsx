@@ -34,7 +34,7 @@ export default async function BrandPage({ params }: PageProps<"/brands/[brandId]
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">{brand.name}</h1>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
-            {brand.status === "ready" ? <Badge tone="ok">Profil zatwierdzony</Badge> : <Badge tone="warn">Szkic · {brand.completeness}%</Badge>}
+            {brand.status === "ready" ? <Badge tone="ok">Profil zatwierdzony</Badge> : <Badge tone="warn">Do zatwierdzenia · {brand.completeness}%</Badge>}
             {brand.website_url ? (
               <a href={brand.website_url} target="_blank" rel="noreferrer" className="hover:text-text">{new URL(brand.website_url).hostname} ↗</a>
             ) : null}
@@ -46,8 +46,8 @@ export default async function BrandPage({ params }: PageProps<"/brands/[brandId]
       {brand.status !== "ready" ? (
         <Card className="mb-6 border-warn/40 bg-warn-soft">
           <p className="text-sm">
-            Profil marki nie jest jeszcze zatwierdzony. Dokończ go, zanim zaczniesz tworzyć reklamy — od niego zależy styl napisów, ton i muzyka.{" "}
-            <Link href={`/brands/${brand.id}/setup`} className="font-medium text-accent hover:underline">Dokończ profil →</Link>
+            Profil marki jest gotowy do sprawdzenia. Rzuć okiem na grupę docelową i problemy klientów — jeśli się zgadzają, zatwierdź.{" "}
+            <Link href={`/brands/${brand.id}/setup`} className="font-medium text-accent hover:underline">Sprawdź profil →</Link>
           </p>
         </Card>
       ) : null}
@@ -64,6 +64,16 @@ export default async function BrandPage({ params }: PageProps<"/brands/[brandId]
             <Item label="Napisy w sklejkach">{caption?.label.split(" — ")[0] ?? p.caption_profile}</Item>
             <Item label="Ton">{p.tone_of_voice.description || "—"}</Item>
           </dl>
+          {p.personas.length > 0 ? (
+            <div className="mt-4">
+              <div className="text-xs text-muted">Persony</div>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {p.personas.map((persona, i) => (
+                  <Badge key={i} tone="accent">{persona.name || "Persona"}</Badge>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </Card>
         <Card>
           <h2 className="font-semibold">Kolory</h2>
@@ -102,7 +112,7 @@ export default async function BrandPage({ params }: PageProps<"/brands/[brandId]
                 <div className="p-4">
                   <div className="truncate font-medium">{pr.name}</div>
                   <div className="mt-2">
-                    {pr.status === "ready" ? <Badge tone="ok">Gotowy</Badge> : <Badge tone="warn">Szkic · {pr.completeness}%</Badge>}
+                    {pr.status === "ready" ? <Badge tone="ok">Gotowy</Badge> : <Badge tone="warn">Do zatwierdzenia · {pr.completeness}%</Badge>}
                   </div>
                 </div>
               </Card>
