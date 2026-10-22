@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import type { FieldSection, Question } from "@/lib/profiles/common";
 import type { BrandProfile } from "@/lib/profiles/brand";
 import { ProfileEditor } from "@/components/profile-editor";
+import type { ControlReport } from "@/lib/ai/control";
 import { ImageUpload } from "@/components/image-upload";
 import { Logo } from "@/components/logo";
 import { Card } from "@/components/ui";
@@ -16,6 +17,7 @@ export function BrandEditor(props: {
   questions: Question[];
   completeness: number;
   summary: string;
+  review: ControlReport | null;
   logoUrl?: string;
   logoFolder: string;
 }) {
@@ -48,6 +50,7 @@ export function BrandEditor(props: {
         initialQuestions={props.questions}
         initialCompleteness={props.completeness}
         initialSummary={props.summary}
+        initialReview={props.review}
         refine={(profile, answers) => refineBrandAction(props.brandId, profile, answers)}
         save={(profile, finish) => saveBrandAction(props.brandId, profile, finish)}
         finishLabel="Zatwierdź profil marki"

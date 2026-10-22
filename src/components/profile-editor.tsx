@@ -2,11 +2,13 @@
 
 import { useState, useTransition } from "react";
 import type { FieldDef, FieldSection, Question } from "@/lib/profiles/common";
+import type { ControlReport } from "@/lib/ai/control";
+import { plural } from "@/lib/plural";
 import { getAt, setAt } from "@/lib/profiles/common";
 import { Badge, Button, Card, Input, Label, Notice, Select, Spinner, Textarea, cx } from "@/components/ui";
 
 export type RefineResult =
-  | { ok: true; profile: Record<string, unknown>; questions: Question[]; completeness: number; summary: string }
+  | { ok: true; profile: Record<string, unknown>; questions: Question[]; completeness: number; summary: string; review: ControlReport | null }
   | { ok: false; error: string };
 
 export type SaveResult = { ok: true; message: string } | { ok: false; error: string };
@@ -17,6 +19,7 @@ type Props = {
   initialQuestions: Question[];
   initialCompleteness: number;
   initialSummary: string;
+  initialReview: ControlReport | null;
   refine: (profile: Record<string, unknown>, answers: Array<Question & { answer: string }>) => Promise<RefineResult>;
   save: (profile: Record<string, unknown>, finish: boolean) => Promise<SaveResult>;
   finishLabel: string;
@@ -28,6 +31,7 @@ export function ProfileEditor(props: Props) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [completeness, setCompleteness] = useState(props.initialCompleteness);
   const [summary, setSummary] = useState(props.initialSummary);
+  const [review, setReview] = useState(props.initialReview);
   const [message, setMessage] = useState<{ tone: "ok" | "danger"; text: string } | null>(null);
   const [busy, setBusy] = useState<"refine" | "save" | "finish" | null>(null);
   const [, startTransition] = useTransition();
@@ -48,6 +52,7 @@ export function ProfileEditor(props: Props) {
         setAnswers({});
         setCompleteness(res.completeness);
         setSummary(res.summary);
+        setReview(res.review);
         setMessage({ tone: "ok", text: res.questions.length ? "Profil zaktualizowany. Claude ma kolejne pytania." : "Profil zaktualizowany. Claude nie ma więcej pytań." });
       } else {
         setMessage({ tone: "danger", text: res.error });
@@ -96,6 +101,8 @@ export function ProfileEditor(props: Props) {
           {summary ? <p className="mt-3 text-sm text-muted">{summary}</p> : null}
         </Card>
 
+        <ControlCard review={review} />
+
         <Card>
           <h2 className="font-semibold">Pytania od Claude</h2>
           {questions.length === 0 ? (
@@ -136,7 +143,7 @@ export function ProfileEditor(props: Props) {
 
           <Button className="mt-5 w-full" onClick={runRefine} disabled={busy !== null}>
             {busy === "refine" ? <Spinner /> : null}
-            {busy === "refine" ? "Claude analizuje…" : questions.length ? `Wyślij odpowiedzi (${answeredCount}/${questions.length})` : "Sprawdź profil ponownie"}
+            {busy === "refine" ? "Claude analizuje i sprawdza…" : questions.length ? `Wyślij odpowiedzi (${answeredCount}/${questions.length})` : "Sprawdź profil ponownie"}
           </Button>
           <p className="mt-2 text-xs text-muted">Claude uwzględni też Twoje ręczne zmiany w polach.</p>
         </Card>
@@ -240,3 +247,56 @@ function FieldInput({ field, value, onChange }: { field: FieldDef; value: unknow
     </div>
   );
 }
+
+const SEVERITY_TONE = { krytyczna: "danger", ważna: "warn", drobna: "neutral" } as const;
+
+// Result of the independent Controller check (see knowledge/rezyser/SKILL.md).
+function ControlCard({ review }: { review: ControlReport | null }) {
+  if (!review) return null;
+  const fixedCount = review.rounds >= 2 ? review.first_issues.length : 0;
+  const serious = review.remaining.filter((i) => i.severity !== "drobna");
+  return (
+    <Card>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="font-semibold">Kontrola jakości</h2>
+        {review.error && review.rounds === 0 ? (
+          <Badge tone="warn">Nie wykonano</Badge>
+        ) : serious.length === 0 ? (
+          <Badge tone="ok">Bez zastrzeżeń</Badge>
+        ) : (
+          <Badge tone="warn">{serious.length} do decyzji</Badge>
+        )}
+      </div>
+      <p className="mt-2 text-sm text-muted">
+        Niezależny Kontroler sprawdził profil z dowodami (strona, Twoje odpowiedzi) i zasadami reklam.
+        {fixedCount > 0 ? ` Znalazł ${fixedCount} ${plural(fixedCount, "usterkę", "usterki", "usterek")} — Claude ${fixedCount === 1 ? "ją" : "je"} poprawił, a Kontroler sprawdził ponownie.` : ""}
+      </p>
+      {review.error ? <p className="mt-2 text-xs text-warn">{review.error}</p> : null}
+      {review.remaining.length > 0 ? (
+        <ul className="mt-3 space-y-2">
+          {review.remaining.map((issue, i) => (
+            <li key={i} className="rounded-lg border border-border p-2.5 text-sm">
+              <div className="flex items-center gap-2">
+                <Badge tone={SEVERITY_TONE[issue.severity]}>{issue.severity}</Badge>
+                <span className="font-mono text-xs text-muted">{issue.field}</span>
+              </div>
+              <p className="mt-1.5">{issue.problem}</p>
+              <p className="mt-1 text-xs text-muted">Jak naprawić: {issue.fix}</p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {review.checked.length > 0 ? (
+        <details className="mt-3 text-xs text-muted">
+          <summary className="cursor-pointer hover:text-text">Co sprawdzono ({review.checked.length})</summary>
+          <ul className="mt-2 list-disc space-y-1 pl-4">
+            {review.checked.map((c, i) => (
+              <li key={i}>{c}</li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+    </Card>
+  );
+}
+

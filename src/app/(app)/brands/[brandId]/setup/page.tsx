@@ -29,6 +29,7 @@ export default async function BrandSetupPage({ params }: PageProps<"/brands/[bra
         questions={brand.questions}
         completeness={brand.completeness}
         summary={brand.summary}
+        review={brand.review}
         logoUrl={logoUrl}
         logoFolder={brandFolder(user.id, brand.id)}
       />

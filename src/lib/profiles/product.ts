@@ -11,6 +11,12 @@ export const ProductProfileSchema = z.object({
   problem: z.string().describe("Główny problem klienta, który produkt rozwiązuje."),
   problem_visual: z.string().describe("Jak POKAZAĆ ten problem na wideo (konkretna scena)."),
   mechanism: z.string().describe("Unikalny mechanizm: dlaczego TEN produkt działa, a inne nie."),
+  market_sophistication: z
+    .string()
+    .describe("Poziom wypalenia obietnicy na tym rynku (1-5) i co z tego wynika dla komunikatu — wg bazy wiedzy Meta Ads."),
+  customer_language: z
+    .array(z.string())
+    .describe("Jak klienci SAMI opisują problem i efekt (cytaty z opinii, FAQ, odpowiedzi użytkownika). Tylko ze źródeł."),
   benefits: z.array(z.string()).describe("Korzyści dla klienta (efekty, nie cechy)."),
   features: z.array(z.string()).describe("Cechy i parametry (materiał, rozmiar, czas, liczby)."),
   wow_effect: z.object({
@@ -46,6 +52,8 @@ export const EMPTY_PRODUCT_PROFILE: ProductProfile = {
   problem: "",
   problem_visual: "",
   mechanism: "",
+  market_sophistication: "",
+  customer_language: [],
   benefits: [],
   features: [],
   wow_effect: { exists: false, description: "" },
@@ -81,6 +89,8 @@ export const PRODUCT_FORM: FieldSection[] = [
       { path: "problem", label: "Problem klienta", type: "textarea" },
       { path: "problem_visual", label: "Jak pokazać problem na wideo", type: "textarea" },
       { path: "mechanism", label: "Unikalny mechanizm (dlaczego działa)", type: "textarea" },
+      { path: "market_sophistication", label: "Wypalenie rynku (poziom 1–5)", hint: "Ile razy klient słyszał już tę obietnicę od innych i co z tego wynika dla komunikatu.", type: "textarea" },
+      { path: "customer_language", label: "Język klienta", hint: "Jak klienci sami opisują problem i efekt — jedno zdanie w linii.", type: "list" },
       { path: "before_after.possible", label: "Da się pokazać przed/po", type: "boolean" },
       { path: "before_after.description", label: "Przed/po — co pokazać", type: "textarea" },
       { path: "wow_effect.exists", label: "Produkt ma efekt WOW", type: "boolean" },

@@ -1,4 +1,6 @@
 import "server-only";
+import { knowledgeText, type KnowledgeDoc } from "@/lib/knowledge";
+import type { ReviewIssue } from "./review";
 
 // Shared rules for building brand and product profiles.
 export const PROFILE_RULES = `
@@ -11,9 +13,16 @@ Zasady pracy nad profilem:
 - Nie pytaj ponownie o rzeczy, na które użytkownik już odpowiedział.
 - Kompletność (0–100): jak bardzo profil wystarcza, żeby tworzyć reklamy bez zgadywania. 90+ tylko gdy nie ma już ważnych luk. Gdy kompletność ≥ 90, lista pytań może być pusta.
 - "summary" to 1–3 zdania dla użytkownika: co już wiesz i czego jeszcze brakuje.
+- Twój wynik sprawdzi niezależny Kontroler według listy kontrolnej z bazy wiedzy „Reżyser Clipzy” — pracuj tak, żeby nie miał czego zgłosić.
 `.trim();
 
-export function knowledgeBlock(skill: string): string {
-  if (!skill) return "";
-  return `\n\nPoniżej baza wiedzy, według której Clipzy montuje reklamy. Profil ma dostarczyć wszystkiego, czego ta wiedza wymaga (np. profil napisów, emocja produktu, przed/po, efekt WOW, oferta, dowód społeczny):\n\n<baza_wiedzy>\n${skill}\n</baza_wiedzy>`;
+export function knowledgeBlock(docs: KnowledgeDoc[]): string {
+  if (!docs.length) return "";
+  return `\n\nPoniżej baza wiedzy Clipzy. Profil ma dostarczyć wszystkiego, czego ta wiedza wymaga od marki i produktu (np. profil napisów, emocja produktu, przed/po, efekt WOW, unikalny mechanizm, poziom wypalenia rynku, oferta, dowód społeczny):\n\n${knowledgeText(docs)}`;
+}
+
+// Extra instructions for a correction round after the Controller's review.
+export function controlIssuesBlock(issues: ReviewIssue[]): string {
+  if (!issues.length) return "";
+  return `\n\n<uwagi_kontrolera>\nNiezależny Kontroler sprawdził profil i zgłosił poniższe usterki. Popraw wszystkie krytyczne i ważne (drobne — jeśli to proste). Jeśli usterka dotyczy niepotwierdzonego faktu, usuń go z profilu i zadaj pytanie zamiast zgadywać. Nie wprowadzaj nowych niepotwierdzonych informacji.\n${JSON.stringify(issues, null, 1)}\n</uwagi_kontrolera>`;
 }

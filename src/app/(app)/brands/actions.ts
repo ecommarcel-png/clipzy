@@ -4,18 +4,57 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { getProviderKey } from "@/lib/api-keys";
-import { analyzeBrand, refineBrand } from "@/lib/ai/brand";
+import { analyzeBrand, brandEvidence, refineBrand, type BrandDraft } from "@/lib/ai/brand";
+import { reviewProfile } from "@/lib/ai/review";
+import { controlLoop } from "@/lib/ai/control";
 import { scrapeBrandSite, type BrandSource } from "@/lib/scrape/site";
 import { normalizeUrl } from "@/lib/scrape/safe-fetch";
 import { BrandProfileSchema, EMPTY_BRAND_PROFILE } from "@/lib/profiles/brand";
 import { cleanLists, withDefaults, type AnsweredQuestion } from "@/lib/profiles/common";
 import { brandFolder, importImage } from "@/lib/storage";
+import { writeWithReview } from "@/lib/data";
 import { userMessage } from "@/lib/errors";
 import type { RefineResult, SaveResult } from "@/components/profile-editor";
 
 export type NewBrandState = { error?: string };
 
+// Leave room for the final re-check inside the 300 s page limit.
+const CONTROL_BUDGET_MS = 170_000;
+
+function clampPct(n: number) {
+  return Math.max(0, Math.min(100, Math.round(Number.isFinite(n) ? n : 0)));
+}
+
+function normalizeDraft(d: BrandDraft): BrandDraft {
+  return { ...d, profile: cleanLists(withDefaults(EMPTY_BRAND_PROFILE, d.profile)), completeness: clampPct(d.completeness) };
+}
+
+// Draft → independent Controller → correction → final check.
+async function controlBrand(
+  apiKey: string,
+  draft: BrandDraft,
+  ctx: { source: BrandSource | null; notes: string; answers: AnsweredQuestion[]; startedAt: number },
+) {
+  return controlLoop({
+    draft: normalizeDraft(draft),
+    review: (d) => reviewProfile(apiKey, { kind: "marka", profile: d.profile, evidence: brandEvidence(ctx.source, ctx.notes, ctx.answers) }),
+    revise: async (d, issues) =>
+      normalizeDraft(
+        await refineBrand(apiKey, {
+          profile: d.profile,
+          answers: ctx.answers,
+          source: ctx.source,
+          notes: ctx.notes,
+          controlIssues: issues,
+          openQuestions: d.questions,
+        }),
+      ),
+    hasTimeFor: () => Date.now() - ctx.startedAt < CONTROL_BUDGET_MS,
+  });
+}
+
 export async function createBrand(_prev: NewBrandState, formData: FormData): Promise<NewBrandState> {
+  const startedAt = Date.now();
   const { supabase, user } = await requireUser();
   const rawUrl = String(formData.get("url") ?? "").trim();
   const nameHint = String(formData.get("name") ?? "").trim();
@@ -28,25 +67,34 @@ export async function createBrand(_prev: NewBrandState, formData: FormData): Pro
     const apiKey = await getProviderKey(supabase, "anthropic");
     const source = rawUrl ? await scrapeBrandSite(rawUrl) : null;
     const analysis = await analyzeBrand(apiKey, { source, nameHint, notes });
-    const profile = cleanLists(withDefaults(EMPTY_BRAND_PROFILE, analysis.profile));
+    if (nameHint) analysis.profile.name = nameHint;
+
+    const { result, report } = await controlBrand(apiKey, analysis, { source, notes, answers: [], startedAt });
+    const profile = result.profile;
     if (nameHint) profile.name = nameHint;
 
-    const { data, error } = await supabase
-      .from("brands")
-      .insert({
+    // Insert, then read back the id (the review column may not exist yet).
+    let insertedId: string | null = null;
+    const { error } = await writeWithReview(
+      async (payload) => {
+        const res = await supabase.from("brands").insert(payload).select("id").single();
+        insertedId = res.data?.id ?? null;
+        return { error: res.error };
+      },
+      {
         user_id: user.id,
         name: profile.name || nameHint || new URL(source?.url ?? normalizeUrl(rawUrl)).hostname,
         website_url: source?.url ?? null,
         profile,
-        questions: analysis.questions,
-        completeness: clampPct(analysis.completeness),
-        summary: analysis.summary,
+        questions: result.questions,
+        completeness: result.completeness,
+        summary: result.summary,
+        review: report,
         source: { ...(source ?? {}), notes },
-      })
-      .select("id")
-      .single();
-    if (error) throw new Error(error.message);
-    brandId = data.id;
+      },
+    );
+    if (error || !insertedId) throw new Error(error?.message ?? "Nie udało się zapisać marki.");
+    brandId = insertedId;
 
     // Logo: Claude's pick first, then the other candidates.
     const candidates = [analysis.logo_url, ...(source?.home.logoCandidates ?? [])].filter(Boolean);
@@ -65,10 +113,6 @@ export async function createBrand(_prev: NewBrandState, formData: FormData): Pro
   redirect(`/brands/${brandId}/setup`);
 }
 
-function clampPct(n: number) {
-  return Math.max(0, Math.min(100, Math.round(Number.isFinite(n) ? n : 0)));
-}
-
 function parseProfile(raw: unknown) {
   const merged = cleanLists(withDefaults(EMPTY_BRAND_PROFILE, raw));
   const parsed = BrandProfileSchema.safeParse(merged);
@@ -80,6 +124,7 @@ export async function refineBrandAction(
   rawProfile: Record<string, unknown>,
   answers: AnsweredQuestion[],
 ): Promise<RefineResult> {
+  const startedAt = Date.now();
   const { supabase } = await requireUser();
   const profile = parseProfile(rawProfile);
   if (!profile) return { ok: false, error: "Niektóre pola mają nieprawidłowy format (np. wiek musi być liczbą)." };
@@ -89,19 +134,35 @@ export async function refineBrandAction(
 
   try {
     const apiKey = await getProviderKey(supabase, "anthropic");
-    const source = (brand.source as BrandSource & { url?: string })?.url ? (brand.source as BrandSource) : null;
-    const result = await refineBrand(apiKey, { profile, answers, source });
-    const next = cleanLists(withDefaults(EMPTY_BRAND_PROFILE, result.profile));
-    const completeness = clampPct(result.completeness);
+    const stored = (brand.source ?? {}) as BrandSource & { url?: string; notes?: string };
+    const source = stored.url ? (stored as BrandSource) : null;
+    const notes = stored.notes ?? "";
 
-    const { error } = await supabase
-      .from("brands")
-      .update({ profile: next, name: next.name || undefined, questions: result.questions, completeness, summary: result.summary })
-      .eq("id", brandId);
+    const draft = await refineBrand(apiKey, { profile, answers, source, notes });
+    const { result, report } = await controlBrand(apiKey, draft, { source, notes, answers, startedAt });
+
+    const { error } = await writeWithReview(
+      (payload) => supabase.from("brands").update(payload).eq("id", brandId),
+      {
+        profile: result.profile,
+        name: result.profile.name || undefined,
+        questions: result.questions,
+        completeness: result.completeness,
+        summary: result.summary,
+        review: report,
+      },
+    );
     if (error) throw new Error(error.message);
 
     revalidatePath(`/brands/${brandId}`);
-    return { ok: true, profile: next, questions: result.questions, completeness, summary: result.summary };
+    return {
+      ok: true,
+      profile: result.profile as unknown as Record<string, unknown>,
+      questions: result.questions,
+      completeness: result.completeness,
+      summary: result.summary,
+      review: report,
+    };
   } catch (e) {
     return { ok: false, error: userMessage(e) };
   }

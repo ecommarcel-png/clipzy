@@ -5,9 +5,12 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { getProviderKey } from "@/lib/api-keys";
-import { analyzeProduct, refineProduct } from "@/lib/ai/product";
-import { scrapeProductPage } from "@/lib/scrape/product";
-import { EMPTY_BRAND_PROFILE } from "@/lib/profiles/brand";
+import { analyzeProduct, productEvidence, refineProduct, type ProductAnalysis } from "@/lib/ai/product";
+import { reviewProfile } from "@/lib/ai/review";
+import { controlLoop } from "@/lib/ai/control";
+import { scrapeProductPage, type ProductSource } from "@/lib/scrape/product";
+import { writeWithReview } from "@/lib/data";
+import { EMPTY_BRAND_PROFILE, type BrandProfile } from "@/lib/profiles/brand";
 import { EMPTY_PRODUCT_PROFILE, ProductProfileSchema } from "@/lib/profiles/product";
 import { cleanLists, withDefaults, type AnsweredQuestion } from "@/lib/profiles/common";
 import { BUCKET, importImage, isClaudeReadableImage, productFolder, signedUrls } from "@/lib/storage";
@@ -28,7 +31,47 @@ async function brandProfile(supabase: SupabaseClient, brandId: string) {
   return data ? withDefaults(EMPTY_BRAND_PROFILE, data.profile) : null;
 }
 
+// Leave room for the final re-check inside the 300 s page limit.
+const CONTROL_BUDGET_MS = 170_000;
+
+function normalizeDraft(d: ProductAnalysis): ProductAnalysis {
+  return { ...d, profile: cleanLists(withDefaults(EMPTY_PRODUCT_PROFILE, d.profile)), completeness: clampPct(d.completeness) };
+}
+
+// Draft → independent Controller → correction → final check.
+async function controlProduct(
+  apiKey: string,
+  draft: ProductAnalysis,
+  ctx: { brand: BrandProfile; source: ProductSource | null; notes: string; answers: AnsweredQuestion[]; imageUrls: string[]; startedAt: number },
+) {
+  return controlLoop({
+    draft: normalizeDraft(draft),
+    review: (d) =>
+      reviewProfile(apiKey, {
+        kind: "produkt",
+        profile: d.profile,
+        brandProfile: ctx.brand,
+        evidence: productEvidence(ctx.source, ctx.notes, ctx.answers),
+      }),
+    revise: async (d, issues) =>
+      normalizeDraft(
+        await refineProduct(apiKey, {
+          brand: ctx.brand,
+          profile: d.profile,
+          answers: ctx.answers,
+          imageUrls: ctx.imageUrls,
+          source: ctx.source,
+          notes: ctx.notes,
+          controlIssues: issues,
+          openQuestions: d.questions,
+        }),
+      ),
+    hasTimeFor: () => Date.now() - ctx.startedAt < CONTROL_BUDGET_MS,
+  });
+}
+
 export async function createProduct(brandId: string, _prev: NewProductState, formData: FormData): Promise<NewProductState> {
+  const startedAt = Date.now();
   const { supabase, user } = await requireUser();
   const url = String(formData.get("url") ?? "").trim();
   const nameHint = String(formData.get("name") ?? "").trim();
@@ -54,26 +97,25 @@ export async function createProduct(brandId: string, _prev: NewProductState, for
 
     const readable = storedPaths.filter(isClaudeReadableImage).slice(0, 4);
     const signed = await signedUrls(supabase, readable, 900);
-    const analysis = await analyzeProduct(apiKey, {
-      brand,
-      source,
-      nameHint: name,
-      notes,
-      imageUrls: readable.map((p) => signed[p]).filter(Boolean),
-    });
-    const profile = cleanLists(withDefaults(EMPTY_PRODUCT_PROFILE, analysis.profile));
+    const imageUrls = readable.map((p) => signed[p]).filter(Boolean);
+    const analysis = await analyzeProduct(apiKey, { brand, source, nameHint: name, notes, imageUrls });
+    if (nameHint) analysis.profile.name = nameHint;
+
+    const { result, report } = await controlProduct(apiKey, analysis, { brand, source, notes, answers: [], imageUrls, startedAt });
+    const profile = result.profile;
     if (nameHint) profile.name = nameHint;
 
-    const { error } = await supabase.from("products").insert({
+    const { error } = await writeWithReview((payload) => supabase.from("products").insert(payload), {
       id: productId,
       user_id: user.id,
       brand_id: brandId,
       name: profile.name || name,
       product_url: source?.url ?? null,
       profile,
-      questions: analysis.questions,
-      completeness: clampPct(analysis.completeness),
-      summary: analysis.summary,
+      questions: result.questions,
+      completeness: result.completeness,
+      summary: result.summary,
+      review: report,
       source: { ...(source ?? {}), notes },
     });
     if (error) throw new Error(error.message);
@@ -110,25 +152,46 @@ export async function refineProductAction(
   rawProfile: Record<string, unknown>,
   answers: AnsweredQuestion[],
 ): Promise<RefineResult> {
+  const startedAt = Date.now();
   const { supabase } = await requireUser();
   const profile = parseProfile(rawProfile);
   if (!profile) return { ok: false, error: "Niektóre pola mają nieprawidłowy format." };
   const brand = await brandProfile(supabase, brandId);
   if (!brand) return { ok: false, error: "Nie znaleziono marki." };
+  const { data: row } = await supabase.from("products").select("source").eq("id", productId).eq("brand_id", brandId).maybeSingle();
+  if (!row) return { ok: false, error: "Nie znaleziono produktu." };
 
   try {
     const apiKey = await getProviderKey(supabase, "anthropic");
-    const result = await refineProduct(apiKey, { brand, profile, answers, imageUrls: await productImageUrls(supabase, productId) });
-    const next = cleanLists(withDefaults(EMPTY_PRODUCT_PROFILE, result.profile));
-    const completeness = clampPct(result.completeness);
-    const { error } = await supabase
-      .from("products")
-      .update({ profile: next, name: next.name || undefined, questions: result.questions, completeness, summary: result.summary })
-      .eq("id", productId)
-      .eq("brand_id", brandId);
+    const stored = (row.source ?? {}) as ProductSource & { notes?: string };
+    const source = stored.url ? (stored as ProductSource) : null;
+    const notes = stored.notes ?? "";
+    const imageUrls = await productImageUrls(supabase, productId);
+
+    const draft = await refineProduct(apiKey, { brand, profile, answers, imageUrls, source, notes });
+    const { result, report } = await controlProduct(apiKey, draft, { brand, source, notes, answers, imageUrls, startedAt });
+
+    const { error } = await writeWithReview(
+      (payload) => supabase.from("products").update(payload).eq("id", productId).eq("brand_id", brandId),
+      {
+        profile: result.profile,
+        name: result.profile.name || undefined,
+        questions: result.questions,
+        completeness: result.completeness,
+        summary: result.summary,
+        review: report,
+      },
+    );
     if (error) throw new Error(error.message);
     revalidatePath(`/brands/${brandId}`);
-    return { ok: true, profile: next, questions: result.questions, completeness, summary: result.summary };
+    return {
+      ok: true,
+      profile: result.profile as unknown as Record<string, unknown>,
+      questions: result.questions,
+      completeness: result.completeness,
+      summary: result.summary,
+      review: report,
+    };
   } catch (e) {
     return { ok: false, error: userMessage(e) };
   }

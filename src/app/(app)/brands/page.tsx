@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { signedUrls } from "@/lib/storage";
 import { Badge, Card, PageHeader, buttonClass } from "@/components/ui";
 import { Logo } from "@/components/logo";
+import { plural } from "@/lib/plural";
 
 export default async function BrandsPage() {
   const { supabase } = await requireUser();
@@ -43,7 +44,7 @@ export default async function BrandsPage() {
                   </div>
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     {b.status === "ready" ? <Badge tone="ok">Gotowa</Badge> : <Badge tone="warn">Szkic · {b.completeness}%</Badge>}
-                    <Badge>{productCount} {productCount === 1 ? "produkt" : "produktów"}</Badge>
+                    <Badge>{productCount} {plural(productCount, "produkt", "produkty", "produktów")}</Badge>
                   </div>
                 </Card>
               </Link>

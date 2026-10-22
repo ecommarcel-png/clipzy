@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import type { FieldSection, Question } from "@/lib/profiles/common";
 import type { ProductProfile } from "@/lib/profiles/product";
 import { ProfileEditor } from "@/components/profile-editor";
+import type { ControlReport } from "@/lib/ai/control";
 import { ImageUpload } from "@/components/image-upload";
 import { Card } from "@/components/ui";
 import { addProductImages, deleteProductImage, refineProductAction, saveProductAction } from "../actions";
@@ -16,6 +17,7 @@ export function ProductEditor(props: {
   questions: Question[];
   completeness: number;
   summary: string;
+  review: ControlReport | null;
   images: Array<{ id: string; url: string }>;
   imageFolder: string;
 }) {
@@ -68,6 +70,7 @@ export function ProductEditor(props: {
         initialQuestions={props.questions}
         initialCompleteness={props.completeness}
         initialSummary={props.summary}
+        initialReview={props.review}
         refine={(profile, answers) => refineProductAction(props.brandId, props.productId, profile, answers)}
         save={(profile, finish) => saveProductAction(props.brandId, props.productId, profile, finish)}
         finishLabel="Zatwierdź profil produktu"
