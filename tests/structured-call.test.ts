@@ -40,11 +40,26 @@ beforeEach(() => {
 });
 
 describe("structuredCall", () => {
-  it("returns validated tool input and forces the result tool", async () => {
+  it("returns validated tool input without forcing a tool (not every model supports it)", async () => {
     script.push(toolReply({ name: "MAMIQO", age: 3 }));
     const out = await structuredCall({ apiKey: "k", system: "s", content: [{ type: "text", text: "x" }], schema: Schema });
     expect(out).toEqual({ name: "MAMIQO", age: 3 });
-    expect(calls[0].tool_choice).toEqual({ type: "tool", name: "zapisz_wynik" });
+    expect(calls[0].tool_choice).toEqual({ type: "auto" });
+  });
+
+  it("accepts a plain-JSON answer when the model skips the tool", async () => {
+    script.push({ stop_reason: "end_turn", content: [{ type: "text", text: 'Oto wynik:\n```json\n{"name":"MAMIQO","age":3}\n```' }] });
+    const out = await structuredCall({ apiKey: "k", system: "s", content: [], schema: Schema });
+    expect(out.age).toBe(3);
+  });
+
+  it("asks again when the answer has no tool call and no JSON", async () => {
+    script.push({ stop_reason: "end_turn", content: [{ type: "text", text: "Już się robi!" }] }, toolReply({ name: "MAMIQO", age: 3 }));
+    const out = await structuredCall({ apiKey: "k", system: "s", content: [], schema: Schema });
+    expect(out.name).toBe("MAMIQO");
+    const nudge = calls[1].messages.at(-1) as { content: Array<{ type: string; text: string }> };
+    expect(nudge.content[0].type).toBe("text");
+    expect(nudge.content[0].text).toMatch(/Nie wywołałeś/);
   });
 
   it("gives Claude one chance to fix a result that doesn't match the schema", async () => {

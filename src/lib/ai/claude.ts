@@ -35,8 +35,22 @@ export function formatIssues(error: z.ZodError): string {
     .join("\n");
 }
 
+// Pull a JSON object out of a plain-text answer (```json fences or the outermost {...}).
+export function extractJson(text: string): unknown {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
+  const candidate = fenced ?? text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
+  if (!candidate || !candidate.trim().startsWith("{")) return undefined;
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    return undefined;
+  }
+}
+
 // One structured call: system prompt (cached), user content, Zod-validated output.
-// If the output doesn't match the schema, Claude gets one chance to fix it.
+// The model is asked to answer through the result tool (forcing a tool isn't
+// supported by every model). A plain-JSON answer is accepted too. If the result
+// doesn't match the schema, Claude gets one chance to fix it.
 export async function structuredCall<S extends z.ZodType>(opts: {
   apiKey: string;
   system: string;
@@ -59,10 +73,13 @@ export async function structuredCall<S extends z.ZodType>(opts: {
       const message = await client.messages.create({
         model: MODELS.main,
         max_tokens: opts.maxTokens ?? 16_000,
-        system: [{ type: "text", text: opts.system, cache_control: { type: "ephemeral" } }],
+        system: [
+          { type: "text", text: opts.system, cache_control: { type: "ephemeral" } },
+          { type: "text", text: `Odpowiedź oddajesz WYŁĄCZNIE wywołując narzędzie ${RESULT_TOOL} — dokładnie raz, z kompletnym wynikiem. Bez tekstu poza narzędziem.` },
+        ],
         messages,
         tools,
-        tool_choice: { type: "tool", name: RESULT_TOOL },
+        tool_choice: { type: "auto" },
       });
 
       if (message.stop_reason === "max_tokens") {
@@ -73,23 +90,23 @@ export async function structuredCall<S extends z.ZodType>(opts: {
       }
 
       const call = message.content.find((b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use" && b.name === RESULT_TOOL);
-      if (!call) throw new ClaudeError("Model nie zwrócił wyniku.");
+      const text = message.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+      const candidate = call ? call.input : extractJson(text);
 
-      const parsed = opts.schema.safeParse(call.input);
-      if (parsed.success) return parsed.data;
+      const parsed = candidate === undefined ? null : opts.schema.safeParse(candidate);
+      if (parsed?.success) return parsed.data;
 
-      // Show Claude exactly what didn't match and let it resend the result.
+      // Show Claude exactly what was wrong and let it resend the result.
       messages.push({ role: "assistant", content: message.content as unknown as ContentBlock[] });
+      const problem = parsed
+        ? `Wynik nie pasuje do schematu:\n${formatIssues(parsed.error)}`
+        : `Nie wywołałeś narzędzia ${RESULT_TOOL}.`;
+      const instruction = `${problem}\nWywołaj ${RESULT_TOOL} ponownie z poprawionym, kompletnym wynikiem.`;
       messages.push({
         role: "user",
-        content: [
-          {
-            type: "tool_result",
-            tool_use_id: call.id,
-            is_error: true,
-            content: `Wynik nie pasuje do schematu:\n${formatIssues(parsed.error)}\nWywołaj ${RESULT_TOOL} ponownie z poprawionym, kompletnym wynikiem.`,
-          },
-        ],
+        content: call
+          ? [{ type: "tool_result", tool_use_id: call.id, is_error: true, content: instruction }]
+          : [{ type: "text", text: instruction }],
       });
     }
     throw new ClaudeError("Model dwa razy zwrócił wynik w złym formacie. Spróbuj ponownie.");
