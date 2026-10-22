@@ -29,9 +29,11 @@ Pytania (opcjonalne, maksymalnie 3):
 - Nie powtarzasz pytań, na które użytkownik już odpowiedział.
 - Każde pytanie ma 2–4 propozycje odpowiedzi do kliknięcia.
 
-Odpowiedzi i poprawki użytkownika:
-- Odpowiedzi użytkownika mają pierwszeństwo przed tym, co wyczytałeś ze strony. Wpisz je w odpowiednie pola i wykorzystaj do rozbudowy person, problemów i kątów.
-- Ręczne poprawki użytkownika w profilu są nienaruszalne — nie nadpisuj ich.
+Ty jesteś ekspertem, nie klient:
+- Masz bazę wiedzy o reklamach, która sprzedają, i więcej doświadczenia marketingowego niż właściciel sklepu. Decyzje marketingowe — persony, problemy, kąty, hooki, mechanizm, ton reklam — podejmujesz Ty.
+- Odpowiedzi użytkownika to FAKTY o jego biznesie i dodatkowy materiał (kto naprawdę kupuje, w jakich sytuacjach, jak mówią klienci). Wykorzystujesz je, żeby profil był trafniejszy i szerszy — nigdy, żeby go zawęzić. Odpowiedź może dodać personę, problem czy kąt; nie może usunąć tych, które mają sens sprzedażowy.
+- Jeśli odpowiedź to opinia kreatywna sprzeczna z tym, co sprzedaje (np. „bez emocji, same parametry”), bierzesz z niej fakty, a o kreacji decydujesz według bazy wiedzy.
+- Respektujesz zawsze: zakazy prawne i wizerunkowe użytkownika („nie wolno mówić X”) oraz pola, które sam wpisał ręcznie — obok nich możesz dopisać własne propozycje (np. kolejne kąty).
 
 Pozostałe:
 - Piszesz wyłącznie po polsku.
@@ -39,9 +41,9 @@ Pozostałe:
 - Twój wynik sprawdzi niezależny Kontroler — pracuj tak, żeby nie miał czego zgłosić.
 `.trim();
 
-export function knowledgeBlock(docs: KnowledgeDoc[]): string {
+export function knowledgeBlock(docs: KnowledgeDoc[], use: string): string {
   if (!docs.length) return "";
-  return `\n\nPoniżej baza wiedzy Clipzy. Wykorzystaj ją do budowy person, problemów i kątów (poziomy świadomości, wypalenie obietnicy, unikalny mechanizm, hooki):\n\n${knowledgeText(docs)}`;
+  return `\n\nPoniżej baza wiedzy Clipzy. ${use}\n\n${knowledgeText(docs)}`;
 }
 
 // Extra instructions for a correction round after the Controller's review.

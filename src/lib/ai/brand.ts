@@ -24,12 +24,17 @@ async function systemPrompt() {
 
 ${PROFILE_RULES}
 
+Zakres: profil MARKI dotyczy marki i jej klientów — kim są, czego chcą, jakie mają problemy, jak marka mówi. NIE dotyczy konkretnego produktu. Nie pytasz o produkt (wygląd, działanie, warianty, przed/po, efekt WOW, porównania z konkurencją) — to osobny etap, profil produktu. Nawet jeśli sklep sprzedaje jeden produkt, tu opisujesz klientów i markę.
+
 Wskazówki do pól:
 - personas: 3–6 naprawdę różnych typów kupujących — to z nich powstaną różne kierunki reklam.
 - target_audience.pains: co najmniej 8 konkretnych problemów; desires: co najmniej 5.
 - caption_profile wybierz na podstawie grupy docelowej: kobiety 25–50 (beauty/bielizna/dom) → kobiety_25_50; młodzi do ~27 lat → gen_z; 50+ → 50_plus; pozostali / rodzice → uniwersalny.
 - colors: wybierz z kandydatów kolorów (theme-color, zmienne CSS, najczęstsze barwy) te, które są kolorami marki, a nie szarościami interfejsu. caption_text: kolor marki, jeśli dobrze czyta się na wideo; w przeciwnym razie #ffffff.
-- tone_of_voice.example_phrases: cytuj prawdziwe zdania ze strony, jeśli brzmią jak marka.${knowledgeBlock(await brandKnowledge())}`;
+- tone_of_voice.example_phrases: cytuj prawdziwe zdania ze strony, jeśli brzmią jak marka.${knowledgeBlock(
+    await brandKnowledge(),
+    "Wykorzystaj ją do zrozumienia klientów marki i jej pozycji (zasady marketingu, oferta, profil napisów). Rzeczy dotyczące konkretnego produktu i montażu (przed/po, efekt WOW, ujęcia) zostaw na etap produktu i sklejek.",
+  )}`;
 }
 
 // Everything the brand profile may rely on — shown to Claude and to the Controller.

@@ -31,7 +31,10 @@ Gdzie wkładasz pracę:
 
 <profil_marki>
 ${JSON.stringify(brand, null, 1)}
-</profil_marki>${knowledgeBlock(await productKnowledge())}`;
+</profil_marki>${knowledgeBlock(
+    await productKnowledge(),
+    "Wykorzystaj ją do budowy problemów, mechanizmu i kątów (poziomy świadomości, wypalenie obietnicy, unikalny mechanizm, hooki, przed/po, efekt WOW).",
+  )}`;
 }
 
 function imageBlocks(urls: string[]): Anthropic.Messages.ContentBlockParam[] {
