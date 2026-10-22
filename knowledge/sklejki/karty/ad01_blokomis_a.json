@@ -1,0 +1,435 @@
+{
+  "id": "ad01_blokomis_a",
+  "zmierzone": {
+    "dlugosc_s": 37.9,
+    "liczba_ujec": 29,
+    "srednia_dlugosc_ujecia_s": 1.31,
+    "najkrotsze_s": 0.2,
+    "najdluzsze_s": 3.2,
+    "ciecia_s": [
+      2.0,
+      4.33,
+      6.03,
+      7.27,
+      8.07,
+      11.27,
+      12.33,
+      14.0,
+      15.23,
+      16.57,
+      17.4,
+      19.5,
+      21.7,
+      22.27,
+      23.03,
+      24.07,
+      25.3,
+      26.13,
+      26.4,
+      26.6,
+      28.7,
+      29.8,
+      30.97,
+      31.57,
+      33.6,
+      34.87,
+      36.23,
+      37.23
+    ]
+  },
+  "weryfikacja_wizualna": {
+    "zrodlo_materialu": "Sklejka z gotowych nagrań (UGC, materiały od dostawcy, nagrania dzieci) + lektor męski. Typowa 'sklejka' — wzorzec dla modułu.",
+    "napisy_korekta": "Biały bold sans, miękki czarny cień (nie obrys), pozycja środek-dół ok. 70-75% wysokości kadru, 4-7 słów na planszę (całe frazy lektora), bez animacji. Błąd w napisach: 'cześć więc czy wybiorą' zamiast 'więc czy wybiorą' — napisy muszą przejść korektę.",
+    "hook_korekta": "Pierwsza klatka jest rozmazana (ruch) — kadr startowy musi być ostry. Produkt i efekt WOW (wielkość misia przy twarzy kobiety) widoczne od 0 s.",
+    "dopasowanie_ujec_do_lektora": "Bardzo dosłowne: 'otworzyli pudełko' → worek klocków; 'chwycili za instrukcję' → dłonie dziecka nad instrukcją; 'ponad 80 wzorów' → ściana z misiami; 'kupujesz 2 a 3 gratis' → trzy misie; 'kliknij link poniżej' → osoba wskazująca w dół."
+  },
+  "analiza_gemini": {
+    "produkt": "Duże figurki kolekcjonerskie z klocków typu micro-blocks do samodzielnego składania (BlokoMiś).",
+    "nisza": "zabawki, hobby, prezenty",
+    "grupa_docelowa": {
+      "plec": "kobiety i mężczyźni",
+      "wiek": "25-45 lat",
+      "kto_dokladnie": "rodzice szukający angażujących prezentów dla dzieci, osoby szukające alternatywy dla elektroniki",
+      "na_czym_to_wnioskujesz": "lektor mówi o 'zajęciu dzieciaków', wideo pokazuje dzieci w wieku szkolnym oraz kobietę (prawdopodobnie mamę) prezentującą produkt"
+    },
+    "typ_reklamy": "sklejka z lektorem i elementami UGC",
+    "dlugosc_s": 37.5,
+    "hook_0_3s": {
+      "co_widac": "Kobieta trzymająca dużą, kolorową figurkę misia z klocków, uśmiecha się do kamery.",
+      "co_slychac": "Lektor: 'Zapomnij o prezentach, które lądują na dnie szuflady.'",
+      "tekst_na_ekranie": "Zapomnij o prezentach które lądują na dnie szuflady",
+      "mechanizm": "rozwiązanie powszechnego problemu (nietrafione prezenty) oraz efekt WOW (wielkość i wygląd figurki)",
+      "kiedy_pierwszy_raz_widac_produkt_s": 0.0,
+      "kiedy_efekt_wow_s": 0.0,
+      "ocena_1_10": 8,
+      "co_by_wzmocnilo": "Dodanie dynamicznego przejścia (zoom) na detal figurki w pierwszej sekundzie."
+    },
+    "problem_i_przed_po": {
+      "czy_pokazany_problem": true,
+      "jak": "Wspomniane werbalnie: prezenty lądujące na dnie szuflady (nieużywane).",
+      "czy_przed_po": false,
+      "jak_przed_po": "",
+      "kiedy_s": 0.0
+    },
+    "struktura": [
+      {
+        "od": 0.0,
+        "do": 3.2,
+        "etap": "hook",
+        "co_sie_dzieje": "Prezentacja dużej figurki przez kobietę.",
+        "tekst_lub_lektor": "Zapomnij o prezentach, które lądują na dnie szuflady."
+      },
+      {
+        "od": 3.2,
+        "do": 6.5,
+        "etap": "rozwiązanie",
+        "co_sie_dzieje": "Szybkie przebitki na różne modele figurek.",
+        "tekst_lub_lektor": "Ten naprawdę zajmie dzieciaki na całe godziny."
+      },
+      {
+        "od": 6.5,
+        "do": 14.1,
+        "etap": "demonstracja",
+        "co_sie_dzieje": "Pokazanie unboxingu, instrukcji i procesu składania przez dzieci.",
+        "tekst_lub_lektor": "Kupiłem moim BlokoMisia i byli dosłownie jak zahipnotyzowani gdy tylko otworzyli pudełko. Chwycili za instrukcję i od razu ruszyli do działania. Składają swojego 43-centymetrowego misia klocek po klocku."
+      },
+      {
+        "od": 14.1,
+        "do": 19.5,
+        "etap": "korzyści",
+        "co_sie_dzieje": "Radość dziecka z gotowego produktu.",
+        "tekst_lub_lektor": "I co najlepsze, zero frustracji, czyste skupienie, ekscytacja i duma, kiedy widzą jak miś nabiera kształtów."
+      },
+      {
+        "od": 19.5,
+        "do": 29.5,
+        "etap": "mechanizm",
+        "co_sie_dzieje": "Prezentacja szerokiej gamy wzorów na półkach.",
+        "tekst_lub_lektor": "Mają ponad 80 wzorów, więc czy wybiorą Space Beara, Misia Fokę, czy nawet Misia Żabę, każde dziecko znajdzie coś dla siebie. Najfajniejsze jest to, że jest to na tyle proste, że poradzą sobie z tym zupełnie sami."
+      },
+      {
+        "od": 29.5,
+        "do": 34.5,
+        "etap": "oferta",
+        "co_sie_dzieje": "Pokazanie kolejnych modeli, w tym skarbonki.",
+        "tekst_lub_lektor": "A teraz trwa promocja. Kupujesz dwa, a trzeci dostajesz gratis. Dzięki czemu zgarniasz trzy różne misie bez czyszczenia portfela."
+      },
+      {
+        "od": 34.5,
+        "do": 37.5,
+        "etap": "CTA",
+        "co_sie_dzieje": "Dziewczyna wskazuje palcami w dół, pokazanie figurek świątecznych.",
+        "tekst_lub_lektor": "Kliknij link poniżej, zanim oferta wygaśnie."
+      }
+    ],
+    "ujecia": [
+      {
+        "od": 0.0,
+        "do": 3.2,
+        "typ": "UGC twarz",
+        "opis": "Kobieta trzyma figurkę misia z napojem.",
+        "ruch_kamery": "z ręki",
+        "dlaczego_tu": "Budowanie zaufania i pokazanie skali produktu."
+      },
+      {
+        "od": 3.2,
+        "do": 4.5,
+        "typ": "detal",
+        "opis": "Różowy miś z ustami.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "Pokazanie różnorodności designu."
+      },
+      {
+        "od": 4.5,
+        "do": 6.5,
+        "typ": "produkt w użyciu",
+        "opis": "Chłopiec przy stole z zielonym misiem.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "Pokazanie grupy docelowej (dzieci)."
+      },
+      {
+        "od": 6.5,
+        "do": 7.8,
+        "typ": "unboxing",
+        "opis": "Otwieranie pudełka z woreczkami klocków.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "Pokazanie zawartości zestawu."
+      },
+      {
+        "od": 7.8,
+        "do": 11.0,
+        "typ": "zbliżenie produktu",
+        "opis": "Ręce dziecka składające klocki na instrukcji.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "Dowód na to, że dzieci potrafią to robić."
+      },
+      {
+        "od": 11.0,
+        "do": 14.1,
+        "typ": "detal",
+        "opis": "Szybki montaż klocków (time-lapse/stop motion).",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "Dynamizacja procesu składania."
+      },
+      {
+        "od": 14.1,
+        "do": 15.5,
+        "typ": "reakcja osoby",
+        "opis": "Uśmiechnięta dziewczynka trzyma element głowy misia.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "Pokazanie pozytywnych emocji."
+      },
+      {
+        "od": 15.5,
+        "do": 19.5,
+        "typ": "reakcja osoby",
+        "opis": "Dziewczynka cieszy się z gotowego dużego misia.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "Pokazanie satysfakcji z ukończenia projektu."
+      },
+      {
+        "od": 19.5,
+        "do": 22.0,
+        "typ": "packshot",
+        "opis": "Wiele figurek na podświetlanych półkach.",
+        "ruch_kamery": "ruch obiektu/kamery",
+        "dlaczego_tu": "Pokazanie aspektu kolekcjonerskiego."
+      },
+      {
+        "od": 22.0,
+        "do": 29.5,
+        "typ": "zbliżenie produktu",
+        "opis": "Prezentacja różnych modeli (żaba, foka, szkielet).",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "Prezentacja bogatej oferty."
+      },
+      {
+        "od": 29.5,
+        "do": 34.5,
+        "typ": "detal",
+        "opis": "Wkładanie banknotu do misia-skarbonki.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "Pokazanie dodatkowej funkcjonalności."
+      },
+      {
+        "od": 34.5,
+        "do": 35.5,
+        "typ": "UGC twarz",
+        "opis": "Dziewczyna wskazuje palcami w dół.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "Klasyczne wezwanie do działania (CTA)."
+      }
+    ],
+    "tempo": {
+      "liczba_ujec": 21,
+      "srednia_dlugosc_ujecia_s": 1.8,
+      "najkrotsze_s": 0.8,
+      "najdluzsze_s": 4.0,
+      "czy_ciecia_zgrane_z_lektorem_lub_muzyka": "Tak, cięcia następują przy zmianie wątków lektora."
+    },
+    "lektor": {
+      "jest": true,
+      "glos": "męski, młody, entuzjastyczny, wyraźny",
+      "styl": "narrator opowiadający historię (storytelling)",
+      "transkrypcja": [
+        {
+          "od": 0.0,
+          "do": 3.2,
+          "tekst": "Zapomnij o prezentach, które lądują na dnie szuflady."
+        },
+        {
+          "od": 3.2,
+          "do": 6.5,
+          "tekst": "Ten naprawdę zajmie dzieciaki na całe godziny."
+        },
+        {
+          "od": 6.5,
+          "do": 10.0,
+          "tekst": "Kupiłem moim BlokoMisia i byli dosłownie jak zahipnotyzowani gdy tylko otworzyli pudełko."
+        },
+        {
+          "od": 10.0,
+          "do": 14.1,
+          "tekst": "Chwycili za instrukcję i od razu ruszyli do działania. Składają swojego 43-centymetrowego misia klocek po klocku."
+        },
+        {
+          "od": 14.1,
+          "do": 19.5,
+          "tekst": "I co najlepsze, zero frustracji, czyste skupienie, ekscytacja i duma, kiedy widzą jak miś nabiera kształtów."
+        },
+        {
+          "od": 19.5,
+          "do": 25.5,
+          "tekst": "Mają ponad 80 wzorów, więc czy wybiorą Space Beara, Misia Fokę, czy nawet Misia Żabę, każde dziecko znajdzie coś dla siebie."
+        },
+        {
+          "od": 25.5,
+          "do": 29.5,
+          "tekst": "Najfajniejsze jest to, że jest to na tyle proste, że poradzą sobie z tym zupełnie sami."
+        },
+        {
+          "od": 29.5,
+          "do": 34.5,
+          "tekst": "A teraz trwa promocja. Kupujesz dwa, a trzeci dostajesz gratis. Dzięki czemu zgarniasz trzy różne misie bez czyszczenia portfela."
+        },
+        {
+          "od": 34.5,
+          "do": 37.5,
+          "tekst": "Kliknij link poniżej, zanim oferta wygaśnie."
+        }
+      ]
+    },
+    "napisy": {
+      "rodzaj": "napisy do lektora (karaoke)",
+      "ile_slow_na_raz": "3-6",
+      "kolor_tekstu": "biały",
+      "obrys": "czarny",
+      "cien": "brak",
+      "tlo_pod_tekstem": "brak",
+      "font": "bold sans-serif (podobny do Montserrat lub Arial Bold)",
+      "wielkosc": "średnia",
+      "pozycja": "dół (środek)",
+      "animacja": "pojawianie się całych fraz",
+      "wyroznienia": "brak",
+      "lista_tekstow": [
+        {
+          "od": 0.0,
+          "do": 3.2,
+          "tekst": "Zapomnij o prezentach które lądują na dnie szuflady"
+        },
+        {
+          "od": 3.2,
+          "do": 6.5,
+          "tekst": "ten naprawdę zajmie dzieciaki na całe godziny"
+        },
+        {
+          "od": 6.5,
+          "do": 8.5,
+          "tekst": "kupiłem moim BlokoMisia"
+        },
+        {
+          "od": 8.5,
+          "do": 10.0,
+          "tekst": "i byli dosłownie jak zahipnotyzowani"
+        },
+        {
+          "od": 10.0,
+          "do": 11.5,
+          "tekst": "gdy tylko otworzyli pudełko"
+        },
+        {
+          "od": 11.5,
+          "do": 14.1,
+          "tekst": "chwycili za instrukcję i od razu ruszyli do działania"
+        },
+        {
+          "od": 14.1,
+          "do": 16.5,
+          "tekst": "składają swojego 43 centymetrowego misia"
+        },
+        {
+          "od": 16.5,
+          "do": 18.0,
+          "tekst": "klocek po klocku i co najlepsze"
+        },
+        {
+          "od": 18.0,
+          "do": 19.5,
+          "tekst": "O frustracji czyste skupienie"
+        },
+        {
+          "od": 19.5,
+          "do": 21.5,
+          "tekst": "ekscytacja i duma"
+        },
+        {
+          "od": 21.5,
+          "do": 23.5,
+          "tekst": "kiedy widzą jak miś nabiera kształtów"
+        },
+        {
+          "od": 23.5,
+          "do": 25.5,
+          "tekst": "mają ponad 80 wzorów"
+        },
+        {
+          "od": 25.5,
+          "do": 27.5,
+          "tekst": "cześć więc czy wybiorą space beara"
+        },
+        {
+          "od": 27.5,
+          "do": 29.5,
+          "tekst": "misia fokę czy nawet misia żabę"
+        },
+        {
+          "od": 29.5,
+          "do": 31.5,
+          "tekst": "każde dziecko znajdzie coś dla siebie"
+        },
+        {
+          "od": 31.5,
+          "do": 33.5,
+          "tekst": "najfajniejsze jest to że jest to na tyle"
+        },
+        {
+          "od": 33.5,
+          "do": 35.5,
+          "tekst": "proste że poradzą sobie z tym zupełnie sami"
+        },
+        {
+          "od": 35.5,
+          "do": 37.5,
+          "tekst": "kliknij link poniżej zanim oferta wygaśnie"
+        }
+      ]
+    },
+    "muzyka": {
+      "jest": true,
+      "gatunek": "pop/ukulele happy",
+      "nastroj": "radosny, lekki",
+      "energia": "średnia",
+      "glosnosc_wzgledem_lektora": "cicha (tło)",
+      "czy_zmienia_sie": "nie"
+    },
+    "sfx": [],
+    "marka": {
+      "logo_widoczne": false,
+      "gdzie_i_kiedy": "",
+      "kolory_marki_w_napisach": "nie",
+      "ton_komunikacji": "przyjazny, rodzinny, nastawiony na korzyść"
+    },
+    "zakonczenie": {
+      "cta": "Kliknij link poniżej",
+      "oferta": "Kupujesz 2, a 3 dostajesz gratis",
+      "odwrocenie_ryzyka": "bez czyszczenia portfela",
+      "dowod_spoleczny": "pokazanie wielu zadowolonych dzieci i dużej kolekcji",
+      "pilnosc": "zanim oferta wygaśnie"
+    },
+    "efekty_montazowe": [
+      "szybkie cięcia",
+      "time-lapse składania",
+      "stop-motion (klocki same się układają)"
+    ],
+    "dlaczego_dziala": [
+      "Uderza w silny ból rodziców (nietrafione, nudne prezenty).",
+      "Pokazuje produkt w akcji (składanie) i efekt końcowy (imponująca wielkość).",
+      "Silna oferta '2+1 gratis' zwiększa wartość koszyka.",
+      "Dowód społeczny poprzez pokazanie dzieci realnie bawiących się produktem.",
+      "Duża różnorodność wzorów sugeruje, że każdy znajdzie coś dla siebie."
+    ],
+    "slabe_strony": [
+      "Napisy mają błędy (np. 'O frustracji' zamiast 'Zero frustracji', 'cześć' zamiast 'ciekawe').",
+      "Brak logo marki na końcu wideo.",
+      "Napisy czasami zasłaniają istotne elementy produktu."
+    ],
+    "zasady_do_przeniesienia": [
+      "Zaczynaj od pokazania największego/najbardziej efektownego modelu produktu.",
+      "Używaj lektora, który opowiada historię zakupu ('Kupiłem moim...').",
+      "Pokazuj proces tworzenia/używania produktu krok po kroku.",
+      "Stosuj ofertę ilościową (np. 2+1) jako główny wyzwalacz zakupu pod koniec wideo.",
+      "Napisy powinny być duże i czytelne, ale sprawdzone pod kątem błędów ortograficznych."
+    ]
+  },
+  "uwaga": "Pola z 'weryfikacja_wizualna' i 'zmierzone' mają pierwszeństwo przed 'analiza_gemini' (Gemini Flash myli się w krojach pisma, animacjach napisów i czasach etapów; dobrze słyszy lektora i muzykę)."
+}

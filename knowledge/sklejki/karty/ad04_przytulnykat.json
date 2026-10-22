@@ -1,0 +1,408 @@
+{
+  "id": "ad04_przytulnykat",
+  "zmierzone": {
+    "dlugosc_s": 34.2,
+    "liczba_ujec": 10,
+    "srednia_dlugosc_ujecia_s": 3.42,
+    "najkrotsze_s": 0.9,
+    "najdluzsze_s": 8.5,
+    "ciecia_s": [
+      4.0,
+      10.97,
+      12.7,
+      14.23,
+      15.13,
+      19.2,
+      21.17,
+      23.8,
+      32.3
+    ]
+  },
+  "weryfikacja_wizualna": {
+    "zrodlo_materialu": "Organiczne UGC nagrane telefonem (kobieta w swojej kuchni) — jedna twórczyni, ciągła narracja.",
+    "napisy_korekta": "INACZEJ niż podał Gemini: elegancki krój SZERYFOWY (nie bold sans), biały, na zaokrąglonym półprzezroczystym szarym tle (efekt 'szkła'), lewo-środek; słowa DOKŁADAJĄ SIĘ jedno po drugim aż do pełnej frazy, potem plansza się czyści. Spokojny, 'premium-domowy' styl dla kobiet 25-50.",
+    "hook_korekta": "Hook miękki (vlog: 'Odświeżę dzisiaj razem z wami kuchnię'). Brak mocnego wizualnego problemu na start — można by otworzyć brudnym, zasmużonym szkłem (przed) i jednym przetarciem (po).",
+    "dopasowanie_ujec_do_lektora": "'szklana lodówka to utrapienie' → lodówka; 'przepłukuję pod bieżącą wodą' → ściereczka przy kranie/AGD; 'nowa wersja 2.0' → ujęcie produktu. Gemini podał błędne czasy etapów — ufać pomiarom cięć."
+  },
+  "analiza_gemini": {
+    "produkt": "Ściereczki z mikrofibry MagicWipe do czyszczenia powierzchni bez smug przy użyciu samej wody.",
+    "nisza": "dom",
+    "grupa_docelowa": {
+      "plec": "kobiety",
+      "wiek": "25-50",
+      "kto_dokladnie": "osoby dbające o dom, właściciele nowoczesnych kuchni z dużą ilością szkła i błyszczących powierzchni",
+      "na_czym_to_wnioskujesz": "sceneria nowoczesnej kuchni, problematyka smug na szklanej lodówce i czarnym AGD, postać młodej kobiety (UGC)"
+    },
+    "typ_reklamy": "UGC",
+    "dlugosc_s": 34.0,
+    "hook_0_3s": {
+      "co_widac": "Młoda kobieta w kuchni trzymająca ściereczkę, uśmiechająca się do kamery.",
+      "co_slychac": "Lektor (kobieta): 'Odświeżę dzisiaj razem z wami kuchnię'",
+      "tekst_na_ekranie": "Odświeżę",
+      "mechanizm": "ciekawość i zaproszenie do wspólnej czynności (vlogowy styl)",
+      "kiedy_pierwszy_raz_widac_produkt_s": 0.1,
+      "kiedy_efekt_wow_s": 0.8,
+      "ocena_1_10": 7,
+      "co_by_wzmocnilo": "Pokazanie bardzo brudnej, zamazanej powierzchni lodówki w pierwszej sekundzie."
+    },
+    "problem_i_przed_po": {
+      "czy_pokazany_problem": true,
+      "jak": "Wspomnienie o tym, że szklana lodówka to utrapienie ze względu na smugi.",
+      "czy_przed_po": true,
+      "jak_przed_po": "Widoczne smugi na szkle przed przetarciem i czysta powierzchnia po jednym ruchu.",
+      "kiedy_s": 0.4
+    },
+    "struktura": [
+      {
+        "od": 0.0,
+        "do": 0.3,
+        "etap": "hook",
+        "co_sie_dzieje": "Prezentacja osoby i produktu.",
+        "tekst_lub_lektor": "Odświeżę dzisiaj razem z wami kuchnię"
+      },
+      {
+        "od": 0.3,
+        "do": 1.1,
+        "etap": "problem",
+        "co_sie_dzieje": "Pokazanie brudnej szklanej lodówki.",
+        "tekst_lub_lektor": "jedynie ściereczek od przytulnego... szklana lodówka to utrapienie chyba w każdym domu"
+      },
+      {
+        "od": 1.1,
+        "do": 2.3,
+        "etap": "demonstracja",
+        "co_sie_dzieje": "Mycie lodówki ściereczką.",
+        "tekst_lub_lektor": "a te ściereczki poradzą sobie z nią bez problemu zobaczcie jak wszystko ładnie wysycha"
+      },
+      {
+        "od": 2.3,
+        "do": 3.2,
+        "etap": "korzyści",
+        "co_sie_dzieje": "Pokazanie efektu bez smug na różnych powierzchniach.",
+        "tekst_lub_lektor": "no i wszystko zostaje bez smug odświeżam sobie całą kuchnię"
+      },
+      {
+        "od": 3.2,
+        "do": 4.5,
+        "etap": "mechanizm",
+        "co_sie_dzieje": "Płukanie ściereczki pod wodą.",
+        "tekst_lub_lektor": "i jedyne co robię to przepłukuję tą ściereczkę pod bieżącą wodą"
+      },
+      {
+        "od": 4.5,
+        "do": 6.5,
+        "etap": "oferta",
+        "co_sie_dzieje": "Informacja o nowej wersji produktu.",
+        "tekst_lub_lektor": "teraz wyszła nowa wersja 2.0 czyli o wiele większy rozmiar no i technologia MagicWipe"
+      },
+      {
+        "od": 6.5,
+        "do": 7.5,
+        "etap": "demonstracja",
+        "co_sie_dzieje": "Szybki montaż czystej kuchni.",
+        "tekst_lub_lektor": "która pozwala ci na mycie bez smug przy użyciu tylko wody"
+      },
+      {
+        "od": 7.5,
+        "do": 10.0,
+        "etap": "CTA",
+        "co_sie_dzieje": "Podsumowanie i rekomendacja.",
+        "tekst_lub_lektor": "tak one działają nie zostawiają żadnych smug a ty masz naprawdę czystą głowę o to że jak już coś umyjesz to nie musisz do tego wracać i z całego serca mogę ci je polecić"
+      }
+    ],
+    "ujecia": [
+      {
+        "od": 0.0,
+        "do": 0.1,
+        "typ": "UGC twarz",
+        "opis": "Kobieta mówi do kamery.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "budowanie zaufania"
+      },
+      {
+        "od": 0.1,
+        "do": 0.3,
+        "typ": "zbliżenie produktu",
+        "opis": "Pokazanie złożonej ściereczki.",
+        "ruch_kamery": "z ręki",
+        "dlaczego_tu": "prezentacja przedmiotu"
+      },
+      {
+        "od": 0.3,
+        "do": 1.1,
+        "typ": "produkt w użyciu",
+        "opis": "Mycie szklanej lodówki.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "pokazanie rozwiązania problemu"
+      },
+      {
+        "od": 1.1,
+        "do": 1.3,
+        "typ": "detal",
+        "opis": "Zbliżenie na wysychającą powierzchnię.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "dowód działania"
+      },
+      {
+        "od": 1.3,
+        "do": 3.2,
+        "typ": "sklejka",
+        "opis": "Szybkie ujęcia mycia różnych sprzętów (frytkownica, zlew).",
+        "ruch_kamery": "z ręki",
+        "dlaczego_tu": "pokazanie wszechstronności"
+      },
+      {
+        "od": 3.2,
+        "do": 4.5,
+        "typ": "produkt w użyciu",
+        "opis": "Płukanie ściereczki w zlewie.",
+        "ruch_kamery": "z ręki",
+        "dlaczego_tu": "instrukcja obsługi"
+      },
+      {
+        "od": 4.5,
+        "do": 5.5,
+        "typ": "detal",
+        "opis": "Zbliżenie na krawędź urządzenia.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "estetyka"
+      },
+      {
+        "od": 5.5,
+        "do": 7.5,
+        "typ": "sklejka",
+        "opis": "Ujęcia czystej kuchni (szafki, płytki).",
+        "ruch_kamery": "z ręki",
+        "dlaczego_tu": "efekt końcowy"
+      },
+      {
+        "od": 7.5,
+        "do": 8.5,
+        "typ": "UGC twarz",
+        "opis": "Kobieta mówi do kamery trzymając ściereczkę.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "podsumowanie"
+      },
+      {
+        "od": 8.5,
+        "do": 9.5,
+        "typ": "produkt w użyciu",
+        "opis": "Przecieranie szafki górnej.",
+        "ruch_kamery": "z ręki",
+        "dlaczego_tu": "ostatni dowód"
+      },
+      {
+        "od": 9.5,
+        "do": 10.0,
+        "typ": "UGC twarz",
+        "opis": "Kobieta poleca produkt.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "społeczny dowód słuszności"
+      }
+    ],
+    "tempo": {
+      "liczba_ujec": 11,
+      "srednia_dlugosc_ujecia_s": 3.1,
+      "najkrotsze_s": 0.1,
+      "najdluzsze_s": 1.9,
+      "czy_ciecia_zgrane_z_lektorem_lub_muzyka": "tak, cięcia następują przy zmianie wątków lektora"
+    },
+    "lektor": {
+      "jest": true,
+      "glos": "kobieta, młoda, ton entuzjastyczny, tempo naturalne",
+      "styl": "UGC",
+      "transkrypcja": [
+        {
+          "od": 0.0,
+          "do": 0.1,
+          "tekst": "Odświeżę dzisiaj razem z wami kuchnię"
+        },
+        {
+          "od": 0.1,
+          "do": 0.3,
+          "tekst": "jedynie ściereczek od przytulnego"
+        },
+        {
+          "od": 0.3,
+          "do": 0.8,
+          "tekst": "szklana lodówka to utrapienie chyba w każdym domu"
+        },
+        {
+          "od": 0.8,
+          "do": 1.3,
+          "tekst": "a te ściereczki poradzą sobie z nią bez problemu"
+        },
+        {
+          "od": 1.3,
+          "do": 2.3,
+          "tekst": "zobaczcie jak wszystko ładnie wysycha no i wszystko zostaje bez smug"
+        },
+        {
+          "od": 2.3,
+          "do": 3.2,
+          "tekst": "odświeżam sobie całą kuchnię i jedyne co robię"
+        },
+        {
+          "od": 3.2,
+          "do": 4.5,
+          "tekst": "to przepłukuję tą ściereczkę pod bieżącą wodą"
+        },
+        {
+          "od": 4.5,
+          "do": 5.5,
+          "tekst": "teraz wyszła nowa wersja 2.0 czyli o wiele większy rozmiar"
+        },
+        {
+          "od": 5.5,
+          "do": 7.5,
+          "tekst": "no i technologia MagicWipe która pozwala ci na mycie bez smug przy użyciu tylko wody"
+        },
+        {
+          "od": 7.5,
+          "do": 8.5,
+          "tekst": "tak one działają nie zostawiają żadnych smug"
+        },
+        {
+          "od": 8.5,
+          "do": 9.5,
+          "tekst": "a ty masz naprawdę czystą głowę o to że jak już coś umyjesz to nie musisz do tego wracać"
+        },
+        {
+          "od": 9.5,
+          "do": 10.0,
+          "tekst": "i z całego serca mogę ci je polecić"
+        }
+      ]
+    },
+    "napisy": {
+      "rodzaj": "napisy do lektora (karaoke)",
+      "ile_slow_na_raz": "2-4",
+      "kolor_tekstu": "biały",
+      "obrys": "brak",
+      "cien": "brak",
+      "tlo_pod_tekstem": "szare, półprzezroczyste, zaokrąglone",
+      "font": "bold sans-serif",
+      "wielkosc": "średnia",
+      "pozycja": "środek / dół (zmienna)",
+      "animacja": "brak",
+      "wyroznienia": "brak",
+      "lista_tekstow": [
+        {
+          "od": 0.0,
+          "do": 0.1,
+          "tekst": "Odświeżę"
+        },
+        {
+          "od": 0.1,
+          "do": 0.3,
+          "tekst": "Odświeżę dzisiaj razem z wami kuchnię"
+        },
+        {
+          "od": 0.3,
+          "do": 0.8,
+          "tekst": "jedynie ściereczek od przytulnego"
+        },
+        {
+          "od": 0.8,
+          "do": 1.1,
+          "tekst": "szklana lodówka to utrapienie"
+        },
+        {
+          "od": 1.1,
+          "do": 1.3,
+          "tekst": "a te ściereczki poradzą"
+        },
+        {
+          "od": 1.3,
+          "do": 2.3,
+          "tekst": "zobaczcie jak wszystko ładnie"
+        },
+        {
+          "od": 2.3,
+          "do": 3.2,
+          "tekst": "no i wszystko zostaje bez smug"
+        },
+        {
+          "od": 3.2,
+          "do": 4.5,
+          "tekst": "i jedyne co robię to przepłukuję"
+        },
+        {
+          "od": 4.5,
+          "do": 5.5,
+          "tekst": "bieżącą wodą teraz wyszła nowa wersja 2.0"
+        },
+        {
+          "od": 5.5,
+          "do": 6.5,
+          "tekst": "czyli o wiele większy rozmiar"
+        },
+        {
+          "od": 6.5,
+          "do": 7.5,
+          "tekst": "technologia MagicWipe która pozwala ci na mycie"
+        },
+        {
+          "od": 7.5,
+          "do": 8.5,
+          "tekst": "tylko wody tak one działają"
+        },
+        {
+          "od": 8.5,
+          "do": 9.5,
+          "tekst": "nie zostawiają żadnych smug a ty masz naprawdę"
+        },
+        {
+          "od": 9.5,
+          "do": 10.0,
+          "tekst": "czystą głowę o to Jak już coś"
+        }
+      ]
+    },
+    "muzyka": {
+      "jest": true,
+      "gatunek": "Pop/Electronic",
+      "nastroj": "pozytywny, energiczny",
+      "energia": "średnia",
+      "glosnosc_wzgledem_lektora": "cicha (tło)",
+      "czy_zmienia_sie": "nie"
+    },
+    "sfx": [],
+    "marka": {
+      "logo_widoczne": false,
+      "gdzie_i_kiedy": "brak",
+      "kolory_marki_w_napisach": "nie",
+      "ton_komunikacji": "przyjacielski, pomocny"
+    },
+    "zakonczenie": {
+      "cta": "z całego serca mogę ci je polecić",
+      "oferta": "informacja o nowej wersji 2.0",
+      "odwrocenie_ryzyka": "brak",
+      "dowod_spoleczny": "brak",
+      "pilnosc": "brak"
+    },
+    "efekty_montazowe": [
+      "zoom-in",
+      "napisy z tłem",
+      "szybkie cięcia"
+    ],
+    "dlaczego_dziala": [
+      "Format UGC buduje zaufanie i autentyczność.",
+      "Rozwiązuje konkretny, irytujący problem (smugi na szkle).",
+      "Pokazuje produkt w akcji na wielu różnych powierzchniach.",
+      "Podkreśla ekologiczny i ekonomiczny aspekt (tylko woda).",
+      "Dynamiczny montaż utrzymuje uwagę."
+    ],
+    "slabe_strony": [
+      "Brak wyraźnego wezwania do działania (CTA) typu 'Kliknij i sprawdź'.",
+      "Napisy czasami ucinają się w połowie zdania lektora."
+    ],
+    "zasady_do_przeniesienia": [
+      "Używaj napisów na półprzezroczystym tle dla lepszej czytelności.",
+      "Pokazuj twarz twórcy na początku i na końcu dla budowania relacji.",
+      "Demonstruj produkt na powierzchniach, które są powszechnie uważane za trudne do czyszczenia.",
+      "Mów o korzyściach (brak smug, brak chemii), a nie tylko o cechach."
+    ]
+  },
+  "uwaga": "Pola z 'weryfikacja_wizualna' i 'zmierzone' mają pierwszeństwo przed 'analiza_gemini' (Gemini Flash myli się w krojach pisma, animacjach napisów i czasach etapów; dobrze słyszy lektora i muzykę)."
+}

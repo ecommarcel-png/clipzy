@@ -1,0 +1,307 @@
+{
+  "id": "ad03_somavela",
+  "zmierzone": {
+    "dlugosc_s": 64.8,
+    "liczba_ujec": 20,
+    "srednia_dlugosc_ujecia_s": 3.24,
+    "najkrotsze_s": 0.87,
+    "najdluzsze_s": 7.2,
+    "ciecia_s": [
+      5.5,
+      7.9,
+      12.3,
+      14.63,
+      17.23,
+      24.43,
+      27.97,
+      30.47,
+      32.37,
+      33.77,
+      37.97,
+      41.97,
+      44.37,
+      46.23,
+      48.17,
+      51.57,
+      52.43,
+      56.37,
+      60.47
+    ]
+  },
+  "weryfikacja_wizualna": {
+    "zrodlo_materialu": "Mieszanka: wygenerowany AI 'wywiad uliczny' + b-roll produktu (modelki, przymierzanie, split screen przed/po, packshoty) + plansza końcowa z dowodem społecznym. Lektor męski (narracja, nie głos z wywiadu).",
+    "napisy_korekta": "WERSALIKI, małe, bardzo grube, biały z czarnym obrysem, środek kadru; 2-3 słowa na planszę; podświetlenie aktywnego słowa na różowo/magentę (styl 'karaoke'). Pasuje do kobiet 25-55, ale dość drobne — dla 45+ za małe.",
+    "hook_korekta": "Hook = format 'zapytaliśmy kobiety na ulicy'. Produkt w kadrze dopiero ok. 8 s (Gemini błędnie podał 0,8 s). Efekt WOW (split screen przed/po) dopiero w 34 s — wbrew zasadzie 'WOW jak najszybciej'; tu do przetestowania wariant z przed/po w hooku. Przejście 'light leak' w 7 s.",
+    "dopasowanie_ujec_do_lektora": "'patrzysz w lustro' → kobieta przed lustrem; 'T-shirty lepiej się układają' → kobieta w białym topie; 'krzyżowy pas' → zbliżenie na pasy; 'nie musisz zmieniać diety ani dokładać treningów' → dieta i brzuszki (problem); 'promocja nawet do 50%' → kobieta trzyma produkt."
+  },
+  "analiza_gemini": {
+    "produkt": "Figi modelujące sylwetkę marki Somavela, które natychmiastowo spłaszczają brzuch i modelują talię.",
+    "nisza": "Uroda i Bielizna",
+    "grupa_docelowa": {
+      "plec": "Kobiety",
+      "wiek": "25-55 lat",
+      "kto_dokladnie": "Kobiety chcące ukryć wystający brzuch, poprawić wygląd sylwetki w ubraniach bez restrykcyjnej diety.",
+      "na_czym_to_wnioskujesz": "Różnorodne sylwetki modelek (w tym plus size), obietnica braku konieczności wciągania brzucha i zmiany diety."
+    },
+    "typ_reklamy": "sklejka z lektorem i elementami UGC (wywiad uliczny)",
+    "dlugosc_s": 64.0,
+    "hook_0_3s": {
+      "co_widac": "Dwie kobiety na ulicy (format wywiadu), reporterka z mikrofonem rozmawia z przechodniem.",
+      "co_slychac": "Lektor: 'Zapytaliśmy kobiety na ulicy, co się zmieniło...'",
+      "tekst_na_ekranie": "ZAPYTALIŚMY KOBIETY NA",
+      "mechanizm": "Ciekawość i dowód społeczny (wywiad uliczny sugeruje autentyczne opinie).",
+      "kiedy_pierwszy_raz_widac_produkt_s": 0.8,
+      "kiedy_efekt_wow_s": 34.0,
+      "ocena_1_10": 8,
+      "co_by_wzmocnilo": "Użycie oryginalnego dźwięku z mikrofonu zamiast lektora w pierwszej sekundzie dla większej autentyczności."
+    },
+    "problem_i_przed_po": {
+      "czy_pokazany_problem": true,
+      "jak": "Pokazanie wystającego brzucha pod ubraniem oraz wysiłku związanego z dietą i ćwiczeniami.",
+      "czy_przed_po": true,
+      "jak_przed_po": "Split screen pokazujący sylwetkę przed założeniem fig (wypchnięty brzuch) i po (płaski brzuch).",
+      "kiedy_s": 34.0
+    },
+    "struktura": [
+      {
+        "od": 0.0,
+        "do": 6.0,
+        "etap": "hook",
+        "co_sie_dzieje": "Wywiad uliczny o figach Somavela.",
+        "tekst_lub_lektor": "Zapytaliśmy kobiety na ulicy, co się zmieniło, kiedy zaczęły nosić figi modelujące Somavela."
+      },
+      {
+        "od": 6.0,
+        "do": 14.0,
+        "etap": "mechanizm",
+        "co_sie_dzieje": "Kobieta ogląda się w lustrze w samej bieliźnie.",
+        "tekst_lub_lektor": "No na początku nic wielkiego. Zakładasz je, patrzysz w lustro i myślisz: okej, brzuch wygląda trochę bardziej płasko."
+      },
+      {
+        "od": 14.0,
+        "do": 23.0,
+        "etap": "korzyści",
+        "co_sie_dzieje": "Różne kobiety prezentują się w figach przed lustrem.",
+        "tekst_lub_lektor": "Po kilku dniach zauważasz więcej. T-shirty lepiej się układają, brzuch mniej się odznacza, a talia wygląda na bardziej wymodelowaną."
+      },
+      {
+        "od": 23.0,
+        "do": 31.0,
+        "etap": "demonstracja",
+        "co_sie_dzieje": "Kobieta w białej sukience sprawdza efekt.",
+        "tekst_lub_lektor": "W pewnym momencie naprawdę to widzisz. Patrzysz na swoje odbicie, ubrania leżą lepiej i nie musisz cały dzień wciągać brzucha."
+      },
+      {
+        "od": 31.0,
+        "do": 44.0,
+        "etap": "rozwiązanie",
+        "co_sie_dzieje": "Pokazanie technologii pasów krzyżowych i efektu 360 stopni.",
+        "tekst_lub_lektor": "To dzięki krzyżowemu pasowi, który zapewnia lepsze podtrzymanie niż zwykła bielizna modelująca. System 360 stopni obejmuje talię z przodu, po bokach i z tyłu."
+      },
+      {
+        "od": 44.0,
+        "do": 52.0,
+        "etap": "korzyści",
+        "co_sie_dzieje": "Porównanie jedzenia/ćwiczeń z łatwością założenia fig.",
+        "tekst_lub_lektor": "I najlepsze jest to, że nie musisz zmieniać diety ani dokładać treningów. Po prostu zakładasz Somavela, ubierasz się i żyjesz normalnie."
+      },
+      {
+        "od": 52.0,
+        "do": 60.0,
+        "etap": "oferta",
+        "co_sie_dzieje": "Kobieta pokazuje produkt do kamery.",
+        "tekst_lub_lektor": "Teraz trwa promocja nawet do 50%. Jeśli przeszkadza ci jak brzuch wygląda pod ubraniem, Somavela może pomóc ci poczuć się lepiej w swojej sylwetce."
+      },
+      {
+        "od": 60.0,
+        "do": 64.0,
+        "etap": "dowód społeczny",
+        "co_sie_dzieje": "Plansza końcowa z logo i opiniami.",
+        "tekst_lub_lektor": "10 000+ zadowolonych klientek."
+      }
+    ],
+    "ujecia": [
+      {
+        "od": 0.0,
+        "do": 6.0,
+        "typ": "UGC twarz",
+        "opis": "Wywiad uliczny, dwie kobiety rozmawiają.",
+        "ruch_kamery": "z ręki",
+        "dlaczego_tu": "Budowanie zaufania przez format reporterski."
+      },
+      {
+        "od": 8.0,
+        "do": 11.0,
+        "typ": "produkt w użyciu",
+        "opis": "Kobieta w czarnych figach przed lustrem.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "Pokazanie produktu na żywej osobie."
+      },
+      {
+        "od": 34.0,
+        "do": 37.0,
+        "typ": "przed-po",
+        "opis": "Split screen: brzuch bez fig vs brzuch w figach.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "Kluczowy dowód skuteczności produktu."
+      },
+      {
+        "od": 37.0,
+        "do": 41.0,
+        "typ": "detal",
+        "opis": "Zbliżenie na strukturę materiału i pasy.",
+        "ruch_kamery": "ruch obiektu",
+        "dlaczego_tu": "Wyjaśnienie technologii działania."
+      },
+      {
+        "od": 52.0,
+        "do": 59.0,
+        "typ": "UGC twarz",
+        "opis": "Kobieta trzyma figi w kolorze beżowym.",
+        "ruch_kamery": "z ręki",
+        "dlaczego_tu": "Prezentacja fizycznego produktu i kolorystyki."
+      }
+    ],
+    "tempo": {
+      "liczba_ujec": 18,
+      "srednia_dlugosc_ujecia_s": 3.5,
+      "najkrotsze_s": 1.0,
+      "najdluzsze_s": 7.0,
+      "czy_ciecia_zgrane_z_lektorem_lub_muzyka": "Tak, cięcia następują wraz ze zmianą wątków w narracji lektora."
+    },
+    "lektor": {
+      "jest": true,
+      "glos": "męski, dojrzały, spokojny, profesjonalny narrator",
+      "styl": "narrator opowiadający historię",
+      "transkrypcja": [
+        {
+          "od": 0.0,
+          "do": 6.0,
+          "tekst": "Zapytaliśmy kobiety na ulicy, co się zmieniło, kiedy zaczęły nosić figi modelujące Somavela."
+        },
+        {
+          "od": 6.0,
+          "do": 14.0,
+          "tekst": "No na początku nic wielkiego. Zakładasz je, patrzysz w lustro i myślisz: okej, brzuch wygląda trochę bardziej płasko."
+        },
+        {
+          "od": 14.0,
+          "do": 23.0,
+          "tekst": "Po kilku dniach zauważasz więcej. T-shirty lepiej się układają, brzuch mniej się odznacza, a talia wygląda na bardziej wymodelowaną."
+        },
+        {
+          "od": 23.0,
+          "do": 31.0,
+          "tekst": "W pewnym momencie naprawdę to widzisz. Patrzysz na swoje odbicie, ubrania leżą lepiej i nie musisz cały dzień wciągać brzucha."
+        },
+        {
+          "od": 31.0,
+          "do": 44.0,
+          "tekst": "To dzięki krzyżowemu pasowi, który zapewnia lepsze podtrzymanie niż zwykła bielizna modelująca. System 360 stopni obejmuje talię z przodu, po bokach i z tyłu."
+        },
+        {
+          "od": 44.0,
+          "do": 52.0,
+          "tekst": "I najlepsze jest to, że nie musisz zmieniać diety ani dokładać treningów. Po prostu zakładasz Somavela, ubierasz się i żyjesz normalnie."
+        },
+        {
+          "od": 52.0,
+          "do": 60.0,
+          "tekst": "Teraz trwa promocja nawet do 50%. Jeśli przeszkadza ci jak brzuch wygląda pod ubraniem, Somavela może pomóc ci poczuć się lepiej w swojej sylwetce."
+        }
+      ]
+    },
+    "napisy": {
+      "rodzaj": "napisy do lektora (karaoke)",
+      "ile_slow_na_raz": "2-4",
+      "kolor_tekstu": "Biały",
+      "obrys": "Czarny",
+      "cien": "Brak",
+      "tlo_pod_tekstem": "Brak",
+      "font": "Bold Sans-Serif, nowoczesny",
+      "wielkosc": "średnia",
+      "pozycja": "środek ekranu",
+      "animacja": "pop-up przy każdym słowie",
+      "wyroznienia": "Kluczowe słowa (np. SOMAVELA, 50%) wyróżnione kolorem różowym/fioletowym.",
+      "lista_tekstow": [
+        {
+          "od": 0.0,
+          "do": 2.0,
+          "tekst": "ZAPYTALIŚMY KOBIETY NA"
+        },
+        {
+          "od": 2.0,
+          "do": 4.0,
+          "tekst": "CO SIĘ ZMIENIŁO"
+        },
+        {
+          "od": 4.0,
+          "do": 6.0,
+          "tekst": "FIGI MODELUJĄCE SOMAVELA"
+        },
+        {
+          "od": 53.0,
+          "do": 55.0,
+          "tekst": "NAWET DO 50%"
+        }
+      ]
+    },
+    "muzyka": {
+      "jest": true,
+      "gatunek": "Pop instrumentalny",
+      "nastroj": "Inspirujący, lekki",
+      "energia": "średnia",
+      "glosnosc_wzgledem_lektora": "tło (ok. 20%)",
+      "czy_zmienia_sie": "nie"
+    },
+    "sfx": [
+      {
+        "czas": 0.7,
+        "dzwiek": "Whoosh",
+        "po_co": "Przejście między wywiadem a przebitką produktową."
+      },
+      {
+        "czas": 34.0,
+        "dzwiek": "Ding/Shimmer",
+        "po_co": "Podkreślenie efektu wow przy porównaniu przed-po."
+      }
+    ],
+    "marka": {
+      "logo_widoczne": true,
+      "gdzie_i_kiedy": "Plansza końcowa (60s+)",
+      "kolory_marki_w_napisach": "Różowy/Fioletowy",
+      "ton_komunikacji": "Pomocny, rozwiązujący problem, pewny siebie."
+    },
+    "zakonczenie": {
+      "cta": "Brak bezpośredniego przycisku, sugerowane przez ofertę.",
+      "oferta": "Promocja do 50%.",
+      "odwrocenie_ryzyka": "Brak informacji o zwrotach w wideo.",
+      "dowod_spoleczny": "10 000+ zadowolonych klientek, 5 gwiazdek.",
+      "pilnosc": "Słowo 'Teraz' sugeruje ograniczony czas promocji."
+    },
+    "efekty_montazowe": [
+      "split screen (przed/po)",
+      "napisy karaoke",
+      "zoom-in na brzuch",
+      "przejścia typu flash",
+      "grafika z gwiazdkami ocen"
+    ],
+    "dlaczego_dziala": [
+      "Format wywiadu ulicznego buduje natychmiastowe zaufanie.",
+      "Jasne pokazanie mechanizmu działania (pasy krzyżowe) uwiarygadnia produkt.",
+      "Obietnica efektu bez wysiłku (brak diety/ćwiczeń) uderza w silne pragnienie grupy docelowej.",
+      "Dynamiczne napisy karaoke utrzymują uwagę.",
+      "Różnorodność modelek pozwala szerokiej grupie kobiet utożsamić się z problemem."
+    ],
+    "slabe_strony": [
+      "Męski lektor w reklamie produktu wyłącznie dla kobiet może tworzyć dystans; kobiecy głos byłby bardziej naturalny."
+    ],
+    "zasady_do_przeniesienia": [
+      "Stosuj format 'reporterski' na początku, aby zatrzymać scrollowanie.",
+      "Używaj split-screenu do bezpośredniego porównania korzyści produktu.",
+      "Wyróżniaj kluczowe słowa w napisach kontrastowym kolorem.",
+      "Wyjaśnij 'dlaczego' produkt działa (np. pokazując pasy 360), a nie tylko 'że' działa."
+    ]
+  },
+  "uwaga": "Pola z 'weryfikacja_wizualna' i 'zmierzone' mają pierwszeństwo przed 'analiza_gemini' (Gemini Flash myli się w krojach pisma, animacjach napisów i czasach etapów; dobrze słyszy lektora i muzykę)."
+}

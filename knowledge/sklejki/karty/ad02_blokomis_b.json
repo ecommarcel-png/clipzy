@@ -1,0 +1,292 @@
+{
+  "id": "ad02_blokomis_b",
+  "zmierzone": {
+    "dlugosc_s": 29.8,
+    "liczba_ujec": 4,
+    "srednia_dlugosc_ujecia_s": 7.45,
+    "najkrotsze_s": 6.97,
+    "najdluzsze_s": 7.79,
+    "ciecia_s": [
+      7.63,
+      15.03,
+      22.0
+    ]
+  },
+  "weryfikacja_wizualna": {
+    "zrodlo_materialu": "Wygenerowane AI: awatar 'mamy' mówiący do kamery (talking head), 4 ujęcia po ok. 7 s. To NIE sklejka — wzorzec dla modułu 'AI nagrania' (szablon: osoba poleca produkt).",
+    "napisy_korekta": "Biały bold sans z cieniem, środek-dół, całe zdania lektora.",
+    "hook_korekta": "Hook słowny ('Dzisiaj odebrałam prezent dla mojego dziecka') wywołuje grupę docelową, ale wizualnie słaby — statyczny kadr, brak ruchu. Ratuje go natychmiastowa widoczność produktu.",
+    "dopasowanie_ujec_do_lektora": "Zmiana tła co ok. 7 s (salon → pokój dziecięcy → przedpokój) zamiast cięć na produkt."
+  },
+  "analiza_gemini": {
+    "produkt": "BlokoMiś - dekoracyjny miś do samodzielnego ułożenia z klocków typu micro-bricks.",
+    "nisza": "zabawki, prezenty, hobby",
+    "grupa_docelowa": {
+      "plec": "kobiety",
+      "wiek": "25-45 lat",
+      "kto_dokladnie": "matki szukające kreatywnych zajęć dla dzieci oraz prezentów świątecznych",
+      "na_czym_to_wnioskujesz": "Lektorka mówi bezpośrednio o prezencie dla dziecka, tło sugeruje domowe zacisze, wspomniany jest czas na odpoczynek dla rodzica."
+    },
+    "typ_reklamy": "UGC (User Generated Content) z prezentacją produktu",
+    "dlugosc_s": 30.0,
+    "hook_0_3s": {
+      "co_widac": "Kobieta w pomarańczowym swetrze siedzi przy stole, obok niej stoi gotowy, kolorowy miś z klocków. Napis na dole ekranu.",
+      "co_slychac": "Lektor: 'Dzisiaj odebrałam prezent dla mojego dziecka, jest to miś z klocków...'",
+      "tekst_na_ekranie": "Dzisiaj odebrałam prezent dla mojego dziecka",
+      "mechanizm": "Wywołanie grupy docelowej (rodzice) i ciekawość dotycząca finalnego wyglądu zabawki.",
+      "kiedy_pierwszy_raz_widac_produkt_s": 0.0,
+      "kiedy_efekt_wow_s": 0.0,
+      "ocena_1_10": 8,
+      "co_by_wzmocnilo": "Pokazanie procesu sypania klocków z pudełka lub szybki montaż (timelapse) w tle."
+    },
+    "problem_i_przed_po": {
+      "czy_pokazany_problem": true,
+      "jak": "Pośrednio pokazany problem braku czasu dla rodzica - produkt go rozwiązuje, dając 'czas na odpoczynek'.",
+      "czy_przed_po": false,
+      "jak_przed_po": "",
+      "kiedy_s": null
+    },
+    "struktura": [
+      {
+        "od": 0.0,
+        "do": 0.7,
+        "etap": "hook",
+        "co_sie_dzieje": "Prezentacja osoby i produktu w domowym otoczeniu.",
+        "tekst_lub_lektor": "Dzisiaj odebrałam prezent dla mojego dziecka"
+      },
+      {
+        "od": 0.7,
+        "do": 1.5,
+        "etap": "rozwiązanie",
+        "co_sie_dzieje": "Opis produktu i jego estetyki.",
+        "tekst_lub_lektor": "jest to miś z klocków i wygląda perfekcyjnie"
+      },
+      {
+        "od": 1.5,
+        "do": 2.2,
+        "etap": "korzyści",
+        "co_sie_dzieje": "Podkreślenie czasu wolnego dla rodzica.",
+        "tekst_lub_lektor": "układanie zajęło mu kilka godzin więc miałam czas na odpoczynek"
+      },
+      {
+        "od": 2.2,
+        "do": 4.5,
+        "etap": "demonstracja",
+        "co_sie_dzieje": "Pokazanie innego wariantu kolorystycznego (szkielet).",
+        "tekst_lub_lektor": "BlokoMiś ma aż 15 wersji kolorystycznych więc mam co kupować dziecku przez najbliższy rok"
+      },
+      {
+        "od": 4.5,
+        "do": 6.5,
+        "etap": "oferta",
+        "co_sie_dzieje": "Zbliżenie na twarz, informacja o promocji.",
+        "tekst_lub_lektor": "BlokoMiś jest teraz w promocji -60 złotych więc chyba od razu zamówię kilka"
+      },
+      {
+        "od": 6.5,
+        "do": 9.0,
+        "etap": "CTA",
+        "co_sie_dzieje": "Prezentacja produktu w rękach, zachęta do zakupu przed świętami.",
+        "tekst_lub_lektor": "jeśli też chcecie mieć z głowy prezenty dla dziecka na najbliższy rok polecam się spieszyć"
+      }
+    ],
+    "ujecia": [
+      {
+        "od": 0.0,
+        "do": 2.2,
+        "typ": "UGC twarz",
+        "opis": "Kobieta mówi do kamery, produkt stoi obok na stole.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "Budowanie zaufania i autentyczności od pierwszej sekundy."
+      },
+      {
+        "od": 2.2,
+        "do": 4.5,
+        "typ": "detal",
+        "opis": "Inny model misia (czarno-biały szkielet) na stole.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "Pokazanie różnorodności oferty."
+      },
+      {
+        "od": 4.5,
+        "do": 6.5,
+        "typ": "zbliżenie produktu",
+        "opis": "Kobieta mówi do kamery w innym pomieszczeniu (pokój dziecięcy w tle).",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "Zmiana tła utrzymuje uwagę przy omawianiu ceny."
+      },
+      {
+        "od": 6.5,
+        "do": 9.0,
+        "typ": "produkt w użyciu",
+        "opis": "Kobieta trzyma misia w rękach, pokazując jego wielkość względem sylwetki.",
+        "ruch_kamery": "z ręki",
+        "dlaczego_tu": "Finalna prezentacja skali produktu przed zakupem."
+      }
+    ],
+    "tempo": {
+      "liczba_ujec": 4,
+      "srednia_dlugosc_ujecia_s": 7.5,
+      "najkrotsze_s": 2.2,
+      "najdluzsze_s": 9.0,
+      "czy_ciecia_zgrane_z_lektorem_lub_muzyka": "tak"
+    },
+    "lektor": {
+      "jest": true,
+      "glos": "kobieta, ok. 30 lat, naturalny, ciepły, entuzjastyczny",
+      "styl": "UGC / rozmowny",
+      "transkrypcja": [
+        {
+          "od": 0.0,
+          "do": 0.7,
+          "tekst": "Dzisiaj odebrałam prezent dla mojego dziecka"
+        },
+        {
+          "od": 0.7,
+          "do": 1.5,
+          "tekst": "jest to miś z klocków i wygląda perfekcyjnie"
+        },
+        {
+          "od": 1.5,
+          "do": 2.2,
+          "tekst": "układanie zajęło mu kilka godzin więc miałam czas na odpoczynek"
+        },
+        {
+          "od": 2.2,
+          "do": 3.5,
+          "tekst": "BlokoMiś ma aż 15 wersji kolorystycznych"
+        },
+        {
+          "od": 3.5,
+          "do": 4.5,
+          "tekst": "więc mam co kupować dziecku przez najbliższy rok a już poprosił mnie żeby kupiła mu inny kolor"
+        },
+        {
+          "od": 4.5,
+          "do": 5.5,
+          "tekst": "BlokoMiś jest teraz w promocji -60 złotych"
+        },
+        {
+          "od": 5.5,
+          "do": 6.5,
+          "tekst": "więc chyba od razu zamówię kilka żeby schować w szafie i dać mu na święta"
+        },
+        {
+          "od": 6.5,
+          "do": 8.0,
+          "tekst": "jeśli też chcecie mieć z głowy prezenty dla dziecka na najbliższy rok polecam się spieszyć"
+        },
+        {
+          "od": 8.0,
+          "do": 9.0,
+          "tekst": "bo promocja długo nie potrwa pewnie na święta znowu podrożeje"
+        }
+      ]
+    },
+    "napisy": {
+      "rodzaj": "napisy do lektora (karaoke)",
+      "ile_slow_na_raz": "całe zdania",
+      "kolor_tekstu": "biały",
+      "obrys": "czarny",
+      "cien": "brak",
+      "tlo_pod_tekstem": "brak",
+      "font": "Bold Sans-serif",
+      "wielkosc": "średnia",
+      "pozycja": "dół",
+      "animacja": "brak",
+      "wyroznienia": "nie",
+      "lista_tekstow": [
+        {
+          "od": 0.0,
+          "do": 0.7,
+          "tekst": "Dzisiaj odebrałam prezent dla mojego dziecka"
+        },
+        {
+          "od": 0.7,
+          "do": 1.5,
+          "tekst": "jest to miś z klocków i wygląda perfekcyjnie"
+        },
+        {
+          "od": 1.5,
+          "do": 2.2,
+          "tekst": "układanie zajęło mu kilka godzin więc miałam czas na odpoczynek"
+        },
+        {
+          "od": 2.2,
+          "do": 3.5,
+          "tekst": "BlokoMiś ma aż 15 wersji kolorystycznych"
+        },
+        {
+          "od": 3.5,
+          "do": 4.5,
+          "tekst": "więc mam co kupować dziecku przez najbliższy rok a już poprosił mnie żeby kupiła mu inny kolor"
+        },
+        {
+          "od": 4.5,
+          "do": 5.5,
+          "tekst": "BlokoMiś jest teraz w promocji -60 złotych"
+        },
+        {
+          "od": 5.5,
+          "do": 6.5,
+          "tekst": "więc chyba od razu zamówię kilka żeby schować w szafie i dać mu na święta"
+        },
+        {
+          "od": 6.5,
+          "do": 8.0,
+          "tekst": "jeśli też chcecie mieć z głowy prezenty dla dziecka na najbliższy rok polecam się spieszyć"
+        },
+        {
+          "od": 8.0,
+          "do": 9.0,
+          "tekst": "bo promocja długo nie potrwa pewnie na święta znowu podrożeje"
+        }
+      ]
+    },
+    "muzyka": {
+      "jest": true,
+      "gatunek": "Acoustic Pop",
+      "nastroj": "radosny, lekki",
+      "energia": "średnia",
+      "glosnosc_wzgledem_lektora": "cicha (tło)",
+      "czy_zmienia_sie": "nie"
+    },
+    "sfx": [],
+    "marka": {
+      "logo_widoczne": false,
+      "gdzie_i_kiedy": "",
+      "kolory_marki_w_napisach": "nie",
+      "ton_komunikacji": "przyjazny, rekomendacja osobista"
+    },
+    "zakonczenie": {
+      "cta": "polecam się spieszyć",
+      "oferta": "promocja -60 złotych",
+      "odwrocenie_ryzyka": "brak",
+      "dowod_spoleczny": "brak",
+      "pilnosc": "promocja długo nie potrwa, cena wzrośnie na święta"
+    },
+    "efekty_montazowe": [
+      "cięcie typu jump-cut między ujęciami",
+      "zmiana tła (kuchnia/pokój dziecięcy/przedpokój)"
+    ],
+    "dlaczego_dziala": [
+      "Silny hook uderzający w potrzebę zakupu prezentu.",
+      "Pokazanie korzyści dla rodzica (czas wolny), a nie tylko dla dziecka.",
+      "Konkretna korzyść finansowa (-60 zł) podana wprost.",
+      "Wykorzystanie sezonowości (nadchodzące święta) do budowania pilności.",
+      "Format UGC buduje zaufanie - wygląda jak szczera polecajka od innej mamy."
+    ],
+    "slabe_strony": [
+      "Brak dynamicznych zbliżeń na same klocki i proces układania.",
+      "Napisy mogłyby być bardziej dynamiczne (karaoke po jednym słowie).",
+      "Brak logo marki na końcu filmu."
+    ],
+    "zasady_do_przeniesienia": [
+      "Zaczynaj od 'Odebrałam/Kupiłam prezent dla...' - to natychmiast filtruje grupę docelową.",
+      "Podkreślaj korzyść 'świętego spokoju' dla rodzica przy zabawkach angażujących czasowo.",
+      "Używaj konkretnych kwot zniżki (np. -60 zł) zamiast tylko procentów.",
+      "Zmieniaj tło co kilka sekund, nawet jeśli to ta sama osoba mówi do kamery, aby utrzymać dynamikę."
+    ]
+  },
+  "uwaga": "Pola z 'weryfikacja_wizualna' i 'zmierzone' mają pierwszeństwo przed 'analiza_gemini' (Gemini Flash myli się w krojach pisma, animacjach napisów i czasach etapów; dobrze słyszy lektora i muzykę)."
+}

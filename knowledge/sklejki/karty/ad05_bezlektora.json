@@ -1,0 +1,260 @@
+{
+  "id": "ad05_bezlektora",
+  "zmierzone": {
+    "dlugosc_s": 16.6,
+    "liczba_ujec": 6,
+    "srednia_dlugosc_ujecia_s": 2.77,
+    "najkrotsze_s": 2.0,
+    "najdluzsze_s": 4.12,
+    "ciecia_s": [
+      2.88,
+      7.0,
+      9.08,
+      11.12,
+      13.12
+    ]
+  },
+  "weryfikacja_wizualna": {
+    "zrodlo_materialu": "Sklejka BEZ lektora: hook to obraz AI (psy idące do nieba), reszta realne nagrania produktu, plansza z logo. Muzyka emocjonalna.",
+    "napisy_korekta": "Wersaliki, gruby nowoczesny sans, kremowo-biały z żółtym akcentem na słowie 'TERAZ', mocny cień; góra kadru (ok. 15-25% wysokości) — uwaga na górną strefę bezpieczną Reels; animacja maszynopisu (litery wpisują się) w hooku, potem statyczne plansze 2-4 słowa.",
+    "hook_korekta": "Najsilniejszy hook emocjonalny z pięciu: lęk przed stratą + cytat 'Zrobię to później…'. Produkt pojawia się w ~2,9 s, efekt WOW (złoty odcisk) ok. 7 s.",
+    "muzyka_uwaga": "Gemini rozpoznał cover popularnej piosenki — przy bibliotece 'no copyright' do reklam płatnych to ryzyko; muzyka w bazie strony musi mieć licencję na reklamy.",
+    "dopasowanie_ujec_do_lektora": "Jedna plansza tekstu = jedno ujęcie = jedna korzyść (bezpieczne → gotowe w 10 min → wspomnienia na zawsze)."
+  },
+  "analiza_gemini": {
+    "produkt": "Zestaw do tworzenia pamiątkowego odcisku łapy pupila w masie plastycznej z ramką na zdjęcia.",
+    "nisza": "zwierzęta",
+    "grupa_docelowa": {
+      "plec": "kobiety i mężczyźni",
+      "wiek": "25-55",
+      "kto_dokladnie": "Właściciele psów i kotów, osoby silnie przywiązane emocjonalnie do swoich zwierząt, opiekunowie starszych lub chorych pupili.",
+      "na_czym_to_wnioskujesz": "Przekaz uderza w tony nostalgii, straty i chęci zachowania wspomnień po zwierzęciu, co jest kluczowe dla osób traktujących zwierzęta jak członków rodziny."
+    },
+    "typ_reklamy": "sklejka bez lektora (muzyka + tekst)",
+    "dlugosc_s": 16.0,
+    "hook_0_3s": {
+      "co_widac": "AI-generowany obraz psów różnych ras wchodzących po niebiańskich schodach do złotej bramy w chmurach (symbol psiego nieba).",
+      "co_slychac": "Nostalgiczna, smutna muzyka (cover utworu 'Until I Found You').",
+      "tekst_na_ekranie": "\"ZROBIĘ TO PÓŹNIEJ\"...",
+      "mechanizm": "Silne uderzenie emocjonalne (strach przed stratą przyjaciela) oraz wywołanie poczucia winy z powodu odkładania pamiątki na potem.",
+      "kiedy_pierwszy_raz_widac_produkt_s": 2.5,
+      "kiedy_efekt_wow_s": 6.5,
+      "ocena_1_10": 9,
+      "co_by_wzmocnilo": "Dodanie dźwięku 'pstryknięcia' lub przejścia typu 'glitch' przy zmianie z obrazu AI na realne wideo."
+    },
+    "problem_i_przed_po": {
+      "czy_pokazany_problem": true,
+      "jak": "Problem to nieuchronność przemijania i ryzyko, że nie zdążymy zrobić pamiątki przed śmiercią pupila.",
+      "czy_przed_po": false,
+      "jak_przed_po": "",
+      "kiedy_s": null
+    },
+    "struktura": [
+      {
+        "od": 0.0,
+        "do": 2.2,
+        "etap": "hook",
+        "co_sie_dzieje": "Obraz AI psów idących do nieba.",
+        "tekst_lub_lektor": "\"ZROBIĘ TO PÓŹNIEJ\"..."
+      },
+      {
+        "od": 2.2,
+        "do": 6.2,
+        "etap": "rozwiązanie",
+        "co_sie_dzieje": "Ręce dociskają łapę starszego psa do białej masy plastycznej.",
+        "tekst_lub_lektor": "ZACHOWAJ JEGO ŚLAD TERAZ."
+      },
+      {
+        "od": 6.2,
+        "do": 8.2,
+        "etap": "demonstracja",
+        "co_sie_dzieje": "Malowanie odcisku złotą farbą za pomocą pędzelka.",
+        "tekst_lub_lektor": "BEZPIECZNE DLA ZWIERZĄT"
+      },
+      {
+        "od": 8.2,
+        "do": 10.2,
+        "etap": "korzyści",
+        "co_sie_dzieje": "Wkładanie gotowego odcisku do czarnej ramki.",
+        "tekst_lub_lektor": "GOTOWE W 10 MINUT"
+      },
+      {
+        "od": 10.2,
+        "do": 12.2,
+        "etap": "korzyści",
+        "co_sie_dzieje": "Wkładanie zdjęć psa do ramki obok odcisku.",
+        "tekst_lub_lektor": "WSPOMNIENIA NA ZAWSZE"
+      },
+      {
+        "od": 12.2,
+        "do": 14.2,
+        "etap": "demonstracja",
+        "co_sie_dzieje": "Prezentacja gotowego produktu w dłoniach.",
+        "tekst_lub_lektor": "WSPOMNIENIA NA ZAWSZE"
+      },
+      {
+        "od": 14.2,
+        "do": 16.0,
+        "etap": "CTA",
+        "co_sie_dzieje": "Plansza końcowa z logo marki.",
+        "tekst_lub_lektor": "WIECZNA ŁAPA"
+      }
+    ],
+    "ujecia": [
+      {
+        "od": 0.0,
+        "do": 2.2,
+        "typ": "grafika",
+        "opis": "AI-generowany obraz psów w niebie.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "Budowanie kontekstu emocjonalnego i zatrzymanie scrolla."
+      },
+      {
+        "od": 2.2,
+        "do": 6.2,
+        "typ": "produkt w użyciu",
+        "opis": "Zbliżenie na łapę psa i masę plastyczną.",
+        "ruch_kamery": "z ręki",
+        "dlaczego_tu": "Pokazanie głównej funkcji produktu."
+      },
+      {
+        "od": 6.2,
+        "do": 8.2,
+        "typ": "detal",
+        "opis": "Malowanie odcisku na złoto.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "Pokazanie estetycznego wykończenia i bezpieczeństwa."
+      },
+      {
+        "od": 8.2,
+        "do": 10.2,
+        "typ": "produkt w użyciu",
+        "opis": "Montaż odcisku w ramce.",
+        "ruch_kamery": "z ręki",
+        "dlaczego_tu": "Podkreślenie łatwości i szybkości obsługi."
+      },
+      {
+        "od": 10.2,
+        "do": 12.2,
+        "typ": "produkt w użyciu",
+        "opis": "Personalizacja ramki zdjęciami.",
+        "ruch_kamery": "z ręki",
+        "dlaczego_tu": "Pokazanie finalnego charakteru pamiątki."
+      },
+      {
+        "od": 12.2,
+        "do": 14.2,
+        "typ": "packshot",
+        "opis": "Prezentacja gotowej ramki pod kątem.",
+        "ruch_kamery": "ruch obiektu",
+        "dlaczego_tu": "Prezentacja efektu końcowego."
+      },
+      {
+        "od": 14.2,
+        "do": 16.0,
+        "typ": "grafika",
+        "opis": "Logo na żółtym tle.",
+        "ruch_kamery": "statyczny",
+        "dlaczego_tu": "Budowanie świadomości marki."
+      }
+    ],
+    "tempo": {
+      "liczba_ujec": 7,
+      "srednia_dlugosc_ujecia_s": 2.3,
+      "najkrotsze_s": 1.8,
+      "najdluzsze_s": 4.0,
+      "czy_ciecia_zgrane_z_lektorem_lub_muzyka": "tak, cięcia następują w rytm uderzeń muzyki"
+    },
+    "lektor": {
+      "jest": false,
+      "glos": null,
+      "styl": null,
+      "transkrypcja": []
+    },
+    "napisy": {
+      "rodzaj": "teksty-plansze",
+      "ile_slow_na_raz": "2-3",
+      "kolor_tekstu": "żółty / biały",
+      "obrys": "brak",
+      "cien": "lekki, czarny",
+      "tlo_pod_tekstem": "brak",
+      "font": "Bold sans-serif, nowoczesny, gruby",
+      "wielkosc": "duża",
+      "pozycja": "środek / góra",
+      "animacja": "brak (statyczne pojawianie się)",
+      "wyroznienia": "kolor żółty dla kluczowych haseł",
+      "lista_tekstow": [
+        {
+          "od": 0.0,
+          "do": 2.2,
+          "tekst": "\"ZROBIĘ TO PÓŹNIEJ\"..."
+        },
+        {
+          "od": 2.2,
+          "do": 6.2,
+          "tekst": "ZACHOWAJ JEGO ŚLAD TERAZ."
+        },
+        {
+          "od": 6.2,
+          "do": 8.2,
+          "tekst": "BEZPIECZNE DLA ZWIERZĄT"
+        },
+        {
+          "od": 8.2,
+          "do": 10.2,
+          "tekst": "GOTOWE W 10 MINUT"
+        },
+        {
+          "od": 10.2,
+          "do": 14.2,
+          "tekst": "WSPOMNIENIA NA ZAWSZE"
+        }
+      ]
+    },
+    "muzyka": {
+      "jest": true,
+      "gatunek": "Pop / Ballada",
+      "nastroj": "nostalgiczny, smutny, wzruszający",
+      "energia": "niska",
+      "glosnosc_wzgledem_lektora": "brak lektora",
+      "czy_zmienia_sie": "nie"
+    },
+    "sfx": [],
+    "marka": {
+      "logo_widoczne": true,
+      "gdzie_i_kiedy": "Plansza końcowa, 14-16s",
+      "kolory_marki_w_napisach": "żółty i brązowy",
+      "ton_komunikacji": "emocjonalny, pełen troski"
+    },
+    "zakonczenie": {
+      "cta": "brak tekstowego CTA (tylko logo)",
+      "oferta": "brak",
+      "odwrocenie_ryzyka": "brak",
+      "dowod_spoleczny": "brak",
+      "pilnosc": "sugerowana w hooku (zrób to teraz, zanim będzie za późno)"
+    },
+    "efekty_montazowe": [
+      "zoom-in na zdjęciach",
+      "miękkie przejścia"
+    ],
+    "dlaczego_dziala": [
+      "Wykorzystuje bardzo silny hook wizualny (AI), który natychmiast budzi emocje u właścicieli zwierząt.",
+      "Gra na lęku przed stratą (FOMO/Loss Aversion) – sugeruje, że czas ucieka.",
+      "Pokazuje produkt w działaniu, udowadniając, że proces jest prosty i szybki (10 minut).",
+      "Estetyczne wykonanie pamiątki (złota farba) podnosi postrzeganą wartość produktu.",
+      "Idealne dopasowanie muzyki do tematyki wideo."
+    ],
+    "slabe_strony": [
+      "Brak wyraźnego wezwania do działania (CTA) na końcu (np. 'Kup teraz').",
+      "Brak lektora, który mógłby dodatkowo wzmocnić przekaz emocjonalny.",
+      "Obraz AI w hooku może dla niektórych wyglądać zbyt sztucznie."
+    ],
+    "zasady_do_przeniesienia": [
+      "Używaj obrazów AI do wizualizacji trudnych do sfilmowania, a silnie emocjonalnych konceptów (np. niebo, przyszłość).",
+      "Stosuj kontrast między 'problemem' (smutny hook) a 'rozwiązaniem' (tworzenie pamiątki).",
+      "Kluczowe benefity (bezpieczeństwo, czas wykonania) podawaj jako krótkie, czytelne hasła na środku ekranu.",
+      "Dopasuj tempo montażu do rytmu muzyki, aby stworzyć spójne doświadczenie audiowizualne."
+    ]
+  },
+  "uwaga": "Pola z 'weryfikacja_wizualna' i 'zmierzone' mają pierwszeństwo przed 'analiza_gemini' (Gemini Flash myli się w krojach pisma, animacjach napisów i czasach etapów; dobrze słyszy lektora i muzykę)."
+}

@@ -1,0 +1,70 @@
+# Clipzy
+
+Narzędzie do tworzenia reklam pod Meta Ads dla e-commerce: sklejki (montaż z materiałów produktowych), AI nagrania, image ads i usuwanie napisów z nagrań. Claude jest „mózgiem” — zna markę, produkt i bazę wiedzy o reklamach (`knowledge/sklejki/SKILL.md`), a inne modele wykonują zadania na jego polecenie.
+
+Każdy użytkownik wkleja własne klucze API (Anthropic, Gemini, fal.ai, ElevenLabs) i płaci bezpośrednio dostawcom. Klucze są szyfrowane na serwerze (AES-256-GCM) i nigdy nie wracają do przeglądarki.
+
+## Co już działa (etap 1)
+
+- Logowanie i rejestracja (Supabase Auth).
+- **Ustawienia:** klucze API z testem połączenia.
+- **Marki:** link do sklepu → Clipzy czyta stronę główną, „o nas”, FAQ, kolory, logo i listę produktów (Shopify) → Claude buduje profil marki i zadaje pytania → kolejne rundy pytań, aż profil będzie kompletny.
+- **Produkty:** link do produktu → pobranie opisu, ceny i zdjęć (Shopify, JSON-LD, meta) → Claude ogląda zdjęcia i buduje profil: problem i jak go pokazać, mechanizm, przed/po, efekt WOW, obiekcje, kąty reklamowe → pytania uzupełniające. Własne zdjęcia można dowgrać.
+
+W kolejnych etapach: sklejki, AI nagrania, image ads, usuwanie napisów, integracja z Meta API.
+
+## Wdrożenie (jednorazowo)
+
+### 1. Supabase
+
+1. W projekcie Supabase otwórz **SQL Editor**, wklej całą zawartość `supabase/migrations/0001_init.sql` i kliknij **Run**. Utworzy to tabele, zabezpieczenia (każdy widzi tylko swoje dane) i prywatny magazyn plików `media`.
+2. **Authentication → URL Configuration:**
+   - *Site URL:* adres strony na Vercelu, np. `https://clipzy.vercel.app`
+   - *Redirect URLs:* dodaj `https://clipzy.vercel.app/auth/confirm`
+3. (Opcjonalnie, na użytek prywatny) **Authentication → Sign In / Providers → Email:** wyłącz *Confirm email*, żeby logować się od razu po rejestracji. Po rejestracji swojego konta możesz też wyłączyć *Allow new users to sign up*, żeby nikt obcy nie założył konta.
+4. **Project Settings → API Keys:** skopiuj *Project URL* i *Publishable key* (w starszych projektach: *anon public*).
+
+### 2. Vercel
+
+1. **Add New → Project →** wybierz repozytorium `clipzy` → **Import**.
+2. W **Environment Variables** dodaj:
+
+   | Nazwa | Wartość |
+   |---|---|
+   | `NEXT_PUBLIC_SUPABASE_URL` | Project URL z Supabase |
+   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable key z Supabase |
+   | `APP_ENCRYPTION_KEY` | wynik `openssl rand -base64 32` (32 losowe bajty) |
+
+   `APP_ENCRYPTION_KEY` zapisz też w bezpiecznym miejscu. Jeśli go zmienisz, zapisane klucze API trzeba będzie wkleić ponownie.
+3. **Deploy.**
+
+### 3. Pierwsze uruchomienie
+
+1. Zarejestruj się na stronie.
+2. **Ustawienia →** wklej klucz Anthropic (wymagany do marek i produktów) i pozostałe.
+3. **Marki i produkty → Dodaj markę →** wklej link do sklepu.
+
+## Praca lokalna
+
+```bash
+cp .env.example .env.local   # uzupełnij wartości
+npm install
+npm run dev                  # http://localhost:3000
+npm test                     # testy jednostkowe
+npm run typecheck
+```
+
+## Struktura
+
+```
+knowledge/sklejki/        baza wiedzy o reklamach (SKILL.md + karty przeanalizowanych reklam)
+supabase/migrations/      schemat bazy i zabezpieczenia (RLS)
+src/proxy.ts              odświeżanie sesji i przekierowanie niezalogowanych
+src/lib/ai/               wywołania Claude (profile marki i produktu)
+src/lib/scrape/           bezpieczne pobieranie stron (blokada adresów wewnętrznych) i parsowanie
+src/lib/profiles/         definicje profilu marki i produktu (schematy + formularze)
+src/lib/crypto.ts         szyfrowanie kluczy API
+src/app/(app)/            ekrany aplikacji (marki, produkty, ustawienia)
+```
+
+Baza wiedzy to zwykły plik — poprawki w `knowledge/sklejki/SKILL.md` działają po kolejnym wdrożeniu, bez zmian w kodzie.
