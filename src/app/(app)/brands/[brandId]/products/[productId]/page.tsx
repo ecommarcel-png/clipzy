@@ -6,6 +6,8 @@ import { productFolder, signedUrls } from "@/lib/storage";
 import { Badge, PageHeader, buttonClass } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm-button";
 import { ProductEditor } from "./product-editor";
+import { ResearchCard } from "./research-card";
+import type { ResearchReport } from "@/lib/ai/research";
 import { deleteProduct } from "../actions";
 
 export const maxDuration = 300;
@@ -33,6 +35,14 @@ export default async function ProductPage({ params }: PageProps<"/brands/[brandI
         }
         actions={<Link href={`/brands/${brand.id}`} className={buttonClass("ghost")}>← {brand.name}</Link>}
       />
+
+      <div className="mb-6">
+        <ResearchCard
+          brandId={brand.id}
+          productId={product.id}
+          research={(product.source.research as ResearchReport | undefined) ?? null}
+        />
+      </div>
 
       <ProductEditor
         brandId={brand.id}

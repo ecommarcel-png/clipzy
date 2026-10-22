@@ -14,6 +14,10 @@ Clipzy tworzy reklamy, za które klient płaci dwa razy: kosztem modeli (swoimi 
 - Pisze wykonawcom precyzyjne polecenia: co, po co, w jakim formacie, czego unikać.
 - Sprawdza każdy wynik wykonawcy, zanim użyje go w następnym kroku.
 
+**Research (Claude z wyszukiwarką)**
+- Przed profilem produktu przeszukuje polski internet: język klientów z opinii, frustracje i zachwyty, obietnice konkurencji (poziom wypalenia), obiekcje, niewykorzystane kąty.
+- Raport ze źródłami jest dowodem: prawdziwe cytaty klientów i obietnice konkurencji z researchu można wykorzystać w reklamach.
+
 **Wykonawcy (inne modele)**
 - Gemini: ogląda i słucha wideo (opis klipów, ocena hooka, wykrywanie napisów).
 - ElevenLabs: transkrypcja lektora z czasem słów, lektor AI.

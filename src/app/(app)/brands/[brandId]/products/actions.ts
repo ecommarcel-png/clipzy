@@ -8,6 +8,7 @@ import { getProviderKey } from "@/lib/api-keys";
 import { analyzeProduct, productEvidence, refineProduct, type ProductAnalysis } from "@/lib/ai/product";
 import { reviewProfile } from "@/lib/ai/review";
 import { controlLoop } from "@/lib/ai/control";
+import { researchMarket, type ResearchReport } from "@/lib/ai/research";
 import { scrapeProductPage, type ProductSource } from "@/lib/scrape/product";
 import { writeWithReview } from "@/lib/data";
 import { EMPTY_BRAND_PROFILE, type BrandProfile } from "@/lib/profiles/brand";
@@ -28,8 +29,9 @@ async function brandProfile(supabase: SupabaseClient, brandId: string) {
   return data ? withDefaults(EMPTY_BRAND_PROFILE, data.profile) : null;
 }
 
-// Leave room for the final re-check inside the 300 s page limit.
-const CONTROL_BUDGET_MS = 170_000;
+// Time budget inside the 300 s page limit (scraping + research + analysis + control).
+const REVISE_BUDGET_MS = 190_000;
+const FINAL_REVIEW_BUDGET_MS = 240_000;
 
 // Questions are optional and capped: the profile must be usable without them.
 const MAX_QUESTIONS = 3;
@@ -46,7 +48,15 @@ function normalizeDraft(d: ProductAnalysis): ProductAnalysis {
 async function controlProduct(
   apiKey: string,
   draft: ProductAnalysis,
-  ctx: { brand: BrandProfile; source: ProductSource | null; notes: string; answers: AnsweredQuestion[]; imageUrls: string[]; startedAt: number },
+  ctx: {
+    brand: BrandProfile;
+    source: ProductSource | null;
+    notes: string;
+    answers: AnsweredQuestion[];
+    imageUrls: string[];
+    research: ResearchReport | null;
+    startedAt: number;
+  },
 ) {
   return controlLoop({
     draft: normalizeDraft(draft),
@@ -55,7 +65,7 @@ async function controlProduct(
         kind: "produkt",
         profile: d.profile,
         brandProfile: ctx.brand,
-        evidence: productEvidence(ctx.source, ctx.notes, ctx.answers),
+        evidence: productEvidence(ctx.source, ctx.notes, ctx.answers, ctx.research),
       }),
     revise: async (d, issues) =>
       normalizeDraft(
@@ -66,11 +76,13 @@ async function controlProduct(
           imageUrls: ctx.imageUrls,
           source: ctx.source,
           notes: ctx.notes,
+          research: ctx.research,
           controlIssues: issues,
           openQuestions: d.questions,
         }),
       ),
-    hasTimeFor: () => Date.now() - ctx.startedAt < CONTROL_BUDGET_MS,
+    canRevise: () => Date.now() - ctx.startedAt < REVISE_BUDGET_MS,
+    hasTimeFor: () => Date.now() - ctx.startedAt < FINAL_REVIEW_BUDGET_MS,
   });
 }
 
@@ -95,17 +107,21 @@ export async function createProduct(brandId: string, _prev: NewProductState, for
     const source = url ? await scrapeProductPage(url) : null;
     const name = nameHint || source?.title || "Nowy produkt";
 
+    // Market research runs while the photos are copied.
     const images = (source?.images ?? []).slice(0, MAX_IMPORTED_IMAGES);
-    const stored = await Promise.all(images.map((img, i) => importImage(supabase, img, folder, `src-${i}`)));
+    const [stored, research] = await Promise.all([
+      Promise.all(images.map((img, i) => importImage(supabase, img, folder, `src-${i}`))),
+      researchMarket(apiKey, { brand, source, name }),
+    ]);
     storedPaths = stored.filter((p): p is string => Boolean(p));
 
     const readable = storedPaths.filter(isClaudeReadableImage).slice(0, 4);
     const signed = await signedUrls(supabase, readable, 900);
     const imageUrls = readable.map((p) => signed[p]).filter(Boolean);
-    const analysis = await analyzeProduct(apiKey, { brand, source, nameHint: name, notes, imageUrls });
+    const analysis = await analyzeProduct(apiKey, { brand, source, nameHint: name, notes, imageUrls, research });
     if (nameHint) analysis.profile.name = nameHint;
 
-    const { result, report } = await controlProduct(apiKey, analysis, { brand, source, notes, answers: [], imageUrls, startedAt });
+    const { result, report } = await controlProduct(apiKey, analysis, { brand, source, notes, answers: [], imageUrls, research, startedAt });
     const profile = result.profile;
     if (nameHint) profile.name = nameHint;
 
@@ -120,7 +136,7 @@ export async function createProduct(brandId: string, _prev: NewProductState, for
       completeness: productCompleteness(profile).score,
       summary: result.summary,
       review: report,
-      source: { ...(source ?? {}), notes },
+      source: { ...(source ?? {}), notes, research },
     });
     if (error) throw new Error(error.message);
 
@@ -167,14 +183,22 @@ export async function refineProductAction(
 
   try {
     const apiKey = await getProviderKey(supabase, "anthropic");
-    const stored = (row.source ?? {}) as ProductSource & { notes?: string };
+    const stored = (row.source ?? {}) as ProductSource & { notes?: string; research?: ResearchReport };
     const source = stored.url ? (stored as ProductSource) : null;
     const notes = stored.notes ?? "";
     const imageUrls = await productImageUrls(supabase, productId);
 
+    // Products created before research existed get it on their first expansion.
+    let research = stored.research ?? null;
+    let researchChanged = false;
+    if (!research?.report) {
+      research = await researchMarket(apiKey, { brand, source, name: profile.name });
+      researchChanged = true;
+    }
+
     const focus = productCompleteness(profile).missing;
-    const draft = await refineProduct(apiKey, { brand, profile, answers, imageUrls, source, notes, focus });
-    const { result, report } = await controlProduct(apiKey, draft, { brand, source, notes, answers, imageUrls, startedAt });
+    const draft = await refineProduct(apiKey, { brand, profile, answers, imageUrls, source, notes, focus, research });
+    const { result, report } = await controlProduct(apiKey, draft, { brand, source, notes, answers, imageUrls, research, startedAt });
 
     const { error } = await writeWithReview(
       (payload) => supabase.from("products").update(payload).eq("id", productId).eq("brand_id", brandId),
@@ -185,10 +209,12 @@ export async function refineProductAction(
         completeness: productCompleteness(result.profile).score,
         summary: result.summary,
         review: report,
+        ...(researchChanged ? { source: { ...stored, research } } : {}),
       },
     );
     if (error) throw new Error(error.message);
     revalidatePath(`/brands/${brandId}`);
+    if (researchChanged) revalidatePath(`/brands/${brandId}/products/${productId}`);
     return {
       ok: true,
       profile: result.profile as unknown as Record<string, unknown>,
@@ -196,6 +222,39 @@ export async function refineProductAction(
       summary: result.summary,
       review: report,
     };
+  } catch (e) {
+    return { ok: false, error: userMessage(e) };
+  }
+}
+
+export type ResearchResult = { ok: true; research: ResearchReport } | { ok: false; error: string };
+
+// Fresh market research on demand (e.g. a month later, or after the first one failed).
+export async function researchProductAction(brandId: string, productId: string): Promise<ResearchResult> {
+  const { supabase } = await requireUser();
+  const brand = await brandProfile(supabase, brandId);
+  if (!brand) return { ok: false, error: "Nie znaleziono marki." };
+  const { data: row } = await supabase
+    .from("products")
+    .select("name, source")
+    .eq("id", productId)
+    .eq("brand_id", brandId)
+    .maybeSingle();
+  if (!row) return { ok: false, error: "Nie znaleziono produktu." };
+
+  try {
+    const apiKey = await getProviderKey(supabase, "anthropic");
+    const stored = (row.source ?? {}) as ProductSource & { research?: ResearchReport };
+    const research = await researchMarket(apiKey, { brand, source: stored.url ? stored : null, name: row.name });
+    if (!research.report) return { ok: false, error: research.error ?? "Research się nie udał." };
+    const { error } = await supabase
+      .from("products")
+      .update({ source: { ...stored, research } })
+      .eq("id", productId)
+      .eq("brand_id", brandId);
+    if (error) throw new Error(error.message);
+    revalidatePath(`/brands/${brandId}/products/${productId}`);
+    return { ok: true, research };
   } catch (e) {
     return { ok: false, error: userMessage(e) };
   }

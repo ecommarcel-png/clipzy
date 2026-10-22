@@ -22,12 +22,15 @@ export async function controlLoop<T>(opts: {
   draft: T;
   review: (draft: T) => Promise<Review>;
   revise: (draft: T, issues: ReviewIssue[]) => Promise<T>;
+  /** Skip the correction round when the time budget is nearly spent. */
+  canRevise?: () => boolean;
   /** Skip the final re-check when the time budget is nearly spent. */
   hasTimeFor?: () => boolean;
   now?: () => Date;
 }): Promise<{ result: T; report: ControlReport }> {
   const now = opts.now ?? (() => new Date());
   const hasTime = opts.hasTimeFor ?? (() => true);
+  const canRevise = opts.canRevise ?? (() => true);
 
   let first: Review;
   try {
@@ -45,6 +48,20 @@ export async function controlLoop<T>(opts: {
     return {
       result: opts.draft,
       report: { checked_at: now().toISOString(), rounds: 1, first_issues: toFix, remaining: toFix, checked: first.checked },
+    };
+  }
+
+  if (!canRevise()) {
+    return {
+      result: opts.draft,
+      report: {
+        checked_at: now().toISOString(),
+        rounds: 1,
+        first_issues: toFix,
+        remaining: toFix,
+        checked: first.checked,
+        error: "Zabrakło czasu na poprawki — kliknij „Rozbuduj profil”, a Claude je wprowadzi.",
+      },
     };
   }
 

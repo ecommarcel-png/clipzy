@@ -19,6 +19,7 @@ Każdy profil marki i produktu przechodzi pętlę jakości (`knowledge/rezyser/S
 - **Ustawienia:** klucze API z testem połączenia.
 - **Marki:** link do sklepu → Clipzy czyta stronę główną, „o nas”, FAQ, kolory, logo i listę produktów (Shopify) → Claude sam buduje profil: grupa docelowa, 3–6 person, problemy i pragnienia klientów. Najwyżej 3 pytania, wszystkie opcjonalne.
 - **Produkty:** link do produktu → pobranie opisu, ceny i zdjęć (Shopify, JSON-LD, meta) → Claude ogląda zdjęcia i buduje profil: wszystkie problemy, które produkt rozwiązuje, mechanizm, korzyści, obiekcje i 10–15 kątów reklamowych (persona × problem × poziom świadomości) z gotowymi hookami. Własne zdjęcia można dowgrać.
+- **Research rynku** przy każdym produkcie: Claude przeszukuje polski internet (do 6 wyszukiwań) — język klientów z opinii, frustracje, obietnice konkurencji i poziom wypalenia rynku, obiekcje, niewykorzystane kąty. Raport ze źródłami widać na stronie produktu; trafia do analizy jako dowód. Koszt: ok. $0,06 za wyszukiwania + tokeny. Wymaga włączonego Web search w Anthropic Console (domyślnie włączony).
 - **Gotowość do reklam** liczona z tego, co sprzedaje (grupa docelowa, persony, problemy, kąty) — nie spada po odpowiedziach. „Rozbuduj profil” każe Claude uzupełnić braki samemu.
 - Profil nie pyta o styl, lektora ani muzykę — to wybór w module sklejek, a styl dopracowuje feedback do gotowych reklam (zapisywany w profilu marki jako preferencje).
 

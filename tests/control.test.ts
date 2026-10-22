@@ -80,3 +80,19 @@ describe("controlLoop", () => {
     expect(report.error).toMatch(/ponown/);
   });
 });
+
+describe("controlLoop time budget", () => {
+  it("skips the correction round when out of time and keeps the issues visible", async () => {
+    const revise = vi.fn();
+    const { result, report } = await controlLoop({
+      draft: "v1",
+      review: async () => review([issue("ważna")]),
+      revise,
+      canRevise: () => false,
+    });
+    expect(result).toBe("v1");
+    expect(revise).not.toHaveBeenCalled();
+    expect(report.remaining).toHaveLength(1);
+    expect(report.error).toMatch(/Rozbuduj/);
+  });
+});

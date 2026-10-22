@@ -4,6 +4,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { structuredCall } from "./claude";
 import { PROFILE_RULES, controlIssuesBlock, knowledgeBlock } from "./profile-prompts";
 import type { ReviewIssue } from "./review";
+import { researchBlock, type ResearchReport } from "./research";
 import { productKnowledge } from "@/lib/knowledge";
 import type { BrandProfile } from "@/lib/profiles/brand";
 import { ProductProfileSchema, type ProductProfile } from "@/lib/profiles/product";
@@ -27,6 +28,7 @@ Gdzie wkładasz pracę:
 - ad_angles: 10–15 kątów, naprawdę różnych: rozłóż je na persony marki, różne problemy i wszystkie poziomy świadomości (od nieświadomego problemu po najbardziej świadomego). Każdy kąt ma gotowy hook — pierwsze zdanie i co widać w pierwszej sekundzie.
 - mechanism: pewnie i konkretnie, dlaczego ten produkt działa — w duchu „wypalenia obietnicy” z bazy wiedzy.
 - objections: co najmniej 4 obiekcje z odpowiedzią, którą da się powiedzieć w reklamie.
+- Research rynku (jeśli jest): customer_language bierz z prawdziwych cytatów klientów; market_sophistication z obietnic konkurencji; z „niewykorzystanych kątów” zrób osobne kąty reklamowe; obiekcje z researchu zbij w objections. Kąty, które powtarza konkurencja, rób tylko z mocniejszym, nowym mechanizmem.
 - Przed/po i efekt WOW to wnioski ze zdjęć i opisu — zaznacz, jeśli wynikają z natury produktu; analiza nagrań potwierdzi je później. Nie pytaj o nie.
 
 <profil_marki>
@@ -42,7 +44,12 @@ function imageBlocks(urls: string[]): Anthropic.Messages.ContentBlockParam[] {
 }
 
 // Everything the product profile may rely on — shown to Claude and to the Controller.
-export function productEvidence(source: ProductSource | null, notes: string, answers: AnsweredQuestion[] = []): string {
+export function productEvidence(
+  source: ProductSource | null,
+  notes: string,
+  answers: AnsweredQuestion[] = [],
+  research: ResearchReport | null = null,
+): string {
   const parts: string[] = [];
   parts.push(
     source
@@ -63,6 +70,8 @@ export function productEvidence(source: ProductSource | null, notes: string, ans
         )}\n</strona_produktu>`
       : "(brak strony produktu)",
   );
+  const research_ = researchBlock(research);
+  if (research_) parts.push(research_);
   if (notes) parts.push(`<notatki_uzytkownika>\n${notes}\n</notatki_uzytkownika>`);
   const answered = answers.filter((a) => a.answer.trim());
   if (answered.length) {
@@ -73,7 +82,14 @@ export function productEvidence(source: ProductSource | null, notes: string, ans
 
 export async function analyzeProduct(
   apiKey: string,
-  input: { brand: BrandProfile; source: ProductSource | null; nameHint: string; notes: string; imageUrls: string[] },
+  input: {
+    brand: BrandProfile;
+    source: ProductSource | null;
+    nameHint: string;
+    notes: string;
+    imageUrls: string[];
+    research: ResearchReport | null;
+  },
 ): Promise<ProductAnalysis> {
   return structuredCall({
     apiKey,
@@ -83,7 +99,7 @@ export async function analyzeProduct(
       ...imageBlocks(input.imageUrls),
       {
         type: "text",
-        text: `Zbuduj kompletny profil produktu „${input.nameHint}” — sam, na podstawie źródeł. Powyżej zdjęcia produktu (jeśli są) — wykorzystaj je, żeby zrozumieć, jak produkt wygląda i co da się pokazać na wideo. Pytania tylko wyjątkowo (maksymalnie 3, tylko z dozwolonych tematów).\n\n${productEvidence(input.source, input.notes)}`,
+        text: `Zbuduj kompletny profil produktu „${input.nameHint}” — sam, na podstawie źródeł. Powyżej zdjęcia produktu (jeśli są) — wykorzystaj je, żeby zrozumieć, jak produkt wygląda i co da się pokazać na wideo. Pytania tylko wyjątkowo (maksymalnie 3, tylko z dozwolonych tematów).\n\n${productEvidence(input.source, input.notes, [], input.research)}`,
       },
     ],
   });
@@ -98,6 +114,7 @@ export async function refineProduct(
     imageUrls: string[];
     source: ProductSource | null;
     notes: string;
+    research: ResearchReport | null;
     controlIssues?: ReviewIssue[];
     openQuestions?: Question[];
     /** What the completeness rule says is still missing — fill it in yourself. */
@@ -118,7 +135,7 @@ export async function refineProduct(
       ...imageBlocks(input.imageUrls),
       {
         type: "text",
-        text: `Oto aktualny profil produktu (z ręcznymi poprawkami użytkownika). Wpisz odpowiedzi użytkownika w odpowiednie pola, wykorzystaj je do rozbudowy problemów i kątów, zachowaj poprawki użytkownika. Nowe pytania tylko wyjątkowo (maksymalnie 3, nigdy powtórki).\n\n<profil>\n${JSON.stringify(input.profile, null, 1)}\n</profil>\n\n${productEvidence(input.source, input.notes, input.answers)}${focus}${pending}${controlIssuesBlock(input.controlIssues ?? [])}`,
+        text: `Oto aktualny profil produktu (z ręcznymi poprawkami użytkownika). Wpisz odpowiedzi użytkownika w odpowiednie pola, wykorzystaj je do rozbudowy problemów i kątów, zachowaj poprawki użytkownika. Nowe pytania tylko wyjątkowo (maksymalnie 3, nigdy powtórki).\n\n<profil>\n${JSON.stringify(input.profile, null, 1)}\n</profil>\n\n${productEvidence(input.source, input.notes, input.answers, input.research)}${focus}${pending}${controlIssuesBlock(input.controlIssues ?? [])}`,
       },
     ],
   });
