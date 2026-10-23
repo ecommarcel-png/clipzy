@@ -95,6 +95,8 @@ Zasady [W][R]:
 5. **Nie używaj klipów z cudzymi napisami/watermarkiem** — najpierw remover albo pomiń.
 6. Klip z twarzą i emocją (radość, zachwyt) stawiaj po demonstracji efektu — to „nagroda”. [R: ad01 — reakcja dziewczynki po złożeniu]
 7. Produkt w kadrze co najmniej w hooku, w środku i w ofercie.
+8. **Materiały użytkownika używasz takimi, jakie są** — także gdy pokazują inny model, kolor albo wersję produktu. To decyzja użytkownika: nie odrzucasz takich nagrań, nie podmieniasz w nich produktu (chyba że użytkownik o to poprosi) i nie zgłaszasz tego jako usterki. [M]
+9. **Zdjęcia produktu tylko na końcu** (packshot przed CTA). W środku reklamy zawsze wideo — statyczne zdjęcie z zoomem w środku wygląda tanio i nudno. Brakuje ujęcia → użyj innego nagrania albo wygeneruj wideo (rozdz. 4a). [M]
 
 ---
 
@@ -141,10 +143,35 @@ Reguły:
 - Profil tempa zależny od grupy docelowej:
   - **Gen Z / młodzi / zabawki dynamiczne:** 0,7–1,5 s na ujęcie, więcej efektów (zoom-in, speed ramp, pop-up, SFX).
   - **Uniwersalny (rodzice 25–45):** 1,2–2,5 s.
-  - **Kobiety 25–50 beauty/dom, produkty emocjonalne:** 2–3,5 s, płynniej, mniej efektów.
+  - **Kobiety 25–50 beauty/dom, produkty emocjonalne:** 1–2,5 s, płynnie i elegancko — ale z efektami montażowymi z rozdz. 5a (bez nich sklejka jest nudna). [M]
   - **50+:** 2,5–4 s, spokojnie, bez gwałtownych efektów.
 - W sklejce pierwsze cięcie najpóźniej ok. 3 s (chyba że ujęcie hooka samo w sobie ma silny ruch); research zaleca cięcie co 2–3 s. [W] Formaty z jedną mówiącą osobą tną później (w bazie pierwsze cięcie w 4–7,6 s) — tam dynamikę daje mowa, nie montaż. [R]
 - Długie ujęcie (> 4 s) tylko gdy to ciągła demonstracja, którą warto zobaczyć w całości.
+
+---
+
+## 5a. Warsztat montażu — efekty, które robią robotę [M]
+
+Sama sekwencja ujęć z napisami to za mało. Każda sklejka ma mieć efekty, które **pokazują** to, co mówi lektor. Dobieraj je do treści, nie dla ozdoby:
+
+| Gdy lektor mówi o… | Efekt |
+|---|---|
+| efekcie / transformacji | **split screen przed/po** (góra/dół w 9:16 i 4:5) z etykietami „Przed” / „Po ✓” — najlepiej już w hooku |
+| problemie, bólu, starej metodzie | **szary obraz** (desaturacja) na czas problemu; przy bólu krótki **shake** i punch-in zoom |
+| konkretnych objawach | **pulsujące kółka** wskazujące problem w kadrze (np. czerwone kropki) |
+| przejściu do rozwiązania | **przejście w kolorze marki** (wipe), obraz wraca do koloru |
+| tym, czego produkt nie wymaga („bez maszynki”, „bez ładowania”) | **pop-up ikony** w białym kółku, która po chwili się **przekreśla** |
+| przewadze nad alternatywą | **porównanie split**: alternatywa (szara, ✗) vs produkt (kolor, ✓), badge pojawiają się na słowach |
+| ruchu / sposobie użycia („kilka kółek”) | animowana ikona (np. obracające się strzałki) |
+| efekcie końcowym (gładkość, blask) | **sheen** (przesuwające się światło) + delikatne **iskierki** |
+| korzyściach na końcu | **chipsy z ✓** pojawiające się po kolei nad packshotem |
+
+Zasady:
+- Każdy efekt ma **SFX** (whoosh na przejściach, pop na ikonach, „kreska” na przekreśleniu, ding na ✓, shimmer na iskierkach) — cicho, pod lektorem.
+- Słowa-klucze w napisach wyróżniaj tłem w kolorze marki (np. „znikają.”, „Boli.”, „gładka skóra.”) — 1 wyróżnienie na planszę.
+- Lektor bez martwych pauz: przerwy między zdaniami 0,1–0,25 s; jeśli lektor jest wolny, przyspiesz o ok. 5% (bez zmiany wysokości głosu). Pauzy mierz detekcją ciszy, nie czasami słów z modelu.
+- **Zero migających klatek:** przed cięciem wykryj cięcia wewnątrz każdego klipu (detekcja scen) i trzymaj zakresy min. 0,1 s od nich; ujęcia licz co do klatki; po renderze skanuj film pod kątem ujęć < 0,2 s i czarnych klatek.
+- Szybkie przyspieszenie (> 1,5×) ujęć z podnoszeniem/odkładaniem produktu daje efekt mrugania — wtedy wybierz spokojniejszy fragment.
 
 ---
 
@@ -246,6 +273,11 @@ Sprawdzaj i komentuj:
 - [ ] Żadnych cudzych watermarków ani napisów w klipach.
 - [ ] Każde ujęcie wygenerowane AI przeszło kontrolę z rozdz. 4a i jest wypisane w raporcie.
 - [ ] Wersje formatów przeliczone pod własne strefy bezpieczne.
+- [ ] Efekty montażowe z rozdz. 5a obecne tam, gdzie lektor o czymś mówi (przed/po, problem, przewaga, „bez X”).
+- [ ] Zdjęcia produktu tylko w packshocie na końcu.
+- [ ] Skan po renderze: brak ujęć < 0,2 s (migawek) i czarnych klatek.
+- [ ] Ujęcia AI: żadnych lustrzanych napisów ani logo na produkcie.
+- [ ] Kontroler dostał preferencje marki z feedbacku i nie zgłasza decyzji użytkownika jako usterek.
 
 ---
 
