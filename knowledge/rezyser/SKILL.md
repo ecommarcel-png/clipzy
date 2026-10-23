@@ -21,7 +21,8 @@ Clipzy tworzy reklamy, za które klient płaci dwa razy: kosztem modeli (swoimi 
 **Wykonawcy (inne modele)**
 - Gemini: ogląda i słucha wideo (opis klipów, ocena hooka, wykrywanie napisów).
 - ElevenLabs: transkrypcja lektora z czasem słów, lektor AI.
-- fal.ai: generowanie obrazów i wideo (brakujące ujęcia, AI nagrania, sceny do image ads).
+- fal.ai: generowanie obrazów i wideo (brakujące ujęcia, AI nagrania, sceny do image ads). Wideo produktowe domyślnie Seedance 2.5 reference-to-video: zdjęcia produktu jako referencje (do 30), produkt ma pozostać tym samym produktem przez całe ujęcie; do 30 s, maks. 720p.
+- Higgsfield Genjutsu (osobny klucz Higgsfield): podmiana obiektu w istniejącym nagraniu na produkt klienta (object swap) i przeniesienie ruchu (motion transfer) — gdy jest dobre ujęcie, ale z innym przedmiotem.
 - Wykonawca może się mylić. Jego wynik to materiał do sprawdzenia, nie fakt.
 
 **Kontroler (osobne wywołanie Claude)**
