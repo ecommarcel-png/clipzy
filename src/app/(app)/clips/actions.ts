@@ -13,6 +13,7 @@ import { FORMATS, EditPlan, sanitizePlan } from "@/lib/clips/plan";
 import { editCaptions, normalizeMix, type Mix } from "@/lib/clips/edit";
 import { library } from "@/lib/clips/library";
 import { attachLibrary, deleteLibraryItem, pathsInUse } from "@/lib/clips/library-store";
+import { ANALYZE_BATCH, type PipelineState } from "@/lib/clips/steps";
 import { getProviderKey } from "@/lib/api-keys";
 import type { Provider } from "@/lib/providers";
 
@@ -89,13 +90,33 @@ async function withProject<T>(projectId: string, fn: (ctx: Awaited<ReturnType<ty
   }
 }
 
-export async function analyzeAssetAction(projectId: string, assetId: string): Promise<StepResult> {
+// Fresh server state for the pipeline loop — the next step is never decided from stale UI data.
+export async function pipelineStateAction(projectId: string): Promise<{ ok: true; state: PipelineState } | { ok: false; error: string }> {
+  return withProject(projectId, async ({ data }) => {
+    const { project, assets } = data;
+    const vo = assets.find((a) => a.kind === "voiceover");
+    const state: PipelineState = {
+      assets: assets.map((a) => ({ id: a.id, kind: a.kind, status: a.status })),
+      voiceover: project.voiceover ? "done" : !vo ? "none" : vo.status === "error" ? "error" : "pending",
+      generated: project.settings.generated,
+      generating: assets.some((a) => a.kind === "generated" && a.status === "generating"),
+      hasPlan: Boolean(project.plan),
+    };
+    return { ok: true as const, state };
+  }) as Promise<{ ok: true; state: PipelineState } | { ok: false; error: string }>;
+}
+
+// Several clips at once inside ONE action: the client dispatches actions one at a time,
+// so parallel work has to happen here. One bad file never stops the others.
+export async function analyzeBatchAction(projectId: string, ids: string[]): Promise<StepResult & { failed?: Array<{ name: string; error: string }> }> {
   return withProject(projectId, async ({ supabase, data }) => {
-    const asset = data.assets.find((a) => a.id === assetId);
-    if (!asset) return { ok: false, error: "Nie znaleziono pliku." };
-    await analyzeAsset(supabase, data.project, asset);
-    return { ok: true };
-  }) as Promise<StepResult>;
+    const todo = data.assets.filter((a) => ids.includes(a.id) && (a.kind === "clip" || a.kind === "generated")).slice(0, ANALYZE_BATCH);
+    if (!todo.length) return { ok: true as const };
+    await supabase.from("clip_projects").update({ status: "analyzing", error: null }).eq("id", projectId);
+    const results = await Promise.allSettled(todo.map((a) => analyzeAsset(supabase, data.project, a)));
+    const failed = results.flatMap((r, i) => (r.status === "rejected" ? [{ name: todo[i].name, error: userMessage(r.reason) }] : []));
+    return { ok: true as const, failed };
+  }) as Promise<StepResult & { failed?: Array<{ name: string; error: string }> }>;
 }
 
 export async function voiceoverAction(projectId: string): Promise<StepResult> {

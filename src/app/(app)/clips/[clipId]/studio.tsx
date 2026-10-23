@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
@@ -12,9 +12,10 @@ import type { CaptionChunk, VoSegment } from "@/lib/clips/timeline";
 import type { ControlReport } from "@/lib/ai/control";
 import { plural } from "@/lib/plural";
 import {
-  analyzeAssetAction, feedbackAction, missingAction, planAction, pollAction, registerUploads, restoreDirectorAction, reviewRenderAction, saveEditsAction,
-  saveRenderAction, voiceoverAction,
+  analyzeBatchAction, feedbackAction, missingAction, planAction, pollAction, registerUploads, restoreDirectorAction, reviewRenderAction, saveEditsAction,
+  pipelineStateAction, saveRenderAction, voiceoverAction,
 } from "../actions";
+import { nextStep } from "@/lib/clips/steps";
 import { QuickEdit, type Draft } from "./quick-edit";
 import { prepareVideo, renderInBrowser, sklejkaProps } from "./media";
 
@@ -44,22 +45,9 @@ export type StudioData = {
   packshotUrl: string | null;
 };
 
-type Step = { kind: "analyze"; ids: string[] } | { kind: "voiceover" } | { kind: "missing" } | { kind: "poll" } | { kind: "plan" } | { kind: "done" } | { kind: "wait" };
-
 const RUNNING = new Set(["analyzing", "generating", "planning"]);
-
-function nextStep(d: StudioData, inFlight: Set<string>): Step {
-  const media = d.assets.filter((a) => a.kind === "clip" || a.kind === "generated");
-  const toAnalyze = media.filter((a) => (a.status === "uploaded" || a.status === "analyzing") && !inFlight.has(a.id)).map((a) => a.id);
-  if (toAnalyze.length) return { kind: "analyze", ids: toAnalyze.slice(0, Math.max(0, 2 - inFlight.size)) };
-  if (inFlight.size) return { kind: "wait" };
-  const vo = d.assets.find((a) => a.kind === "voiceover");
-  if (vo && !d.project.voiceover && vo.status !== "error") return { kind: "voiceover" };
-  if (d.project.settings.generated !== "done") return { kind: "missing" };
-  if (media.some((a) => a.kind === "generated" && a.status === "generating")) return { kind: "poll" };
-  if (!d.project.plan) return { kind: "plan" };
-  return { kind: "done" };
-}
+const MAX_STEPS = 120; // safety net: a sklejka needs ~10–30 steps
+const MAX_TRIES = 2; // the same step failing twice in a row (e.g. a timeout) stops the loop
 
 export function Studio({ data }: { data: StudioData }) {
   const router = useRouter();
@@ -68,61 +56,72 @@ export function Studio({ data }: { data: StudioData }) {
   const media = data.assets.filter((a) => a.kind === "clip" || a.kind === "generated");
   const vo = data.assets.find((a) => a.kind === "voiceover");
   const renders = data.assets.filter((a) => a.kind === "render").sort((a, b) => b.created_at.localeCompare(a.created_at));
-  const [running, setRunning] = useState(RUNNING.has(p.status) && media.length > 0);
+  const autoResume = RUNNING.has(p.status) && media.length > 0;
+  const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(p.status === "error" ? p.error : null);
   const [log, setLog] = useState<string[]>([]);
-  const inFlight = useRef(new Set<string>());
-  const busy = useRef(false);
-  const [tick, setTick] = useState(0);
+  const looping = useRef(false);
 
-  // The pipeline is a small state machine driven by fresh server data after every step.
-  useEffect(() => {
-    if (!running || busy.current) return;
-    const step = nextStep(data, inFlight.current);
-    if (step.kind === "done") {
-      setRunning(false);
-      return;
-    }
-    if (step.kind === "wait") return;
-    const run = async () => {
-      busy.current = true;
-      try {
-        if (step.kind === "analyze") {
-          step.ids.forEach((id) => inFlight.current.add(id));
-          busy.current = false;
-          await Promise.all(
-            step.ids.map(async (id) => {
-              const r = await analyzeAssetAction(p.id, id);
-              inFlight.current.delete(id);
-              if (!r.ok) setLog((l) => [...l, `Analiza nagrania: ${r.error}`]);
-            }),
-          );
-        } else if (step.kind === "poll") {
-          await new Promise((r) => setTimeout(r, 8000));
-          const r = await pollAction(p.id);
-          if (!r.ok) throw new Error(r.error);
-        } else {
-          const fn = step.kind === "voiceover" ? voiceoverAction : step.kind === "missing" ? missingAction : planAction;
-          const r = await fn(p.id);
-          if (!r.ok) throw new Error(r.error);
-          if (r.message) setLog((l) => [...l, r.message!]);
-        }
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-        setRunning(false);
-      } finally {
-        busy.current = false;
-        router.refresh();
-        setTick((t) => t + 1);
-      }
-    };
-    void run();
-  }, [running, data, p.id, router, tick]);
-
-  const start = () => {
-    setError(null);
+  // One step at a time: read the real state from the server, do the next step, repeat.
+  // (Server Actions run one at a time per tab anyway; parallel work happens on the server.)
+  const runPipeline = useCallback(async () => {
+    if (looping.current) return;
+    looping.current = true;
     setRunning(true);
-  };
+    setError(null);
+    const tries = new Map<string, number>();
+    const note = (m: string) => setLog((l) => [...l, m]);
+    try {
+      for (let i = 0; i < MAX_STEPS; i++) {
+        const st = await pipelineStateAction(p.id);
+        if (!st.ok) throw new Error(st.error);
+        const step = nextStep(st.state);
+        if (step.kind === "done") break;
+        const key = step.kind === "analyze" ? `analyze:${step.ids.join(",")}` : step.kind;
+        const n = (tries.get(key) ?? 0) + 1;
+        tries.set(key, n);
+        if (n > MAX_TRIES && step.kind !== "poll") throw new Error("Ten krok nie przechodzi — spróbuj ponownie za chwilę albo sprawdź pliki.");
+        try {
+          if (step.kind === "analyze") {
+            const r = await analyzeBatchAction(p.id, step.ids);
+            if (!r.ok) throw new Error(r.error);
+            for (const f of r.failed ?? []) note(`${f.name}: ${f.error}`);
+          } else if (step.kind === "poll") {
+            await new Promise((res) => setTimeout(res, 8000));
+            const r = await pollAction(p.id);
+            if (!r.ok) throw new Error(r.error);
+          } else {
+            const fn = step.kind === "voiceover" ? voiceoverAction : step.kind === "missing" ? missingAction : planAction;
+            const r = await fn(p.id);
+            if (!r.ok) throw new Error(r.error);
+            if (r.message) note(r.message);
+          }
+        } catch (e) {
+          // a dropped connection or a server timeout: try the same step once more
+          if (n >= MAX_TRIES) throw e;
+          note(`Ponawiam: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        router.refresh(); // only for the view; decisions use pipelineStateAction
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      looping.current = false;
+      setRunning(false);
+      router.refresh();
+    }
+  }, [p.id, router]);
+
+  // the page was reloaded while the Reżyser was working — carry on
+  useEffect(() => {
+    if (!autoResume) return;
+    const t = setTimeout(() => void runPipeline(), 0);
+    return () => clearTimeout(t);
+    // run once on mount only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const start = () => void runPipeline();
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -302,10 +301,10 @@ function Uploader({ data, disabled, onDone }: { data: StudioData; disabled: bool
             </div>
           ))}
           {vo ? (
-            <div className="flex aspect-[9/16] flex-col items-center justify-center gap-1 rounded-xl border border-border bg-surface-2 p-2 text-center text-xs">
+            <div className="flex aspect-[9/16] flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border border-border bg-surface-2 p-2 text-center text-xs">
               <span className="text-2xl">🎙</span>
               <span className="font-bold">Lektor</span>
-              <span className="text-faint">{vo.status === "error" ? vo.error : vo.name}</span>
+              <span className="line-clamp-3 w-full break-all text-[10px] text-faint" title={vo.name}>{vo.status === "error" ? vo.error : vo.name}</span>
             </div>
           ) : null}
         </div>
