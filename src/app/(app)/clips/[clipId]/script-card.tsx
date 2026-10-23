@@ -51,7 +51,7 @@ export function ScriptCard({ projectId, script, wordsPerSecond, onDone }: { proj
       <p className="mt-3 text-sm text-muted"><span className="font-bold text-text">Kąt:</span> {script.angle}</p>
 
       <div className="mt-4 space-y-2">
-        <span className="block text-sm font-bold">5 hooków — każdy otwiera osobną wersję reklamy</span>
+        <span className="block text-sm font-bold">{hooks.length} {hooks.length === 1 ? "hook" : hooks.length < 5 ? "hooki" : "hooków"} — każdy otwiera osobną wersję reklamy</span>
         {hooks.map((h, i) => (
           <div key={i} className="flex items-start gap-2">
             <span className="mt-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-extrabold text-on-accent">{i + 1}</span>
@@ -87,7 +87,7 @@ export function ScriptCard({ projectId, script, wordsPerSecond, onDone }: { proj
           {busy === "voice" ? "Nagrywam lektora…" : `Generuj lektora (${filled} ${filled === 1 ? "wersja" : filled < 5 ? "wersje" : "wersji"})`}
         </Button>
         {!rewrite ? <Button variant="ghost" onClick={() => setRewrite(true)} disabled={busy !== null}>Napisz od nowa…</Button> : null}
-        <span className={cx("text-xs", filled < 5 ? "text-warn" : "text-faint")}>{filled < 5 ? `Puste hooki zostaną pominięte (${5 - filled}).` : "Hook 1 + reszta to wersja podstawowa."}</span>
+        <span className={cx("text-xs", filled < hooks.length ? "text-warn" : "text-faint")}>{filled < hooks.length ? `Puste hooki zostaną pominięte (${hooks.length - filled}).` : "Hook 1 + reszta to wersja podstawowa."}</span>
       </div>
     </Card>
   );

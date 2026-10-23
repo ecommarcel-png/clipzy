@@ -13,12 +13,15 @@ export const ScriptSchema = z.object({
   hooks: z
     .array(
       z.object({
-        text: z.string().describe("pierwsze zdanie lektora, max 10 słów, po polsku"),
+        text: z.string().max(200).describe("pierwsze zdanie lektora, max 10 słów, po polsku"),
         idea: z.string().describe("typ hooka + krótka wskazówka obrazu na pierwsze 2–3 s (dla montażu)"),
       }),
     )
-    .length(HOOK_VARIANTS),
-  body: z.string().describe("wspólna reszta lektora po hooku: problem → mechanizm → efekt → CTA; pasuje po KAŻDYM hooku"),
+    // asked for exactly 5; 1–5 still makes a valid script (fewer versions, no failure)
+    .min(1)
+    .max(HOOK_VARIANTS)
+    .describe(`dokładnie ${HOOK_VARIANTS} hooków`),
+  body: z.string().max(2500).describe("wspólna reszta lektora po hooku: problem → mechanizm → efekt → CTA; pasuje po KAŻDYM hooku"),
   notes: z.string().describe("1–2 zdania dla użytkownika: dlaczego taki kąt i hooki"),
 });
 export type Script = z.infer<typeof ScriptSchema>;
