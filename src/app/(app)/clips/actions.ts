@@ -192,7 +192,7 @@ export async function reviewRenderAction(projectId: string, renderId: string): P
 }
 
 // Quick edits from the panel — saved as they are (re-checked and fitted), no AI call.
-export async function saveEditsAction(projectId: string, edits: { plan: unknown; captions?: string[]; mix?: Partial<Mix> }): Promise<StepResult> {
+export async function saveEditsAction(projectId: string, edits: { plan: unknown; captions?: string[]; mix?: Partial<Mix>; accent?: string }): Promise<StepResult> {
   return withProject(projectId, async ({ supabase, data }) => {
     const stored = data.project.plan;
     if (!stored) return { ok: false, error: "Ta sklejka nie ma jeszcze planu." };
@@ -214,6 +214,14 @@ export async function saveEditsAction(projectId: string, edits: { plan: unknown;
     }
     const { error } = await supabase.from("clip_projects").update(update).eq("id", projectId);
     if (error) return { ok: false, error: error.message };
+    // the brand colour belongs to the brand: every next sklejka uses it too
+    if (edits.accent && /^#[0-9a-f]{6}$/i.test(edits.accent)) {
+      const { data: brand } = await supabase.from("brands").select("profile").eq("id", data.project.brand_id).maybeSingle();
+      const profile = (brand?.profile ?? {}) as { colors?: Record<string, string> };
+      if (brand && profile.colors?.accent?.toLowerCase() !== edits.accent.toLowerCase()) {
+        await supabase.from("brands").update({ profile: { ...profile, colors: { ...(profile.colors ?? {}), accent: edits.accent.toLowerCase() } } }).eq("id", data.project.brand_id);
+      }
+    }
     revalidatePath(`/clips/${projectId}`);
     return { ok: true, message: "Zapisano zmiany." };
   }) as Promise<StepResult>;

@@ -8,6 +8,7 @@ import { BackLink } from "@/components/back-link";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Studio, type StudioData } from "./studio";
 import { deleteClipProject } from "../actions";
+import { logoColors } from "@/lib/brand-colors";
 
 // Each pipeline step (analysis, plan + Kontroler) runs as a server action on this page.
 export const maxDuration = 300;
@@ -27,6 +28,11 @@ export default async function ClipPage({ params }: PageProps<"/clips/[clipId]">)
   // Long-lived links: the browser renders the video from these.
   const urls = await signedUrls(supabase, paths, 6 * 3600);
   const colors = brand.profile.colors as unknown as Record<string, string>;
+  const fromLogo = Array.isArray(brand.source.logo_colors) ? (brand.source.logo_colors as string[]) : await logoColors(supabase, brand.logo_path).catch(() => []);
+  const isHex = (c: unknown): c is string => typeof c === "string" && /^#[0-9a-f]{6}$/i.test(c);
+  const swatches = [...new Set([...fromLogo, colors.accent, colors.primary, colors.secondary].filter(isHex).map((c) => c.toLowerCase()))]
+    .filter((c) => !["#ffffff", "#000000"].includes(c))
+    .slice(0, 6);
 
   const studio: StudioData = {
     userId: user.id,
@@ -52,7 +58,7 @@ export default async function ClipPage({ params }: PageProps<"/clips/[clipId]">)
       review: a.kind === "render" ? (a.analysis as StudioData["assets"][number]["review"]) : null,
       created_at: a.created_at,
     })),
-    brand: { name: brand.name, logoUrl: brand.logo_path ? urls[brand.logo_path] ?? null : null, accent: colors.accent || colors.primary || "#7E9A86" },
+    brand: { name: brand.name, logoUrl: brand.logo_path ? urls[brand.logo_path] ?? null : null, accent: colors.accent || colors.primary || "#7E9A86", swatches, logoColors: fromLogo },
     product: { name: product?.name ?? null },
     packshotUrl: images[0] ? urls[images[0].storage_path] ?? null : null,
   };

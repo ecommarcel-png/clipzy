@@ -18,6 +18,7 @@ import { tighten, captionChunks, type TightTimeline, type CaptionChunk, type Wor
 import { cleanIntervals, sanitizePlan, type AssetInfo, type EditPlan } from "@/lib/clips/plan";
 import { library } from "@/lib/clips/library";
 import type { Mix } from "@/lib/clips/edit";
+import { fixBrandName } from "@/lib/clips/names";
 import { UserError } from "@/lib/errors";
 
 export type ClipAssetRow = {
@@ -172,7 +173,10 @@ export async function processVoiceover(supabase: SupabaseClient, project: ClipPr
   try {
     const info = await probe(tmp.file);
     const key = await getProviderKey(supabase, "elevenlabs");
-    const { text, words } = await transcribe(key, tmp.data, path.basename(source), mimeFor(source, tmp.mime));
+    const raw = await transcribe(key, tmp.data, path.basename(source), mimeFor(source, tmp.mime));
+    const brandName = (await getBrand(supabase, project.brand_id)).name;
+    const text = fixBrandName(raw.text, brandName);
+    const words = raw.words.map((w) => ({ ...w, text: fixBrandName(w.text, brandName) }));
     const timeline = tighten(words, info.duration);
     const captions = captionChunks(timeline.phrases);
     const sil = await silences(tmp.file, info.duration).catch(() => []);
@@ -335,6 +339,10 @@ export async function makePlan(supabase: SupabaseClient, project: ClipProjectRow
   mapped.music = project.settings.music === "none" || !track ? { ...mapped.music, file: null } : { ...mapped.music, file: track.file, start_at: track.start ?? 0 };
   mapped.sfx = mapped.sfx.filter((x) => library.sfx.some((s) => s.file === x.file));
   const infos = assets.filter((a) => a.kind === "clip" || a.kind === "generated").map(assetInfo);
+  const brandName = (await getBrand(supabase, project.brand_id)).name;
+  const fix = (t: string) => fixBrandName(t, brandName);
+  mapped.shots = mapped.shots.map((s) => (s.type === "packshot" ? { ...s, headline: fix(s.headline), cta: fix(s.cta), chips: s.chips.map(fix) } : s));
+  mapped.text_plates = mapped.text_plates.map((t) => ({ ...t, text: fix(t.text) }));
   const { plan, notes } = sanitizePlan(mapped, infos);
   const stored = { plan, notes, aliases, report, missing_notes: (project.review as { missing_notes?: string } | null)?.missing_notes, mix: project.plan?.mix };
   await supabase.from("clip_projects").update({ plan: stored, status: "ready", error: null }).eq("id", project.id);

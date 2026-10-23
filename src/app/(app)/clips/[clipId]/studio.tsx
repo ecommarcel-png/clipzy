@@ -40,7 +40,7 @@ export type StudioData = {
     id: string; kind: "clip" | "voiceover" | "generated" | "render"; name: string; status: string; error: string | null; url: string | null;
     mirrored: boolean; format: string | null; duration: number | null; cuts: number[]; poster: string | null; fromLibrary: boolean; review: RenderReview; created_at: string;
   }>;
-  brand: { name: string; logoUrl: string | null; accent: string };
+  brand: { name: string; logoUrl: string | null; accent: string; swatches: string[]; logoColors: string[] };
   product: { name: string | null };
   packshotUrl: string | null;
 };
@@ -319,7 +319,7 @@ function Uploader({ data, disabled, onDone }: { data: StudioData; disabled: bool
 
 // Remount the editor (and drop the draft) whenever the saved version changes.
 function draftKey(d: StudioData) {
-  const str = JSON.stringify([d.project.plan?.plan, d.project.plan?.mix, d.project.voiceover?.captions.map((c) => c.text)]);
+  const str = JSON.stringify([d.project.plan?.plan, d.project.plan?.mix, d.project.voiceover?.captions.map((c) => c.text), d.brand.accent]);
   let h = 5381;
   for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
   return String(h);
@@ -327,7 +327,7 @@ function draftKey(d: StudioData) {
 
 function savedDraft(d: StudioData): Draft {
   const stored = d.project.plan!;
-  return { plan: stored.plan, captions: (d.project.voiceover?.captions ?? []).map((c) => c.text), mix: normalizeMix(stored.mix) };
+  return { plan: stored.plan, captions: (d.project.voiceover?.captions ?? []).map((c) => c.text), mix: normalizeMix(stored.mix), accent: d.brand.accent.toLowerCase() };
 }
 
 function Result({ data, renders, onChanged }: { data: StudioData; renders: StudioData["assets"]; onChanged: () => void }) {
@@ -348,7 +348,7 @@ function Result({ data, renders, onChanged }: { data: StudioData; renders: Studi
     assets: data.assets.filter((a) => a.kind === "clip" || a.kind === "generated").map((a) => ({ id: a.id, url: a.url, mirrored: a.mirrored })),
     vo: p.voiceover && voAsset?.url ? { url: voAsset.url, segments: p.voiceover.segments } : null,
     captions,
-    brand: data.brand,
+    brand: { name: data.brand.name, logoUrl: data.brand.logoUrl, accent: draft.accent },
     packshotUrl: data.packshotUrl,
     mix: draft.mix,
   });
@@ -361,7 +361,7 @@ function Result({ data, renders, onChanged }: { data: StudioData; renders: Studi
     const i = draft.plan.shots.findIndex((s) => s.type === "packshot");
     const shot = draft.plan.shots[i];
     const clean = shot?.type === "packshot" ? setPackshot(draft.plan, i, { chips: shot.chips }) : draft.plan;
-    const r = await saveEditsAction(p.id, { plan: clean, captions: p.voiceover ? draft.captions : undefined, mix: draft.mix });
+    const r = await saveEditsAction(p.id, { plan: clean, captions: p.voiceover ? draft.captions : undefined, mix: draft.mix, accent: draft.accent });
     setSaving(false);
     if (!r.ok) {
       setMessage({ tone: "danger", text: r.error });
@@ -404,6 +404,8 @@ function Result({ data, renders, onChanged }: { data: StudioData; renders: Studi
         captions={p.voiceover?.captions ?? []}
         media={mediaAssets.map((a) => ({ id: a.id, name: a.name, kind: a.kind, url: a.url, info: { id: a.id, duration: a.duration ?? 0, cuts: a.cuts, mirrored: a.mirrored } }))}
         hasDirector={Boolean(p.plan!.director)}
+        swatches={data.brand.swatches}
+        logoColors={data.brand.logoColors}
         saving={saving}
         message={message}
         onSave={() => void save()}

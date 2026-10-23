@@ -156,12 +156,18 @@ const PackshotView: React.FC<{ shot: Extract<Shot, { type: "packshot" }>; p: Skl
   const bob = Math.sin(frame / 5) * 8;
   const accent = readableAccent(p.brand.accent);
   return (
-    <AbsoluteFill style={{ backgroundColor: accent }}>
+    // dark base: a blurred photo fades out at its edges, and the base must not show through as a coloured stripe
+    <AbsoluteFill style={{ backgroundColor: p.packshotUrl ? "#14111a" : accent }}>
       {p.packshotUrl ? (
         <>
-          <Img src={p.packshotUrl} style={{ position: "absolute", left: -width * 0.1, top: -height * 0.1, width: width * 1.2, height: height * 1.2, objectFit: "cover", filter: "blur(34px) brightness(0.85)" }} />
+          <Img src={p.packshotUrl} style={{ position: "absolute", left: -width * 0.25, top: -height * 0.25, width: width * 1.5, height: height * 1.5, objectFit: "cover", filter: "blur(40px) brightness(0.62) saturate(1.1)" }} />
+          {/* white shop photos: keep the white headline and the chips readable */}
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(20,17,26,0.55) 0%, rgba(20,17,26,0.15) 32%, rgba(20,17,26,0.1) 60%, rgba(20,17,26,0.5) 100%)" }} />
           <div style={{ position: "absolute", left: 0, top: 0, width, height, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Img src={p.packshotUrl} style={{ width: big ? width : width * 0.8, maxHeight: height * 0.62, objectFit: "contain", transform: `scale(${s})` }} />
+            <Img
+              src={p.packshotUrl}
+              style={{ maxWidth: big ? width * 0.9 : width * 0.8, maxHeight: height * 0.6, width: "auto", height: "auto", borderRadius: 36, boxShadow: "0 30px 80px rgba(0,0,0,0.45)", transform: `scale(${s})` }}
+            />
           </div>
         </>
       ) : null}

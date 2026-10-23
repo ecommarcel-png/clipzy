@@ -30,7 +30,7 @@ Wskazówki do pól:
 - personas: 3–6 naprawdę różnych typów kupujących — to z nich powstaną różne kierunki reklam.
 - target_audience.pains: co najmniej 8 konkretnych problemów; desires: co najmniej 5.
 - caption_profile wybierz na podstawie grupy docelowej: kobiety 25–50 (beauty/bielizna/dom) → kobiety_25_50; młodzi do ~27 lat → gen_z; 50+ → 50_plus; pozostali / rodzice → uniwersalny.
-- colors: wybierz z kandydatów kolorów (theme-color, zmienne CSS, najczęstsze barwy) te, które są kolorami marki, a nie szarościami interfejsu. caption_text: kolor marki, jeśli dobrze czyta się na wideo; w przeciwnym razie #ffffff.
+- colors: kolory marki to kolory jej LOGO i identyfikacji — jeśli są „kolory_logo”, akcent (accent) bierzesz stamtąd. Z kandydatów CSS wybierasz tylko barwy zgodne z logo; czerwienie/pomarańcze przycisków „promocja”, „-50%”, cen i plakietek oraz szarości interfejsu to NIE są kolory marki. caption_text: kolor marki, jeśli dobrze czyta się na wideo; w przeciwnym razie #ffffff.
 - tone_of_voice.example_phrases: cytuj prawdziwe zdania ze strony, jeśli brzmią jak marka.${knowledgeBlock(
     await brandKnowledge(),
     "Wykorzystaj ją do zrozumienia klientów marki i jej pozycji (zasady marketingu, oferta, profil napisów). Rzeczy dotyczące konkretnego produktu i montażu (przed/po, efekt WOW, ujęcia) zostaw na etap produktu i sklejek.",
@@ -55,6 +55,7 @@ export function brandEvidence(source: BrandSource | null, notes: string, answers
           podstrony_o_marce: source.infoPages,
           kandydaci_logo: home.logoCandidates,
           kandydaci_kolorow: source.colors,
+          kolory_logo: (source as { logo_colors?: string[] }).logo_colors ?? [],
           produkty_ze_sklepu: source.products,
           dane_strukturalne: home.jsonLd,
         },

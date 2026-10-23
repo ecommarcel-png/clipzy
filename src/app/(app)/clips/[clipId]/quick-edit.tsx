@@ -9,7 +9,7 @@ import type { CaptionChunk } from "@/lib/clips/timeline";
 import { finalize, nextFragment, removeShot, resizeShot, setMusic, setPackshot, swapSource, type Mix } from "@/lib/clips/edit";
 import { library } from "@/lib/clips/library";
 
-export type Draft = { plan: EditPlan; captions: string[]; mix: Mix };
+export type Draft = { plan: EditPlan; captions: string[]; mix: Mix; accent: string };
 
 type Media = { id: string; name: string; kind: string; url: string | null; info: AssetInfo };
 
@@ -29,7 +29,11 @@ export function QuickEdit({
   onUndo,
   onRestore,
   onSeek,
+  swatches,
+  logoColors,
 }: {
+  swatches: string[];
+  logoColors: string[];
   draft: Draft;
   setDraft: (d: Draft) => void;
   dirty: boolean;
@@ -61,6 +65,30 @@ export function QuickEdit({
       </div>
 
       <div className="mt-4 space-y-3">
+        <Section title="Kolor marki" defaultOpen>
+          <p className="mt-1 text-xs text-faint">Wyróżnienia w napisach, przejścia, ikonki. Zapisze się w marce i zostanie w kolejnych sklejkach.</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {swatches.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setDraft({ ...draft, accent: c })}
+                aria-label={`Kolor ${c}`}
+                aria-pressed={draft.accent === c}
+                title={logoColors.includes(c) ? `${c} — z logo` : c}
+                className={cx("relative h-9 w-9 rounded-full border-2 transition", draft.accent === c ? "border-text ring-2 ring-accent/60" : "border-border hover:border-border-strong")}
+                style={{ backgroundColor: c }}
+              >
+                {logoColors.includes(c) ? <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded-full bg-surface-3 px-1 text-[8px] font-extrabold uppercase text-text">logo</span> : null}
+              </button>
+            ))}
+            <label className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-border px-3 text-xs font-bold text-muted hover:text-text">
+              <input type="color" value={draft.accent} onChange={(e) => setDraft({ ...draft, accent: e.target.value.toLowerCase() })} className="h-5 w-5 cursor-pointer rounded-full border-0 bg-transparent p-0" />
+              Inny
+            </label>
+          </div>
+        </Section>
+
         <Section title="Głośność i muzyka" defaultOpen>
           <div className="mt-2 grid gap-3 sm:grid-cols-3">
             <Slider label="Lektor" value={draft.mix.vo} max={1} onChange={(vo) => setDraft({ ...draft, mix: { ...draft.mix, vo } })} />

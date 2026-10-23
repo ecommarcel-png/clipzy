@@ -6,6 +6,7 @@ import type { EditPlan, Format } from "@/lib/clips/plan";
 import { FORMAT_SIZE, FPS } from "@/lib/clips/plan";
 import type { SklejkaProps } from "@/remotion/Sklejka";
 import type { VoSegment } from "@/lib/clips/timeline";
+import { fixBrandName } from "@/lib/clips/names";
 
 export const MAX_UPLOAD = 45 * 1024 * 1024;
 
@@ -153,5 +154,13 @@ export function sklejkaProps(
 ): SklejkaProps {
   const assets: SklejkaProps["assets"] = {};
   for (const a of data.assets) if (a.url) assets[a.id] = { url: a.url, mirrored: a.mirrored };
-  return { format, plan, assets, vo: data.vo, captions: data.vo ? data.captions : [], brand: data.brand, packshotUrl: data.packshotUrl, mix: data.mix };
+  // the brand always spelled as in its profile (speech-to-text writes "Depli" as "Depily")
+  const fix = (t: string) => fixBrandName(t, data.brand.name);
+  const fixed: EditPlan = {
+    ...plan,
+    shots: plan.shots.map((s) => (s.type === "packshot" ? { ...s, headline: fix(s.headline), cta: fix(s.cta), chips: s.chips.map(fix) } : s)),
+    text_plates: plan.text_plates.map((t) => ({ ...t, text: fix(t.text) })),
+  };
+  const captions = data.vo ? data.captions.map((c) => ({ ...c, text: fix(c.text) })) : [];
+  return { format, plan: fixed, assets, vo: data.vo, captions, brand: data.brand, packshotUrl: data.packshotUrl, mix: data.mix };
 }

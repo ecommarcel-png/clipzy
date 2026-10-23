@@ -13,6 +13,7 @@ import { BrandProfileSchema, EMPTY_BRAND_PROFILE } from "@/lib/profiles/brand";
 import { cleanLists, withDefaults, type AnsweredQuestion } from "@/lib/profiles/common";
 import { brandCompleteness } from "@/lib/profiles/completeness";
 import { brandFolder, importImage } from "@/lib/storage";
+import { applyLogoColors } from "@/lib/brand-colors";
 import { writeWithReview } from "@/lib/data";
 import { userMessage } from "@/lib/errors";
 import type { RefineResult, SaveResult } from "@/components/profile-editor";
@@ -102,6 +103,7 @@ export async function createBrand(_prev: NewBrandState, formData: FormData): Pro
       const path = await importImage(supabase, url, brandFolder(user.id, brandId), "logo");
       if (path) {
         await supabase.from("brands").update({ logo_path: path }).eq("id", brandId);
+        await applyLogoColors(supabase, brandId, path).catch(() => {});
         break;
       }
     }
@@ -191,6 +193,8 @@ export async function setBrandLogo(brandId: string, path: string): Promise<SaveR
   if (!path.startsWith(`${brandFolder(user.id, brandId)}/`)) return { ok: false, error: "Nieprawidłowa ścieżka pliku." };
   const { error } = await supabase.from("brands").update({ logo_path: path }).eq("id", brandId);
   if (error) return { ok: false, error: error.message };
+  // new logo: offer its colours in the sklejka colour picker (the accent stays as the user set it)
+  await applyLogoColors(supabase, brandId, path, false).catch(() => {});
   revalidatePath(`/brands/${brandId}`);
   return { ok: true, message: "Logo zapisane." };
 }
