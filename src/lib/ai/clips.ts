@@ -18,6 +18,8 @@ export type ClipsContext = {
   library: { music: string[]; sfx: Array<{ file: string; category: string | null }> };
   settings: { music: string; formats: string[]; notes: string };
   hasPackshot: boolean;
+  /** hook versions: text and where each version's hook ends (seconds, after pause cutting) */
+  hooks?: Array<{ wersja: number; tekst: string; koniec_s: number }>;
 };
 
 function round(n: number) {
@@ -46,7 +48,9 @@ export function contextBlock(ctx: ClipsContext): string {
 <materialy>${JSON.stringify(assets)}</materialy>
 <biblioteka_muzyki>${JSON.stringify(ctx.library.music)}</biblioteka_muzyki>
 <biblioteka_sfx>${JSON.stringify(ctx.library.sfx)}</biblioteka_sfx>
-<ustawienia>${JSON.stringify({ muzyka: ctx.settings.music, formaty: ctx.settings.formats, uwagi_uzytkownika: ctx.settings.notes, packshot_ze_zdjecia_produktu: ctx.hasPackshot })}</ustawienia>`;
+<ustawienia>${JSON.stringify({ muzyka: ctx.settings.music, formaty: ctx.settings.formats, uwagi_uzytkownika: ctx.settings.notes, packshot_ze_zdjecia_produktu: ctx.hasPackshot })}</ustawienia>${
+    ctx.hooks && ctx.hooks.length > 1 ? `\n<hooki>${JSON.stringify(ctx.hooks)}</hooki>` : ""
+  }`;
 }
 
 // ---------- 1) missing shots ----------
@@ -101,7 +105,8 @@ const PLAN_RULES = `Zasady planu (oś czasu = gotowa reklama, sekundy):
 - Muzyka: "music.file" z <biblioteka_muzyki> (nastrój z nazwy pliku; gdy użytkownik wybrał utwór — ten), volume ok. 0.17. Gdy biblioteka pusta — null.
 - SFX z <biblioteka_sfx> do efektów: whoosh na przejściach/wipe, pop na ikonach i badge, strike na przekreśleniu, ding na ✓, sparkle na iskierkach, rip na bólu. Głośność 0.15–0.3, nie częściej niż co ~0.4 s.
 - "original_audio": dźwięk z nagrania pod hookiem (np. pocieranie/ASMR), jeśli w analizie jest taki dźwięk, volume 0.3–0.5.
-- Każdy plik/ujęcie użyj najwyżej 2 razy (w różnych fragmentach).`;
+- Każdy plik/ujęcie użyj najwyżej 2 razy (w różnych fragmentach).
+- Gdy są <hooki> (wersje reklamy z różnym hookiem): "shots" = wersja 1 (hook 1 + wspólna reszta) — w wersji 1 MUSI być cięcie dokładnie w "koniec_s" hooka 1, a reszta po nim jest wspólna dla wszystkich wersji. "hooks" = otwarcia wersji 2, 3… (po kolei): każde ma własne "shots" od 0 do "koniec_s" swojej wersji (ostatnie ujęcie kończy się dokładnie tam), własne "overlays" i "sfx" w tym zakresie. Każda wersja zaczyna się INNYM ujęciem/efektem (np. split przed/po, zbliżenie problemu w szarości, ujęcie AI, dynamiczne użycie produktu, ikonka przekreślona) — obraz ilustruje tekst swojego hooka. Ujęcia z wersji 1 możesz użyć w hookach innych wersji. Gdy teksty hooków są takie same (wgrany lektor) — różnią się tylko obrazem i efektami.`;
 
 export async function planEdit(
   apiKey: string,

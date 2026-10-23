@@ -269,6 +269,7 @@ export async function buildContext(supabase: SupabaseClient, project: ClipProjec
     library: { music: library.music.map((m) => m.file), sfx: library.sfx.map((s) => ({ file: s.file, category: s.category })) },
     settings: { music: project.settings.music || "auto", formats: project.settings.formats ?? ["4x5"], notes: project.settings.notes ?? "" },
     hasPackshot: images.length > 0,
+    hooks: project.voiceover?.variants?.map((v, i) => ({ wersja: i + 1, tekst: v.hookText, koniec_s: Math.round(v.hookEnd * 100) / 100 })),
   };
   return { ctx, aliases, images };
 }
@@ -356,10 +357,14 @@ export async function makePlan(supabase: SupabaseClient, project: ClipProjectRow
   });
   // aliases (c1, g1…) → real asset ids; music start from the library manifest
   const mapSrc = <T extends { asset: string }>(s: T): T => ({ ...s, asset: aliases[s.asset] ?? s.asset });
+  const mapShots = (shots: EditPlan["shots"]) => shots.map((s) => (s.type === "clip" ? { ...s, src: mapSrc(s.src) } : s.type === "split" ? { ...s, top: mapSrc(s.top), bottom: mapSrc(s.bottom) } : s));
+  // only as many alternative openings as there are hook versions
+  const versions = project.voiceover?.variants?.length ?? 1;
   const mapped: EditPlan = {
     ...result,
-    shots: result.shots.map((s) => (s.type === "clip" ? { ...s, src: mapSrc(s.src) } : s.type === "split" ? { ...s, top: mapSrc(s.top), bottom: mapSrc(s.bottom) } : s)),
+    shots: mapShots(result.shots),
     original_audio: result.original_audio.map(mapSrc),
+    hooks: result.hooks.slice(0, Math.max(0, versions - 1)).map((h) => ({ ...h, shots: mapShots(h.shots) })),
   };
   const chosen = project.settings.music && project.settings.music !== "auto" && project.settings.music !== "none" ? project.settings.music : mapped.music.file;
   const track = library.music.find((m) => m.file === chosen);
@@ -371,6 +376,11 @@ export async function makePlan(supabase: SupabaseClient, project: ClipProjectRow
   mapped.shots = mapped.shots.map((s) => (s.type === "packshot" ? { ...s, headline: fix(s.headline), cta: fix(s.cta), chips: s.chips.map(fix) } : s));
   mapped.text_plates = mapped.text_plates.map((t) => ({ ...t, text: fix(t.text) }));
   const { plan, notes } = sanitizePlan(mapped, infos);
+  // each opening is fitted like a plan of its own (frame-exact, clear of hard cuts)
+  plan.hooks = mapped.hooks.map((h) => {
+    const fitted = sanitizePlan({ ...mapped, shots: h.shots, overlays: h.overlays, sfx: h.sfx.filter((x) => library.sfx.some((l) => l.file === x.file)), hooks: [] }, infos).plan;
+    return { shots: fitted.shots, overlays: fitted.overlays, sfx: fitted.sfx };
+  });
   const stored = { plan, notes, aliases, report, missing_notes: (project.review as { missing_notes?: string } | null)?.missing_notes, mix: project.plan?.mix };
   await supabase.from("clip_projects").update({ plan: stored, status: "ready", error: null }).eq("id", project.id);
   return stored;

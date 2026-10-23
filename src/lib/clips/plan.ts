@@ -86,6 +86,17 @@ export const Overlay = z.discriminatedUnion("type", [
 ]);
 export type Overlay = z.infer<typeof Overlay>;
 
+const Sfx = z.object({ file: z.string(), at: t("czas"), volume: z.number().min(0).max(1).default(0.25) });
+export type Sfx = z.infer<typeof Sfx>;
+
+// Alternative openings for hook versions 2–5 (times from 0 to the end of that version's hook).
+export const HookVariant = z.object({
+  shots: z.array(Shot).min(1),
+  overlays: z.array(Overlay).default([]),
+  sfx: z.array(Sfx).default([]),
+});
+export type HookVariant = z.infer<typeof HookVariant>;
+
 export const EditPlan = z.object({
   summary: z.string().describe("1–2 zdania dla użytkownika: jaki pomysł na reklamę i dlaczego"),
   shots: z.array(Shot).min(3),
@@ -96,11 +107,12 @@ export const EditPlan = z.object({
     .default([])
     .describe("TYLKO dla sklejki bez lektora: plansze tekstowe 2–4 słowa"),
   music: z.object({ file: z.string().nullable().describe("ścieżka z biblioteki albo null"), start_at: z.number().min(0).default(0), volume: z.number().min(0).max(1).default(0.17) }),
-  sfx: z.array(z.object({ file: z.string(), at: t("czas"), volume: z.number().min(0).max(1).default(0.25) })).default([]),
+  sfx: z.array(Sfx).default([]),
   original_audio: z
     .array(z.object({ asset: z.string(), from: z.number().min(0), at: t("czas reklamy"), len: z.number().min(0.2).max(5), volume: z.number().min(0).max(1).default(0.4) }))
     .default([])
     .describe("dźwięk z nagrania (np. ASMR pocierania) pod hookiem"),
+  hooks: z.array(HookVariant).max(4).default([]).describe("otwarcia wersji 2–5 (hooki 2–5): czasy od 0 do końca hooka danej wersji; każde z innym obrazem"),
 });
 export type EditPlan = z.infer<typeof EditPlan>;
 
