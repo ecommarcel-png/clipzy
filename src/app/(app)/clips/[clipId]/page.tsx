@@ -42,7 +42,11 @@ export default async function ClipPage({ params }: PageProps<"/clips/[clipId]">)
       status: project.status,
       settings: project.settings,
       voiceover: project.voiceover
-        ? { segments: project.voiceover.timeline.segments, captions: project.voiceover.captions, original: project.voiceover.timeline.original, duration: project.voiceover.timeline.duration, feedback: project.voiceover.feedback, assetId: project.voiceover.asset_id }
+        ? {
+            segments: project.voiceover.timeline.segments, captions: project.voiceover.captions, original: project.voiceover.timeline.original,
+            duration: project.voiceover.timeline.duration, feedback: project.voiceover.feedback, assetId: project.voiceover.asset_id,
+            variants: project.voiceover.variants?.map((v) => ({ assetId: v.asset_id, segments: v.timeline.segments, captions: v.captions, duration: v.timeline.duration, hookEnd: v.hookEnd, hookText: v.hookText })),
+          }
         : null,
       plan: project.plan,
       error: project.error,

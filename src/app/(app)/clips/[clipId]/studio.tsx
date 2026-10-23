@@ -36,7 +36,11 @@ export type StudioData = {
       voiceover_mode?: "upload" | "generate"; voice?: string; target_seconds?: number;
       script?: ScriptView; script_status?: "ready" | "voiced";
     };
-    voiceover: { segments: VoSegment[]; captions: CaptionChunk[]; original: number; duration: number; feedback: { verdict: string; notes: string[] } | null; assetId: string } | null;
+    voiceover: {
+      segments: VoSegment[]; captions: CaptionChunk[]; original: number; duration: number; feedback: { verdict: string; notes: string[] } | null; assetId: string;
+      /** hook versions; absent in older sklejki */
+      variants?: Array<{ assetId: string; segments: VoSegment[]; captions: CaptionChunk[]; duration: number; hookEnd: number; hookText: string }>;
+    } | null;
     plan: { plan: EditPlan; notes: string[]; report: ControlReport | null; mix?: Mix; director?: EditPlan; edited_at?: string } | null;
     error: string | null;
     feedback: Array<{ at: string; text: string; changes: string }>;
