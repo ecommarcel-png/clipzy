@@ -20,7 +20,7 @@ export type ResearchReport = {
 const MAX_SEARCHES = 6;
 const MAX_CONTINUATIONS = 3;
 
-const SYSTEM = `Jesteś researcherem rynku dla agencji reklam Meta Ads (rynek polski, e-commerce). Robisz szybki, konkretny research, z którego copywriter zbuduje kąty reklamowe. Szukasz po polsku, w polskim internecie.
+const SYSTEM = `Jesteś researcherem rynku dla agencji reklam Meta Ads (rynek polski, e-commerce). Robisz szybki, konkretny research, z którego copywriter zbuduje kąty reklamowe. Szukasz po polsku, w polskim internecie. Gdy marka jest zagraniczna i nie ma o niej polskich opinii, szukasz opinii o podobnych produktach w Polsce.
 
 Czego szukasz (w tej kolejności):
 1. Język klientów — jak ludzie SAMI opisują problem, który rozwiązuje produkt (opinie o tym i podobnych produktach na Allegro, Ceneo, Opineo, w sklepach, na forach, w grupach, w komentarzach). Cytuj krótko, dosłownie.
