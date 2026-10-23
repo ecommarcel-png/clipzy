@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { getBrand } from "@/lib/data";
 import { BRAND_FORM } from "@/lib/profiles/brand";
 import { brandFolder, signedUrls } from "@/lib/storage";
-import { PageHeader, buttonClass } from "@/components/ui";
+import { PageHeader } from "@/components/ui";
+import { BackLink } from "@/components/back-link";
 import { BrandEditor } from "./brand-editor";
 
 // Each refinement round is a Claude call.
@@ -18,9 +18,9 @@ export default async function BrandSetupPage({ params }: PageProps<"/brands/[bra
   return (
     <>
       <PageHeader
-        title={`Profil marki: ${brand.name}`}
-        description="Claude przygotował profil na podstawie strony. Sprawdź grupę docelową i problemy — jeśli się zgadzają, zatwierdź. Styl dopracujesz później feedbackiem do gotowych reklam."
-        actions={<Link href={`/brands/${brand.id}`} className={buttonClass("ghost")}>← Wróć do marki</Link>}
+        title="Profil marki"
+        description="Sprawdź, dla kogo jest marka i z czym mierzą się klienci. Jeśli się zgadza, zatwierdź."
+        back={<BackLink href={`/brands/${brand.id}`}>{brand.name}</BackLink>}
       />
       <BrandEditor
         brandId={brand.id}

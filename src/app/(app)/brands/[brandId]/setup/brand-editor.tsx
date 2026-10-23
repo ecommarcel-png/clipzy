@@ -23,18 +23,16 @@ export function BrandEditor(props: {
   const router = useRouter();
 
   return (
-    <div className="space-y-6">
-      <Card className="flex flex-wrap items-center gap-4">
-        <Logo url={props.logoUrl} name={props.profile.name || "?"} size={64} />
-        <div className="flex-1">
-          <div className="font-semibold">Logo</div>
-          <p className="text-sm text-muted">
-            {props.logoUrl ? "Pobrane ze strony. Jeśli to nie to, wgraj właściwe (najlepiej PNG z przezroczystym tłem)." : "Nie udało się znaleźć logo na stronie — wgraj je (najlepiej PNG z przezroczystym tłem)."}
-          </p>
+    <div className="space-y-5">
+      <Card className="flex flex-wrap items-center gap-4 py-4">
+        <Logo url={props.logoUrl} name={props.profile.name || "?"} size={48} />
+        <div className="min-w-0 flex-1">
+          <div className="font-bold">Logo</div>
+          <p className="text-xs text-muted">{props.logoUrl ? "Pobrane ze strony." : "Nie znalazłem logo na stronie — wgraj PNG z przezroczystym tłem."}</p>
         </div>
         <ImageUpload
           folder={props.logoFolder}
-          label="Wgraj logo"
+          label={props.logoUrl ? "Zmień" : "Wgraj logo"}
           onUploaded={async (paths) => {
             const res = await setBrandLogo(props.brandId, paths[0]);
             if (res.ok) router.refresh();

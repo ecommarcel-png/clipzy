@@ -13,7 +13,7 @@ export default async function SettingsPage() {
     <>
       <PageHeader
         title="Ustawienia"
-        description="Klucze API do modeli. Każdy klucz jest szyfrowany na serwerze i nigdy nie trafia z powrotem do przeglądarki — po zapisaniu widać tylko jego ostatnie 4 znaki. Płacisz bezpośrednio u dostawców, bez subskrypcji."
+        description="Twoje klucze API. Są szyfrowane i nigdy nie wracają do przeglądarki. Płacisz bezpośrednio u dostawców."
       />
       <div className="grid gap-4 lg:grid-cols-2">
         {PROVIDERS.map((p) => (

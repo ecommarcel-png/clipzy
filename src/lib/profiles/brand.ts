@@ -95,10 +95,9 @@ export const EMPTY_BRAND_PROFILE: BrandProfile = {
 export const BRAND_FORM: FieldSection[] = [
   {
     title: "Dla kogo jest marka",
-    description: "Najważniejsza część profilu — od niej zależą kąty reklamowe, hooki, ton i styl napisów.",
     fields: [
-      { path: "name", label: "Nazwa marki", type: "text" },
-      { path: "niche", label: "Nisza", type: "text" },
+      { path: "name", label: "Nazwa marki", type: "text", more: true },
+      { path: "niche", label: "Nisza", type: "text", more: true },
       {
         path: "target_audience.gender",
         label: "Płeć",
@@ -115,7 +114,6 @@ export const BRAND_FORM: FieldSection[] = [
       {
         path: "personas",
         label: "Typy kupujących (persony)",
-        hint: "Każda persona to osobny kierunek reklam.",
         type: "records",
         keys: ["name", "who", "main_problem", "trigger"],
         labels: ["Nazwa", "Kim jest", "Główny problem", "Co sprawia, że kupuje teraz"],
@@ -125,16 +123,15 @@ export const BRAND_FORM: FieldSection[] = [
   },
   {
     title: "Problemy i pragnienia",
-    description: "Im więcej konkretnych problemów, tym więcej kątów reklamowych.",
     fields: [
-      { path: "target_audience.pains", label: "Problemy klienta", hint: "Jeden w linii.", type: "list" },
-      { path: "target_audience.desires", label: "Pragnienia klienta", hint: "Jedno w linii.", type: "list" },
-      { path: "target_audience.objections", label: "Obiekcje przed zakupem", hint: "Jedna w linii.", type: "list" },
+      { path: "target_audience.pains", label: "Problemy klienta", type: "list" },
+      { path: "target_audience.desires", label: "Pragnienia klienta", type: "list" },
+      { path: "target_audience.objections", label: "Obiekcje przed zakupem", type: "list", more: true },
     ],
   },
   {
     title: "Komunikacja i styl",
-    description: "Uzupełniane automatycznie ze strony. Styl dopracujesz feedbackiem do gotowych reklam.",
+    description: "Styl dopracujesz feedbackiem do gotowych reklam.",
     collapsed: true,
     fields: [
       { path: "tagline", label: "Czym jest marka (jedno zdanie)", type: "textarea" },
@@ -172,12 +169,12 @@ export const BRAND_FORM: FieldSection[] = [
       { path: "tone_of_voice.example_phrases", label: "Przykładowe zdania w głosie marki", type: "list" },
       { path: "typography_style", label: "Charakter kroju pisma", type: "text" },
       { path: "music_mood_default", label: "Domyślny nastrój muzyki", type: "text" },
-      { path: "learned_preferences", label: "Preferencje z feedbacku do reklam", hint: "Uzupełnia się samo, gdy dajesz feedback do gotowych sklejek.", type: "list" },
+      { path: "learned_preferences", label: "Preferencje z feedbacku do reklam", type: "list" },
     ],
   },
   {
     title: "Kolory",
-    description: "Pobrane ze strony. Kolor napisów idzie z palety marki.",
+    description: "Kolor napisów bierze się z tej palety.",
     collapsed: true,
     fields: [
       { path: "colors.primary", label: "Główny", type: "color" },
@@ -188,7 +185,6 @@ export const BRAND_FORM: FieldSection[] = [
   },
   {
     title: "Oferta i zaufanie",
-    description: "Pobrane ze strony — tylko to, co tam faktycznie jest.",
     collapsed: true,
     fields: [
       { path: "usps", label: "Unikalne przewagi", type: "list" },

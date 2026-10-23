@@ -4,9 +4,11 @@ import { getBrand } from "@/lib/data";
 import { CAPTION_PROFILES } from "@/lib/profiles/brand";
 import { signedUrls } from "@/lib/storage";
 import { Logo } from "@/components/logo";
-import { Badge, Card, buttonClass } from "@/components/ui";
-import { deleteBrand } from "../actions";
+import { BackLink } from "@/components/back-link";
+import { Badge, Card, Disclosure, buttonClass } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm-button";
+import { ProductTile, AddTile } from "./product-tile";
+import { deleteBrand } from "../actions";
 
 export default async function BrandPage({ params }: PageProps<"/brands/[brandId]">) {
   const { brandId } = await params;
@@ -26,105 +28,100 @@ export default async function BrandPage({ params }: PageProps<"/brands/[brandId]
   });
   const urls = await signedUrls(supabase, [brand.logo_path ?? "", ...thumbs]);
   const caption = CAPTION_PROFILES.find((c) => c.value === p.caption_profile);
+  const audience = `${p.target_audience.gender === "wszyscy" ? "Kobiety i mężczyźni" : capitalize(p.target_audience.gender)}, ${p.target_audience.age_from}–${p.target_audience.age_to} lat`;
+  const swatches = (["primary", "secondary", "accent", "caption_text"] as const).map((k) => p.colors[k]).filter(Boolean);
 
   return (
     <>
+      <div className="mb-3">
+        <BackLink href="/brands">Marki</BackLink>
+      </div>
       <div className="mb-8 flex flex-wrap items-center gap-4">
-        <Logo url={brand.logo_path ? urls[brand.logo_path] : undefined} name={brand.name} size={56} />
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-semibold tracking-tight">{brand.name}</h1>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
-            {brand.status === "ready" ? <Badge tone="ok">Profil zatwierdzony</Badge> : <Badge tone="warn">Do zatwierdzenia · {brand.completeness}%</Badge>}
+        <Logo url={brand.logo_path ? urls[brand.logo_path] : undefined} name={brand.name} size={60} />
+        <div className="min-w-0 flex-1 basis-56">
+          <h1 className="truncate text-3xl font-extrabold tracking-tight">{brand.name}</h1>
+          <div className="mt-1.5 flex flex-wrap items-center gap-3 text-sm text-muted">
+            {brand.status === "ready" ? <Badge tone="ok" dot>Zatwierdzona</Badge> : <Badge tone="warn" dot>Do zatwierdzenia</Badge>}
             {brand.website_url ? (
               <a href={brand.website_url} target="_blank" rel="noreferrer" className="hover:text-text">{new URL(brand.website_url).hostname} ↗</a>
             ) : null}
           </div>
         </div>
-        <Link href={`/brands/${brand.id}/setup`} className={buttonClass("secondary")}>Edytuj profil</Link>
+        <Link href={`/brands/${brand.id}/setup`} className={buttonClass(brand.status === "ready" ? "secondary" : "primary")}>
+          {brand.status === "ready" ? "Edytuj profil" : "Sprawdź i zatwierdź"}
+        </Link>
       </div>
 
-      {brand.status !== "ready" ? (
-        <Card className="mb-6 border-warn/40 bg-warn-soft">
-          <p className="text-sm">
-            Profil marki jest gotowy do sprawdzenia. Rzuć okiem na grupę docelową i problemy klientów — jeśli się zgadzają, zatwierdź.{" "}
-            <Link href={`/brands/${brand.id}/setup`} className="font-medium text-accent hover:underline">Sprawdź profil →</Link>
-          </p>
-        </Card>
-      ) : null}
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="md:col-span-2">
-          <h2 className="font-semibold">W skrócie</h2>
-          <p className="mt-2 text-sm">{p.tagline || "—"}</p>
-          <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-            <Item label="Grupa docelowa">
-              {p.target_audience.gender}, {p.target_audience.age_from}–{p.target_audience.age_to} lat
-            </Item>
-            <Item label="Nisza">{p.niche || "—"}</Item>
-            <Item label="Napisy w sklejkach">{caption?.label.split(" — ")[0] ?? p.caption_profile}</Item>
-            <Item label="Ton">{p.tone_of_voice.description || "—"}</Item>
-          </dl>
+      <Card>
+        {p.tagline ? <p className="max-w-2xl text-lg font-semibold leading-snug">{p.tagline}</p> : null}
+        <div className="mt-5 flex flex-wrap items-start gap-x-10 gap-y-5">
+          <Fact label="Dla kogo">{audience}</Fact>
           {p.personas.length > 0 ? (
-            <div className="mt-4">
-              <div className="text-xs text-muted">Persony</div>
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
+            <Fact label={`Persony (${p.personas.length})`}>
+              <div className="flex flex-wrap gap-1.5">
                 {p.personas.map((persona, i) => (
-                  <Badge key={i} tone="accent">{persona.name || "Persona"}</Badge>
+                  <span key={i} title={persona.who} className="rounded-full border border-border bg-surface-2 px-2.5 py-0.5 text-xs font-bold">
+                    {persona.name || "Persona"}
+                  </span>
                 ))}
               </div>
-            </div>
+            </Fact>
           ) : null}
-        </Card>
-        <Card>
-          <h2 className="font-semibold">Kolory</h2>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {(["primary", "secondary", "accent", "caption_text"] as const).map((k) => (
-              <div key={k} className="flex items-center gap-2 text-xs">
-                <span className="h-6 w-6 rounded border border-border" style={{ background: p.colors[k] }} />
-                <span className="font-mono text-muted">{p.colors[k]}</span>
+          {swatches.length > 0 ? (
+            <Fact label="Kolory">
+              <div className="flex -space-x-1.5">
+                {swatches.map((hex, i) => (
+                  <span key={i} title={hex} className="h-6 w-6 rounded-full ring-2 ring-surface" style={{ background: hex }} />
+                ))}
               </div>
-            ))}
-          </div>
-        </Card>
+            </Fact>
+          ) : null}
+        </div>
+
+        <div className="mt-5 border-t border-border pt-3">
+          <Disclosure plain title="Szczegóły profilu">
+            <div className="grid gap-4 text-sm sm:grid-cols-2">
+              <Fact label="Nisza">{p.niche || "—"}</Fact>
+              <Fact label="Napisy w sklejkach">{caption?.label.split(" — ")[0] ?? p.caption_profile}</Fact>
+              <Fact label="Problemy klientów">{p.target_audience.pains.length}</Fact>
+              <Fact label="Pragnienia">{p.target_audience.desires.length}</Fact>
+              {p.tone_of_voice.description ? (
+                <div className="sm:col-span-2">
+                  <Fact label="Ton">{p.tone_of_voice.description}</Fact>
+                </div>
+              ) : null}
+            </div>
+          </Disclosure>
+        </div>
+      </Card>
+
+      <div className="mb-4 mt-12 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-xl font-extrabold tracking-tight">
+          Produkty
+          {products?.length ? <span className="rounded-full bg-surface-3 px-2 text-sm text-muted">{products.length}</span> : null}
+        </h2>
+        {products?.length ? (
+          <Link href={`/brands/${brand.id}/products/new`} className={buttonClass()}>+ Dodaj produkt</Link>
+        ) : null}
       </div>
 
-      <div className="mb-4 mt-10 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">Produkty</h2>
-          <p className="text-sm text-muted">Każdy produkt ma własny profil i zdjęcia — na nich pracują sklejki, AI nagrania i image ads.</p>
-        </div>
-        <Link href={`/brands/${brand.id}/products/new`} className={buttonClass()}>+ Dodaj produkt</Link>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        {(products ?? []).map((pr, i) => (
+          <ProductTile
+            key={pr.id}
+            href={`/brands/${brand.id}/products/${pr.id}`}
+            name={pr.name}
+            ready={pr.status === "ready"}
+            image={thumbs[i] ? urls[thumbs[i]] : undefined}
+          />
+        ))}
+        <AddTile href={`/brands/${brand.id}/products/new`} first={!products?.length} />
       </div>
 
-      {!products?.length ? (
-        <Card className="text-center text-sm text-muted">Brak produktów. Dodaj pierwszy — wystarczy link do strony produktu.</Card>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {products.map((pr, i) => (
-            <Link key={pr.id} href={`/brands/${brand.id}/products/${pr.id}`} className="group">
-              <Card className="h-full p-0 transition group-hover:border-accent">
-                <div className="aspect-square overflow-hidden rounded-t-2xl bg-surface-2">
-                  {thumbs[i] && urls[thumbs[i]] ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={urls[thumbs[i]]} alt={pr.name} className="h-full w-full object-cover" />
-                  ) : null}
-                </div>
-                <div className="p-4">
-                  <div className="truncate font-medium">{pr.name}</div>
-                  <div className="mt-2">
-                    {pr.status === "ready" ? <Badge tone="ok">Gotowy</Badge> : <Badge tone="warn">Do zatwierdzenia · {pr.completeness}%</Badge>}
-                  </div>
-                </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      )}
-
-      <div className="mt-16 border-t border-border pt-6">
+      <div className="mt-16 flex justify-end">
         <form action={deleteBrand}>
           <input type="hidden" name="brandId" value={brand.id} />
-          <ConfirmButton message={`Usunąć markę „${brand.name}” razem z produktami i zdjęciami? Tego nie da się cofnąć.`}>
+          <ConfirmButton subtle message={`Usunąć markę „${brand.name}” razem z produktami i zdjęciami? Tego nie da się cofnąć.`}>
             Usuń markę
           </ConfirmButton>
         </form>
@@ -133,11 +130,15 @@ export default async function BrandPage({ params }: PageProps<"/brands/[brandId]
   );
 }
 
-function Item({ label, children }: { label: string; children: React.ReactNode }) {
+function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs text-muted">{label}</dt>
-      <dd className="mt-0.5">{children}</dd>
+      <div className="mb-1 text-xs font-semibold text-faint">{label}</div>
+      <div className="text-sm">{children}</div>
     </div>
   );
+}
+
+function capitalize(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }

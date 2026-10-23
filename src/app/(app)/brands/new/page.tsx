@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/ui";
+import { BackLink } from "@/components/back-link";
 import { NewBrandForm } from "./new-brand-form";
 
 // Scraping + Claude analysis can take a while.
@@ -9,9 +10,11 @@ export default function NewBrandPage() {
     <>
       <PageHeader
         title="Nowa marka"
-        description="Wklej link do sklepu. Clipzy przeczyta stronę (strona główna, „o nas”, FAQ, kolory, logo, produkty) i sam przygotuje profil: grupę docelową, persony i problemy klientów. Pytań będzie najwyżej kilka i wszystkie są opcjonalne."
+        description="Wklej link do sklepu. Profil, grupę docelową i problemy klientów Claude przygotuje sam."
+        back={<BackLink href="/brands">Marki</BackLink>}
       />
       <NewBrandForm />
     </>
   );
 }
+

@@ -101,19 +101,18 @@ export function upgradeProductProfile(raw: unknown): unknown {
 export const PRODUCT_FORM: FieldSection[] = [
   {
     title: "Problemy, które rozwiązuje",
-    description: "Najważniejsza część — każdy problem to potencjalna reklama.",
     fields: [
-      { path: "name", label: "Nazwa produktu", type: "text" },
+      { path: "name", label: "Nazwa produktu", type: "text", more: true },
       { path: "one_liner", label: "Co to jest (jedno zdanie)", type: "text" },
       { path: "problem", label: "Główny problem", type: "textarea" },
-      { path: "problems", label: "Wszystkie problemy", hint: "Jeden w linii, językiem klienta.", type: "list" },
-      { path: "mechanism", label: "Dlaczego działa (unikalny mechanizm)", type: "textarea" },
-      { path: "benefits", label: "Korzyści", hint: "Efekty, nie cechy. Jedna w linii.", type: "list" },
+      { path: "problems", label: "Wszystkie problemy", type: "list" },
+      { path: "mechanism", label: "Dlaczego działa (unikalny mechanizm)", type: "textarea", more: true },
+      { path: "benefits", label: "Korzyści", type: "list" },
     ],
   },
   {
     title: "Kąty reklamowe",
-    description: "Każdy kąt to osobna reklama: inna osoba, inny problem, inny poziom świadomości.",
+    description: "Każdy kąt to osobna reklama.",
     fields: [
       {
         path: "ad_angles",
@@ -127,7 +126,7 @@ export const PRODUCT_FORM: FieldSection[] = [
   },
   {
     title: "Na wideo",
-    description: "Wnioski ze zdjęć i opisu — analiza nagrań potwierdzi je przy tworzeniu sklejki.",
+    description: "Analiza nagrań potwierdzi to przy tworzeniu sklejki.",
     collapsed: true,
     fields: [
       { path: "problem_visual", label: "Jak pokazać problem na wideo", type: "textarea" },
@@ -154,13 +153,12 @@ export const PRODUCT_FORM: FieldSection[] = [
         addLabel: "+ Dodaj obiekcję",
       },
       { path: "market_sophistication", label: "Wypalenie rynku (poziom 1–5)", type: "textarea" },
-      { path: "customer_language", label: "Język klienta", hint: "Jedno zdanie w linii.", type: "list" },
+      { path: "customer_language", label: "Język klienta", type: "list" },
       { path: "target_audience_note", label: "Różnice w grupie docelowej względem marki", type: "textarea" },
     ],
   },
   {
     title: "Ze strony produktu",
-    description: "Pobrane automatycznie.",
     collapsed: true,
     fields: [
       { path: "category", label: "Kategoria", type: "text" },

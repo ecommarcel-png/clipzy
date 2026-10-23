@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { getBrand } from "@/lib/data";
-import { PageHeader, buttonClass } from "@/components/ui";
+import { PageHeader } from "@/components/ui";
+import { BackLink } from "@/components/back-link";
 import { NewProductForm } from "./new-product-form";
 
 export const maxDuration = 300;
@@ -14,9 +14,9 @@ export default async function NewProductPage({ params }: PageProps<"/brands/[bra
   return (
     <>
       <PageHeader
-        title={`Nowy produkt — ${brand.name}`}
-        description="Wklej link do strony produktu. Clipzy pobierze opis, cenę i zdjęcia, obejrzy je i sam przygotuje profil: problemy, które produkt rozwiązuje, mechanizm, obiekcje i 10–15 kątów reklamowych z hookami."
-        actions={<Link href={`/brands/${brand.id}`} className={buttonClass("ghost")}>← Wróć</Link>}
+        title="Nowy produkt"
+        description="Wklej link do produktu. Problemy, kąty reklamowe i hooki Claude przygotuje sam."
+        back={<BackLink href={`/brands/${brand.id}`}>{brand.name}</BackLink>}
       />
       <NewProductForm brandId={brand.id} />
     </>

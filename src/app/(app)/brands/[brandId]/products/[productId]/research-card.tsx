@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ResearchReport } from "@/lib/ai/research";
 import { Badge, Button, Card, Notice, Spinner } from "@/components/ui";
 import { researchProductAction } from "../actions";
+import { plural } from "@/lib/plural";
 
 // Market research behind the profile: real customer language, competitors,
 // market sophistication, unused angles — with sources the user can open.
@@ -33,16 +34,14 @@ export function ResearchCard({ brandId, productId, research }: { brandId: string
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="font-semibold">Research rynku</h2>
-            {research?.report ? <Badge tone="ok">{research.searches} wyszukiwań · {date}</Badge> : <Badge tone="warn">Brak</Badge>}
+            <h2 className="text-lg font-extrabold">Research rynku</h2>
+            {research?.report ? <Badge tone="ok" dot>{date}</Badge> : <Badge tone="warn" dot>Brak</Badge>}
           </div>
-          <p className="mt-1 text-sm text-muted">
-            Claude przeszukał polski internet: jak klienci opisują problem, co obiecuje konkurencja, jakie kąty nikt jeszcze nie zajął.
-          </p>
+          <p className="mt-0.5 text-xs text-faint">Opinie klientów, konkurencja i wolne kąty z polskiego internetu.</p>
         </div>
         <Button variant="secondary" onClick={rerun} disabled={busy}>
           {busy ? <Spinner /> : null}
-          {busy ? "Szukam… (1–2 min)" : research?.report ? "Zrób research ponownie" : "Zrób research"}
+          {busy ? "Szukam… (1–2 min)" : research?.report ? "Odśwież" : "Zrób research"}
         </Button>
       </div>
 
@@ -51,17 +50,17 @@ export function ResearchCard({ brandId, productId, research }: { brandId: string
 
       {research?.report ? (
         <details className="mt-4">
-          <summary className="cursor-pointer text-sm font-medium text-accent hover:underline">Pokaż raport i źródła</summary>
+          <summary className="cursor-pointer list-none text-sm font-bold text-muted hover:text-text">Pokaż raport ({research.searches} {plural(research.searches, "wyszukiwanie", "wyszukiwania", "wyszukiwań")}, {research.sources.length} {plural(research.sources.length, "źródło", "źródła", "źródeł")})</summary>
           <div className="mt-4 space-y-1 text-sm leading-relaxed">
             <MiniMarkdown text={research.report} />
           </div>
           {research.sources.length > 0 ? (
             <div className="mt-5">
-              <div className="text-xs font-medium text-muted">Źródła</div>
+              <div className="text-xs font-bold text-faint">Źródła</div>
               <ul className="mt-1.5 space-y-1 text-xs">
                 {research.sources.map((s) => (
                   <li key={s.url} className="truncate">
-                    <a href={s.url} target="_blank" rel="noreferrer" className="text-accent hover:underline">{s.title || s.url}</a>
+                    <a href={s.url} target="_blank" rel="noreferrer" className="text-muted hover:text-accent">{s.title || s.url}</a>
                   </li>
                 ))}
               </ul>
@@ -81,13 +80,13 @@ function MiniMarkdown({ text }: { text: string }) {
       {lines.map((raw, i) => {
         const line = raw.trimEnd();
         if (!line.trim()) return null;
-        if (line.startsWith("## ")) return <h3 key={i} className="pt-3 font-semibold first:pt-0">{line.slice(3)}</h3>;
+        if (line.startsWith("## ")) return <h3 key={i} className="pt-3 font-extrabold first:pt-0">{line.slice(3)}</h3>;
         if (line.startsWith("### ")) return <h4 key={i} className="pt-2 font-medium">{line.slice(4)}</h4>;
         const bullet = line.match(/^\s*[-*•]\s+(.*)$/);
         if (bullet) {
           return (
             <div key={i} className="flex gap-2 pl-1">
-              <span className="text-muted">•</span>
+              <span className="text-accent">•</span>
               <span><Inline text={bullet[1]} /></span>
             </div>
           );

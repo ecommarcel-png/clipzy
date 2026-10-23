@@ -14,14 +14,16 @@ export type Question = z.infer<typeof QuestionSchema>;
 export type AnsweredQuestion = Question & { answer: string };
 
 // UI description of a profile field, used to render the editable form.
+// `more` fields sit behind "Więcej pól" inside their section — rarely edited.
+type FieldBase = { path: string; label: string; hint?: string; more?: boolean };
 export type FieldDef =
-  | { path: string; label: string; hint?: string; type: "text" | "textarea" | "number" | "color" }
-  | { path: string; label: string; hint?: string; type: "list" }
-  | { path: string; label: string; hint?: string; type: "select"; options: Array<{ value: string; label: string }> }
-  | { path: string; label: string; hint?: string; type: "boolean" }
-  | { path: string; label: string; hint?: string; type: "records"; keys: string[]; labels: string[]; addLabel?: string };
+  | (FieldBase & { type: "text" | "textarea" | "number" | "color" })
+  | (FieldBase & { type: "list" })
+  | (FieldBase & { type: "select"; options: Array<{ value: string; label: string }> })
+  | (FieldBase & { type: "boolean" })
+  | (FieldBase & { type: "records"; keys: string[]; labels: string[]; addLabel?: string });
 
-// `collapsed` sections sit behind "Więcej szczegółów" — filled automatically, rarely edited.
+// `collapsed` sections sit behind "Zaawansowane" — filled automatically, rarely edited.
 export type FieldSection = { title: string; description?: string; collapsed?: boolean; fields: FieldDef[] };
 
 export function getAt(obj: unknown, path: string): unknown {

@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { getBrand, getProduct, getProductImages } from "@/lib/data";
 import { PRODUCT_FORM } from "@/lib/profiles/product";
 import { productFolder, signedUrls } from "@/lib/storage";
-import { Badge, PageHeader, buttonClass } from "@/components/ui";
+import { Badge, PageHeader } from "@/components/ui";
+import { BackLink } from "@/components/back-link";
 import { ConfirmButton } from "@/components/confirm-button";
 import { ProductEditor } from "./product-editor";
 import { ResearchCard } from "./research-card";
@@ -25,18 +25,17 @@ export default async function ProductPage({ params }: PageProps<"/brands/[brandI
       <PageHeader
         title={product.name}
         description={
-          <span className="flex flex-wrap items-center gap-2">
-            {brand.name}
-            {product.status === "ready" ? <Badge tone="ok">Gotowy</Badge> : <Badge tone="warn">Szkic</Badge>}
+          <span className="flex flex-wrap items-center gap-3">
+            {product.status === "ready" ? <Badge tone="ok" dot>Gotowy</Badge> : <Badge tone="warn" dot>Do zatwierdzenia</Badge>}
             {product.product_url ? (
               <a href={product.product_url} target="_blank" rel="noreferrer" className="hover:text-text">strona produktu ↗</a>
             ) : null}
           </span>
         }
-        actions={<Link href={`/brands/${brand.id}`} className={buttonClass("ghost")}>← {brand.name}</Link>}
+        back={<BackLink href={`/brands/${brand.id}`}>{brand.name}</BackLink>}
       />
 
-      <div className="mb-6">
+      <div className="mb-5">
         <ResearchCard
           brandId={brand.id}
           productId={product.id}
@@ -56,11 +55,11 @@ export default async function ProductPage({ params }: PageProps<"/brands/[brandI
         imageFolder={productFolder(user.id, product.id)}
       />
 
-      <div className="mt-16 border-t border-border pt-6">
+      <div className="mt-16 flex justify-end">
         <form action={deleteProduct}>
           <input type="hidden" name="brandId" value={brand.id} />
           <input type="hidden" name="productId" value={product.id} />
-          <ConfirmButton message={`Usunąć produkt „${product.name}” razem ze zdjęciami?`}>Usuń produkt</ConfirmButton>
+          <ConfirmButton subtle message={`Usunąć produkt „${product.name}” razem ze zdjęciami?`}>Usuń produkt</ConfirmButton>
         </form>
       </div>
     </>

@@ -23,13 +23,16 @@ export function ProductEditor(props: {
   const router = useRouter();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="font-semibold">Zdjęcia produktu</h2>
-            <p className="mt-1 text-sm text-muted">
-              Claude ogląda pierwsze 4 zdjęcia przy analizie, a modele wideo i obrazu używają ich jako referencji wyglądu produktu. Dodaj ujęcia z różnych stron i w użyciu.
+            <h2 className="flex items-center gap-2 text-lg font-extrabold">
+              Zdjęcia
+              {props.images.length ? <span className="rounded-full bg-surface-3 px-2 text-xs text-muted">{props.images.length}</span> : null}
+            </h2>
+            <p className="mt-0.5 text-xs text-faint" title="Claude ogląda pierwsze 4 przy analizie, a modele wideo i obrazu używają ich jako wzoru wyglądu produktu.">
+              Wzór wyglądu produktu dla modeli AI. Najlepiej z różnych stron i w użyciu.
             </p>
           </div>
           <ImageUpload
@@ -44,18 +47,18 @@ export function ProductEditor(props: {
           />
         </div>
         {props.images.length === 0 ? (
-          <p className="mt-4 text-sm text-muted">Brak zdjęć — dodaj co najmniej 3.</p>
+          <p className="mt-4 text-sm text-muted">Dodaj co najmniej 3 zdjęcia.</p>
         ) : (
-          <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+          <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
             {props.images.map((img) => (
-              <div key={img.id} className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-surface-2">
+              <div key={img.id} className="group relative aspect-[4/5] overflow-hidden rounded-xl border border-border bg-surface-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {img.url ? <img src={img.url} alt="" className="h-full w-full object-cover" /> : null}
-                <form action={deleteProductImage} className="absolute right-1 top-1 opacity-0 transition group-hover:opacity-100">
+                <form action={deleteProductImage} className="absolute right-1 top-1 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
                   <input type="hidden" name="imageId" value={img.id} />
                   <input type="hidden" name="brandId" value={props.brandId} />
                   <input type="hidden" name="productId" value={props.productId} />
-                  <button className="rounded bg-black/70 px-2 py-0.5 text-xs text-white" aria-label="Usuń zdjęcie">Usuń</button>
+                  <button className="rounded-full bg-[#100c16]/80 px-2 py-0.5 text-xs font-bold text-text" aria-label="Usuń zdjęcie">Usuń</button>
                 </form>
               </div>
             ))}

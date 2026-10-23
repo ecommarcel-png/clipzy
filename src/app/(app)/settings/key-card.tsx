@@ -28,16 +28,16 @@ export function KeyCard({ info, row }: { info: ProviderInfo; row: KeyRow | null 
     <Card className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="font-semibold">{info.name}</h2>
+          <h2 className="text-lg font-extrabold">{info.name}</h2>
           <p className="mt-1 text-sm text-muted">{info.role}</p>
-          <p className="mt-1 text-xs text-muted">{info.requiredFor}</p>
+          <p className="mt-1 text-xs text-faint">{info.requiredFor}</p>
         </div>
-        {row ? <Badge tone={STATUS[row.status].tone}>{STATUS[row.status].label}</Badge> : <Badge>Brak klucza</Badge>}
+        {row ? <Badge dot tone={STATUS[row.status].tone}>{STATUS[row.status].label}</Badge> : <Badge dot>Brak klucza</Badge>}
       </div>
 
       {row && !editing ? (
         <div className="space-y-3">
-          <div className="rounded-lg bg-surface-2 px-3 py-2 font-mono text-sm">•••• •••• {row.last4}</div>
+          <div className="rounded-xl border border-border bg-bg/70 px-3 py-2 font-mono text-sm text-muted">•••• •••• {row.last4}</div>
           {row.status_note ? <p className="text-xs text-muted">{row.status_note}</p> : null}
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" type="button" onClick={() => setEditing(true)}>Zmień klucz</Button>
@@ -63,7 +63,7 @@ export function KeyCard({ info, row }: { info: ProviderInfo; row: KeyRow | null 
             {row ? (
               <Button variant="ghost" type="button" onClick={() => setEditing(false)}>Anuluj</Button>
             ) : null}
-            <a href={info.keyUrl} target="_blank" rel="noreferrer" className="text-xs text-accent hover:underline">
+            <a href={info.keyUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-accent hover:text-accent-strong">
               Gdzie wziąć klucz? ↗
             </a>
           </div>
