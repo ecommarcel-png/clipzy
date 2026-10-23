@@ -5,6 +5,7 @@ import { FetchError } from "@/lib/scrape/safe-fetch";
 import { GeminiError } from "@/lib/ai/gemini";
 import { ScribeError } from "@/lib/ai/scribe";
 import { FalError } from "@/lib/ai/fal";
+import { TtsError } from "@/lib/ai/tts";
 
 // A message written for the user (Polish, actionable) — safe to show as is.
 export class UserError extends Error {}
@@ -13,7 +14,7 @@ export class UserError extends Error {}
 export function userMessage(e: unknown): string {
   if (
     e instanceof MissingKeyError || e instanceof ClaudeError || e instanceof FetchError || e instanceof UserError ||
-    e instanceof GeminiError || e instanceof ScribeError || e instanceof FalError
+    e instanceof GeminiError || e instanceof ScribeError || e instanceof FalError || e instanceof TtsError
   ) {
     return e.message;
   }
