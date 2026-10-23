@@ -35,7 +35,18 @@ export type ClipAssetRow = {
   library_id?: string | null;
 };
 
-export type ClipSettings = { voiceover: boolean; music: string; formats: string[]; notes: string; generated?: "pending" | "done" };
+export type ClipSettings = {
+  voiceover: boolean;
+  music: string;
+  formats: string[];
+  notes: string;
+  generated?: "pending" | "done";
+  /** upload = the user's own file; generate = Clipzy writes the script and voices it */
+  voiceover_mode?: "upload" | "generate";
+  voice?: string;
+  voice_id?: string;
+  target_seconds?: number;
+};
 
 export type VoiceoverData = {
   asset_id: string;

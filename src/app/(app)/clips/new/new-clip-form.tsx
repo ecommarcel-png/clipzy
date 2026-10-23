@@ -6,17 +6,22 @@ import { Button, Card, Disclosure, Input, Label, Notice, Select, Spinner, Textar
 import { FORMAT_SIZE, FORMATS } from "@/lib/clips/plan";
 import type { LibraryCard } from "@/lib/clips/library-view";
 import { LibraryPicker } from "./library-picker";
+import { VoicePicker } from "./voice-picker";
 
 type Brand = { id: string; name: string; products: Array<{ id: string; name: string }> };
 
 export function NewClipForm({
-  brands, music, saved, initial,
-}: { brands: Brand[]; music: Array<{ file: string; name: string }>; saved: LibraryCard[]; initial?: { brandId?: string; productId?: string } }) {
+  brands, music, saved, initial, voices,
+}: {
+  brands: Brand[]; music: Array<{ file: string; name: string }>; saved: LibraryCard[]; initial?: { brandId?: string; productId?: string };
+  voices: Array<{ id: string; label: string; elevenName: string }>;
+}) {
   const [state, action, pending] = useActionState(createClipProject, {} as { error?: string });
   const [brandId, setBrandId] = useState(brands.find((b) => b.id === initial?.brandId)?.id ?? brands[0]?.id ?? "");
   const products = brands.find((b) => b.id === brandId)?.products ?? [];
   const [productId, setProductId] = useState(products.find((p) => p.id === initial?.productId)?.id ?? products[0]?.id ?? "");
   const [voiceover, setVoiceover] = useState(true);
+  const [voMode, setVoMode] = useState<"upload" | "generate">("generate");
   const brandItems = saved.filter((i) => i.brandId === brandId);
   const [chosen, setChosen] = useState(() => brandItems.filter((i) => i.productId === productId && productId).length);
   const pickBrand = (id: string) => {
@@ -55,7 +60,7 @@ export function NewClipForm({
           <input type="hidden" name="voiceover" value={voiceover ? "yes" : "no"} />
           <div className="grid grid-cols-2 gap-2">
             {[
-              { v: true, t: "Z lektorem", d: "wgrasz plik WAV/MP3" },
+              { v: true, t: "Z lektorem", d: "Twój plik albo lektor z Clipzy" },
               { v: false, t: "Bez lektora", d: "muzyka + plansze tekstowe" },
             ].map((o) => (
               <button
@@ -69,6 +74,23 @@ export function NewClipForm({
               </button>
             ))}
           </div>
+          {voiceover ? (
+            <div className="mt-3 space-y-3">
+              <input type="hidden" name="voiceover_mode" value={voMode} />
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { v: "generate" as const, t: "Stwórz lektora", d: "Reżyser pisze skrypt, Ty poprawiasz, ElevenLabs nagrywa — 5 wersji hooka" },
+                  { v: "upload" as const, t: "Prześlij plik", d: "masz już nagranie WAV/MP3" },
+                ].map((o) => (
+                  <button key={o.v} type="button" onClick={() => setVoMode(o.v)} className={cx("rounded-2xl border p-3 text-left transition", voMode === o.v ? "border-accent bg-accent-soft" : "border-border hover:border-border-strong")}>
+                    <div className="text-sm font-bold">{o.t}</div>
+                    <div className="text-xs text-muted">{o.d}</div>
+                  </button>
+                ))}
+              </div>
+              {voMode === "generate" ? <VoicePicker voices={voices} /> : null}
+            </div>
+          ) : null}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -109,7 +131,7 @@ export function NewClipForm({
         {state.error ? <Notice tone="danger">{state.error}</Notice> : null}
         <Button type="submit" disabled={pending || !brandId}>
           {pending ? <Spinner /> : null}
-          {chosen ? `Dalej: ${voiceover ? "wgraj lektora" : "zrób sklejkę"}` : "Dalej: wgraj nagrania"}
+          {chosen ? `Dalej: ${voiceover && voMode === "upload" ? "wgraj lektora" : "zrób sklejkę"}` : "Dalej: wgraj nagrania"}
         </Button>
       </form>
     </Card>

@@ -14,6 +14,9 @@ import { editCaptions, normalizeMix, type Mix } from "@/lib/clips/edit";
 import { library } from "@/lib/clips/library";
 import { attachLibrary, deleteLibraryItem, pathsInUse } from "@/lib/clips/library-store";
 import { ANALYZE_BATCH, type PipelineState } from "@/lib/clips/steps";
+import { VOICE_SAMPLE_TEXT, getVoice } from "@/lib/voices";
+import { resolveVoiceId, synthesize } from "@/lib/ai/tts";
+import { signedUrls } from "@/lib/storage";
 import { getProviderKey } from "@/lib/api-keys";
 import type { Provider } from "@/lib/providers";
 
@@ -39,6 +42,9 @@ export async function createClipProject(_: unknown, form: FormData): Promise<{ e
   const formats = FORMATS.filter((f) => form.getAll("formats").includes(f));
   const settings: ClipSettings = {
     voiceover: form.get("voiceover") === "yes",
+    voiceover_mode: form.get("voiceover") === "yes" && form.get("voiceover_mode") === "generate" ? "generate" : "upload",
+    voice: getVoice(String(form.get("voice") ?? "")).id,
+    target_seconds: Math.min(60, Math.max(10, Math.round(Number(form.get("target_seconds") ?? 30) / 5) * 5 || 30)),
     music: String(form.get("music") ?? "auto"),
     formats: formats.length ? formats : ["4x5"],
     notes: String(form.get("notes") ?? "").slice(0, 1000),
@@ -260,4 +266,25 @@ export async function deleteLibraryItemAction(form: FormData) {
   const back = String(form.get("back") ?? "");
   if (isUuid(id)) await deleteLibraryItem(supabase, id);
   if (back.startsWith("/")) revalidatePath(back);
+}
+
+// "▶ Próbka": generated once per user and voice, then played from storage (no credits on replay).
+export async function voiceSampleAction(voiceId: string): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  try {
+    const { supabase, user } = await requireUser();
+    const voice = getVoice(voiceId);
+    const path = `${user.id}/voices/${voice.id}-probka.mp3`;
+    const { data: existing } = await supabase.storage.from("media").list(`${user.id}/voices`, { search: `${voice.id}-probka.mp3` });
+    if (!existing?.some((f) => f.name === `${voice.id}-probka.mp3`)) {
+      const key = await getProviderKey(supabase, "elevenlabs");
+      const id = await resolveVoiceId(key, voice.elevenName);
+      const { audio } = await synthesize(key, voice, id, VOICE_SAMPLE_TEXT);
+      const { error } = await supabase.storage.from("media").upload(path, audio, { contentType: "audio/mpeg", upsert: true });
+      if (error) return { ok: false, error: error.message };
+    }
+    const url = (await signedUrls(supabase, [path], 3600))[path];
+    return url ? { ok: true, url } : { ok: false, error: "Nie udało się otworzyć próbki." };
+  } catch (e) {
+    return { ok: false, error: userMessage(e) };
+  }
 }

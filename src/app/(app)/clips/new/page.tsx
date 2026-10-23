@@ -5,6 +5,7 @@ import { BackLink } from "@/components/back-link";
 import { library } from "@/lib/clips/library";
 import { libraryCards } from "@/lib/clips/library-view";
 import { NewClipForm } from "./new-clip-form";
+import { VOICES } from "@/lib/voices";
 
 export default async function NewClipPage({ searchParams }: PageProps<"/clips/new">) {
   const sp = await searchParams;
@@ -25,6 +26,7 @@ export default async function NewClipPage({ searchParams }: PageProps<"/clips/ne
           brands={brands.map((b) => ({ id: b.id, name: b.name, products: ((b.products as unknown as Array<{ id: string; name: string }>) ?? []).map((p) => ({ id: p.id, name: p.name })) }))}
           music={library.music.map((m) => ({ file: m.file, name: m.name }))}
           saved={saved}
+          voices={VOICES.map((v) => ({ id: v.id, label: v.label, elevenName: v.elevenName }))}
           initial={{ brandId: pick(sp.brand), productId: pick(sp.product) }}
         />
       )}

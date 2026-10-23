@@ -29,7 +29,7 @@ export type StudioData = {
     id: string;
     name: string;
     status: string;
-    settings: { voiceover: boolean; music: string; formats: string[]; notes: string; generated?: string };
+    settings: { voiceover: boolean; music: string; formats: string[]; notes: string; generated?: string; voiceover_mode?: "upload" | "generate"; voice?: string; target_seconds?: number };
     voiceover: { segments: VoSegment[]; captions: CaptionChunk[]; original: number; duration: number; feedback: { verdict: string; notes: string[] } | null; assetId: string } | null;
     plan: { plan: EditPlan; notes: string[]; report: ControlReport | null; mix?: Mix; director?: EditPlan; edited_at?: string } | null;
     error: string | null;
@@ -44,6 +44,9 @@ export type StudioData = {
   product: { name: string | null };
   packshotUrl: string | null;
 };
+
+// a voiceover file is needed only when the user brings their own recording
+const needsVoFile = (p: StudioData["project"]) => p.settings.voiceover && p.settings.voiceover_mode !== "generate";
 
 const RUNNING = new Set(["analyzing", "generating", "planning"]);
 const MAX_STEPS = 120; // safety net: a sklejka needs ~10–30 steps
@@ -137,12 +140,12 @@ export function Studio({ data }: { data: StudioData }) {
           {error ? <div className="mt-3"><Notice tone="danger">{error}</Notice></div> : null}
           {log.length ? <ul className="mt-3 space-y-1 text-xs text-muted">{log.slice(-4).map((l, i) => <li key={i}>{l}</li>)}</ul> : null}
           {!p.plan || error ? (
-            <Button className="mt-4 w-full" onClick={start} disabled={running || media.length === 0 || (p.settings.voiceover && !vo)}>
+            <Button className="mt-4 w-full" onClick={start} disabled={running || media.length === 0 || (needsVoFile(p) && !vo)}>
               {running ? <Spinner /> : null}
               {running ? "Reżyser pracuje…" : p.plan ? "Spróbuj ponownie" : "Zrób sklejkę"}
             </Button>
           ) : null}
-          {media.length === 0 ? <p className="mt-2 text-xs text-faint">Najpierw wgraj nagrania.</p> : p.settings.voiceover && !vo ? <p className="mt-2 text-xs text-faint">Wgraj plik lektora.</p> : null}
+          {media.length === 0 ? <p className="mt-2 text-xs text-faint">Najpierw wgraj nagrania.</p> : needsVoFile(p) && !vo ? <p className="mt-2 text-xs text-faint">Wgraj plik lektora.</p> : null}
           {running ? <p className="mt-2 text-xs text-faint">Możesz zostawić tę stronę otwartą — całość trwa zwykle 5–15 minut (najdłużej generowanie ujęć).</p> : null}
         </Card>
         {generated.some((g) => !g.fromLibrary) ? (
@@ -267,7 +270,7 @@ function Uploader({ data, disabled, onDone }: { data: StudioData; disabled: bool
               <input type="file" accept="video/*" multiple className="sr-only" onChange={(e) => upload(e.target.files, "clip")} />
               <span className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-bold text-on-accent">+ Nagrania</span>
             </label>
-            {data.project.settings.voiceover ? (
+            {needsVoFile(data.project) ? (
               <label className={cx("cursor-pointer", busy && "pointer-events-none opacity-50")}>
                 <input type="file" accept="audio/*,.wav,.mp3,.m4a" className="sr-only" onChange={(e) => upload(e.target.files, "voiceover")} />
                 <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-2 px-4 py-2 text-sm font-semibold">{vo ? "Zmień lektora" : "+ Lektor (WAV/MP3)"}</span>
