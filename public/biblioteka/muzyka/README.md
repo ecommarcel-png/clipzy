@@ -13,6 +13,6 @@ radosna-ukulele-prezentowa.mp3
 - Małe litery, myślniki zamiast spacji, bez polskich znaków (łatwiej w linkach).
 - Bez wokalu, jeśli muzyka ma grać pod lektorem.
 - Najlepiej pliki do ok. 15 MB (dłuższe utwory skróć do 1–2 minut).
-- Repozytorium musi być **prywatne**, jeśli wrzucasz muzykę z płatnej biblioteki (np. Epidemic Sound) — licencja zwykle zabrania publicznego udostępniania plików.
+- Repozytorium musi być **prywatne**, jeśli wrzucasz muzykę z płatnej biblioteki (np. Epidemic Sound) — licencja zwykle zabrania publicznego udostępniania plików. Na stronie pliki z biblioteki są dostępne tylko po zalogowaniu.
 
 Po wrzuceniu pliku Vercel sam wdroży nową wersję; utwór pojawi się w zakładce Sklejki.
