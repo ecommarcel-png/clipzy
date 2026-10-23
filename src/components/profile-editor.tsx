@@ -198,7 +198,7 @@ function ScoreRing({ score }: { score: number }) {
   const color = score >= 85 ? "var(--ok)" : score >= 55 ? "var(--accent)" : "var(--warn)";
   return (
     <div className="relative h-16 w-16 shrink-0" role="img" aria-label={`Gotowość ${score}%`}>
-      <svg viewBox="0 0 64 64" className="h-16 w-16 -rotate-90">
+      <svg viewBox="0 0 64 64" className="h-16 w-16 -rotate-90 overflow-visible">
         <circle cx="32" cy="32" r={r} fill="none" stroke="var(--surface-3)" strokeWidth="6" />
         <circle
           cx="32"
