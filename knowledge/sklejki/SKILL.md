@@ -216,6 +216,7 @@ Czytelność ma pierwszeństwo przed kolorem: jeśli kolor marki ma zbyt niski k
   - bielizna modelująca / pewność siebie → lekki, inspirujący pop (ad03),
   - dom/sprzątanie → pozytywny pop/elektronika, średnia energia (ad04).
 - Z lektorem: muzyka cicho w tle (ok. 15–20% głośności lektora), bez wokalu. Bez lektora: muzyka jest głównym nośnikiem — może mieć wokal, jeśli licencja na to pozwala.
+- **Poziomy miksu sprawdzone w feedbacku [M]:** muzyka pod lektorem ok. 0,17 (liniowo; ok. −15 dB względem lektora), na końcu bez lektora najwyżej ok. 0,38; SFX ok. 0,15–0,4 i zawsze ciszej niż lektor; dźwięk z oryginalnego nagrania (np. ASMR) ok. 0,3–0,6. Lepiej za cicho niż za głośno — feedback: „muzyka i SFX lekko do ściszenia”. Lektor znormalizowany do ok. −15 LUFS.
 - **Mowa + muzyka razem** — Meta raportuje wyższą skuteczność niż samo jedno z nich. [W]
 - **Źródło muzyki:** wybieraj wyłącznie z biblioteki wgranej do strony. Jej zawartość jest zweryfikowana przez właściciela pod kątem użycia w reklamach — nie sięgaj po utwory spoza niej.
 - **SFX** (oszczędnie, by wzmocnić, a nie zagłuszyć): whoosh na przejściach, ding/shimmer na reveal/przed-po, pop przy pojawianiu się napisów (Gen Z), dźwięk „kasy” przy ofercie. Dla 50+ i produktów emocjonalnych — minimum SFX.
