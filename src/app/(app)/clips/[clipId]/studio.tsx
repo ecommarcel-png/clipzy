@@ -13,7 +13,7 @@ import type { ControlReport } from "@/lib/ai/control";
 import { plural } from "@/lib/plural";
 import {
   analyzeBatchAction, feedbackAction, missingAction, planAction, pollAction, registerUploads, restoreDirectorAction, reviewRenderAction, saveEditsAction,
-  pipelineStateAction, saveRenderAction, voiceoverAction,
+  pipelineStateAction, saveRenderAction, scriptAction, voiceoverAction,
 } from "../actions";
 import { nextStep } from "@/lib/clips/steps";
 import { QuickEdit, type Draft } from "./quick-edit";
@@ -79,7 +79,7 @@ export function Studio({ data }: { data: StudioData }) {
         const st = await pipelineStateAction(p.id);
         if (!st.ok) throw new Error(st.error);
         const step = nextStep(st.state);
-        if (step.kind === "done") break;
+        if (step.kind === "done" || step.kind === "wait_user") break; // wait_user: the script card takes over
         const key = step.kind === "analyze" ? `analyze:${step.ids.join(",")}` : step.kind;
         const n = (tries.get(key) ?? 0) + 1;
         tries.set(key, n);
@@ -94,7 +94,7 @@ export function Studio({ data }: { data: StudioData }) {
             const r = await pollAction(p.id);
             if (!r.ok) throw new Error(r.error);
           } else {
-            const fn = step.kind === "voiceover" ? voiceoverAction : step.kind === "missing" ? missingAction : planAction;
+            const fn = step.kind === "script" ? scriptAction : step.kind === "voiceover" ? voiceoverAction : step.kind === "missing" ? missingAction : planAction;
             const r = await fn(p.id);
             if (!r.ok) throw new Error(r.error);
             if (r.message) note(r.message);

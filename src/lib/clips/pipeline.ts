@@ -19,6 +19,8 @@ import { cleanIntervals, sanitizePlan, type AssetInfo, type EditPlan } from "@/l
 import { library } from "@/lib/clips/library";
 import type { Mix } from "@/lib/clips/edit";
 import { fixBrandName } from "@/lib/clips/names";
+import { writeScript, type Script } from "@/lib/ai/script";
+import { getVoice } from "@/lib/voices";
 import { UserError } from "@/lib/errors";
 
 export type ClipAssetRow = {
@@ -46,7 +48,12 @@ export type ClipSettings = {
   voice?: string;
   voice_id?: string;
   target_seconds?: number;
+  /** generated voiceover: the Reżyser's script, editable until "Generuj lektora" */
+  script?: Script;
+  script_status?: "ready" | "voiced";
 };
+
+export type VoVariant = { asset_id: string; words: Word[]; timeline: TightTimeline; captions: CaptionChunk[]; hookEnd: number; hookText: string };
 
 export type VoiceoverData = {
   asset_id: string;
@@ -55,6 +62,9 @@ export type VoiceoverData = {
   timeline: TightTimeline;
   captions: CaptionChunk[];
   feedback: ScriptFeedback | null;
+  /** hook versions (variant 1 = the fields above); absent in older sklejki */
+  variants?: VoVariant[];
+  mode?: "upload" | "generate";
 };
 
 export type ClipProjectRow = {
@@ -388,4 +398,15 @@ export async function reviewRendered(supabase: SupabaseClient, project: ClipProj
   } finally {
     unlink(tmp.file).catch(() => {});
   }
+}
+
+// Generated voiceover, step 1: the Reżyser writes 5 hooks + the shared rest; the user edits it next.
+export async function writeProjectScript(supabase: SupabaseClient, project: ClipProjectRow, assets: ClipAssetRow[], note?: string) {
+  const { ctx } = await buildContext(supabase, project, assets);
+  const anthropic = await getProviderKey(supabase, "anthropic");
+  const voice = getVoice(project.settings.voice);
+  const words = Math.round((project.settings.target_seconds ?? 30) * voice.wordsPerSecond);
+  const script = await writeScript(anthropic, ctx, { words, note, previous: note ? project.settings.script : undefined });
+  await supabase.from("clip_projects").update({ settings: { ...project.settings, script, script_status: "ready" }, status: "draft" }).eq("id", project.id);
+  return script;
 }

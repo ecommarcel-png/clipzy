@@ -41,3 +41,17 @@ describe("nextStep", () => {
     expect(nextStep(s)).toEqual({ kind: "analyze", ids: ["g"] });
   });
 });
+
+describe("nextStep with a generated voiceover", () => {
+  const ready = [clip("a", "ready")];
+  it("analyses clips before writing the script", () => {
+    expect(nextStep({ ...base, assets: [clip("a", "uploaded")], voiceover: "script_needed" })).toEqual({ kind: "analyze", ids: ["a"] });
+  });
+  it("writes the script, then waits for the user", () => {
+    expect(nextStep({ ...base, assets: ready, voiceover: "script_needed", generated: undefined })).toEqual({ kind: "script" });
+    expect(nextStep({ ...base, assets: ready, voiceover: "script_ready", generated: undefined })).toEqual({ kind: "wait_user" });
+  });
+  it("carries on once the voiceover is generated", () => {
+    expect(nextStep({ ...base, assets: ready, voiceover: "done", generated: undefined })).toEqual({ kind: "missing" });
+  });
+});

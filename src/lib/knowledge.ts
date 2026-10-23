@@ -65,6 +65,16 @@ export function clipsKnowledge() {
   ]);
 }
 
+// Voiceover scripts for sklejki: hooks, awareness levels, promise fatigue.
+export function scriptKnowledge() {
+  return bundle([
+    SKLEJKI,
+    ["Meta Ads: skrypty i hooki", "meta-ads/references/skrypty-i-hooki.md"],
+    ["Meta Ads: poziomy świadomości", "meta-ads/references/poziomy-swiadomosci.md"],
+    ["Meta Ads: wypalenie obietnicy", "meta-ads/references/wypalenie-obietnicy.md"],
+  ]);
+}
+
 export function knowledgeText(docs: KnowledgeDoc[]): string {
   return docs.map((d) => `<wiedza tytul="${d.title}">\n${d.content}\n</wiedza>`).join("\n\n");
 }

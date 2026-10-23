@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { userMessage } from "@/lib/errors";
 import {
-  analyzeAsset, applyFeedback, assetInfo, loadProject, makePlan, pollGenerations, processVoiceover, requestMissing, reviewRendered,
+  analyzeAsset, applyFeedback, assetInfo, writeProjectScript, loadProject, makePlan, pollGenerations, processVoiceover, requestMissing, reviewRendered,
   type ClipSettings,
 } from "@/lib/clips/pipeline";
 import { FORMATS, EditPlan, sanitizePlan } from "@/lib/clips/plan";
@@ -103,7 +103,11 @@ export async function pipelineStateAction(projectId: string): Promise<{ ok: true
     const vo = assets.find((a) => a.kind === "voiceover");
     const state: PipelineState = {
       assets: assets.map((a) => ({ id: a.id, kind: a.kind, status: a.status })),
-      voiceover: project.voiceover ? "done" : !vo ? "none" : vo.status === "error" ? "error" : "pending",
+      voiceover: project.voiceover
+        ? "done"
+        : project.settings.voiceover && project.settings.voiceover_mode === "generate"
+          ? project.settings.script_status === "ready" ? "script_ready" : "script_needed"
+          : !vo ? "none" : vo.status === "error" ? "error" : "pending",
       generated: project.settings.generated,
       generating: assets.some((a) => a.kind === "generated" && a.status === "generating"),
       hasPlan: Boolean(project.plan),
@@ -123,6 +127,13 @@ export async function analyzeBatchAction(projectId: string, ids: string[]): Prom
     const failed = results.flatMap((r, i) => (r.status === "rejected" ? [{ name: todo[i].name, error: userMessage(r.reason) }] : []));
     return { ok: true as const, failed };
   }) as Promise<StepResult & { failed?: Array<{ name: string; error: string }> }>;
+}
+
+export async function scriptAction(projectId: string, note?: string): Promise<StepResult> {
+  return withProject(projectId, async ({ supabase, data }) => {
+    const script = await writeProjectScript(supabase, data.project, data.assets, note);
+    return { ok: true, message: `Skrypt gotowy: ${script.angle}` };
+  }) as Promise<StepResult>;
 }
 
 export async function voiceoverAction(projectId: string): Promise<StepResult> {
