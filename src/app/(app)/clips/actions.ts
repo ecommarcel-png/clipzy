@@ -148,6 +148,14 @@ export async function generateVoiceoverAction(projectId: string, script: unknown
   }) as Promise<StepResult>;
 }
 
+export async function rewriteScriptAction(projectId: string, note: string): Promise<StepResult> {
+  return withProject(projectId, async ({ supabase, data }) => {
+    if (data.project.voiceover) return { ok: false, error: "Lektor jest już wygenerowany." };
+    const script = await writeProjectScript(supabase, data.project, data.assets, note.slice(0, 1000) || "Napisz inną wersję skryptu.");
+    return { ok: true, message: `Nowy skrypt: ${script.angle}` };
+  }) as Promise<StepResult>;
+}
+
 export async function voiceoverAction(projectId: string): Promise<StepResult> {
   return withProject(projectId, async ({ supabase, data }) => {
     const vo = data.assets.find((a) => a.kind === "voiceover");

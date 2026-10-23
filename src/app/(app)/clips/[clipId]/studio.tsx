@@ -17,6 +17,8 @@ import {
 } from "../actions";
 import { nextStep } from "@/lib/clips/steps";
 import { QuickEdit, type Draft } from "./quick-edit";
+import { ScriptCard as VoiceScriptCard, type ScriptView } from "./script-card";
+import { getVoice } from "@/lib/voices";
 import { RenderFailure, prepareVideo, renderInBrowser, sklejkaProps } from "./media";
 
 const Preview = dynamic(() => import("./preview"), { ssr: false, loading: () => <div className="aspect-[4/5] w-full animate-pulse rounded-[18px] bg-surface-2" /> });
@@ -29,7 +31,11 @@ export type StudioData = {
     id: string;
     name: string;
     status: string;
-    settings: { voiceover: boolean; music: string; formats: string[]; notes: string; generated?: string; voiceover_mode?: "upload" | "generate"; voice?: string; target_seconds?: number };
+    settings: {
+      voiceover: boolean; music: string; formats: string[]; notes: string; generated?: string;
+      voiceover_mode?: "upload" | "generate"; voice?: string; target_seconds?: number;
+      script?: ScriptView; script_status?: "ready" | "voiced";
+    };
     voiceover: { segments: VoSegment[]; captions: CaptionChunk[]; original: number; duration: number; feedback: { verdict: string; notes: string[] } | null; assetId: string } | null;
     plan: { plan: EditPlan; notes: string[]; report: ControlReport | null; mix?: Mix; director?: EditPlan; edited_at?: string } | null;
     error: string | null;
@@ -130,6 +136,18 @@ export function Studio({ data }: { data: StudioData }) {
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="space-y-5">
         <Uploader data={data} disabled={running} onDone={() => router.refresh()} />
+        {p.settings.script && p.settings.script_status === "ready" && !p.voiceover ? (
+          <VoiceScriptCard
+            key={JSON.stringify(p.settings.script)}
+            projectId={p.id}
+            script={p.settings.script}
+            wordsPerSecond={getVoice(p.settings.voice).wordsPerSecond}
+            onDone={() => {
+              router.refresh();
+              void runPipeline();
+            }}
+          />
+        ) : null}
         {p.plan ? <Result key={draftKey(data)} data={data} renders={renders} onChanged={() => router.refresh()} /> : null}
       </div>
 
@@ -181,7 +199,13 @@ function Progress({ data, running }: { data: StudioData; running: boolean }) {
   const p = data.project;
   const steps: Array<{ label: string; state: "done" | "active" | "todo" | "error" }> = [
     { label: `Analiza nagrań (${ready}/${media.length})`, state: media.length && ready === media.length ? "done" : media.some((a) => a.status === "error") ? "error" : running ? "active" : "todo" },
-    ...(p.settings.voiceover ? [{ label: p.voiceover ? `Lektor: ${p.voiceover.original.toFixed(1)} s → ${p.voiceover.duration.toFixed(1)} s bez pauz` : "Lektor: transkrypcja i cięcie pauz", state: (p.voiceover ? "done" : vo?.status === "error" ? "error" : running && ready === media.length ? "active" : "todo") as "done" | "active" | "todo" | "error" }] : []),
+    ...(p.settings.voiceover && p.settings.voiceover_mode === "generate"
+      ? [{
+          label: p.voiceover ? `Lektor: ${p.voiceover.variants?.length ?? 1} wersje hooka, ${p.voiceover.duration.toFixed(1)} s` : p.settings.script_status === "ready" ? "Skrypt gotowy — popraw i kliknij „Generuj lektora”" : "Skrypt lektora (5 hooków)",
+          state: (p.voiceover ? "done" : p.settings.script_status === "ready" ? "todo" : running && ready === media.length ? "active" : "todo") as "done" | "active" | "todo" | "error",
+        }]
+      : []),
+    ...(p.settings.voiceover && p.settings.voiceover_mode !== "generate" ? [{ label: p.voiceover ? `Lektor: ${p.voiceover.original.toFixed(1)} s → ${p.voiceover.duration.toFixed(1)} s bez pauz` : "Lektor: transkrypcja i cięcie pauz", state: (p.voiceover ? "done" : vo?.status === "error" ? "error" : running && ready === media.length ? "active" : "todo") as "done" | "active" | "todo" | "error" }] : []),
     { label: gen.length ? `Brakujące ujęcia: ${gen.filter((g) => g.status === "ready").length}/${gen.length} gotowe` : reusedAi ? `Brakujące ujęcia (${reusedAi} AI z biblioteki)` : "Brakujące ujęcia", state: p.settings.generated === "done" && gen.every((g) => g.status === "ready" || g.status === "error") ? "done" : running && p.status === "generating" ? "active" : "todo" },
     { label: "Plan montażu + Kontroler", state: p.plan ? "done" : p.status === "planning" ? "active" : "todo" },
   ];
