@@ -66,6 +66,22 @@ function describeChecks(checks: SourceCheck[]) {
   return checks.map((c) => `${c.ok ? "OK " : "BŁĄD"} ${c.name} — ${c.status ?? "-"} ${c.ranged ? "206" : "bez zakresów"} ${c.ms} ms ${c.size ? `${(c.size / 1e6).toFixed(1)} MB` : ""}${c.error ? ` (${c.error})` : ""}`).join("\n");
 }
 
+// Windows/GPU hardware video decoders have a small pool of output frames. The renderer keeps
+// several decoded frames per clip in its cache, and with two clips on screen (split) the
+// hardware decoder stops producing frames — the render then hangs on "Extracting frame".
+// Software decoding has no such pool, and 720p H.264 decodes fast enough in software.
+export function preferSoftwareDecoding(): { restore: () => void; count: () => number } {
+  if (typeof VideoDecoder === "undefined") return { restore: () => {}, count: () => 0 };
+  const proto = VideoDecoder.prototype;
+  const original = proto.configure;
+  let n = 0;
+  proto.configure = function (this: VideoDecoder, config: VideoDecoderConfig) {
+    n++;
+    return original.call(this, { ...config, hardwareAcceleration: "prefer-software" });
+  };
+  return { restore: () => void (proto.configure = original), count: () => n };
+}
+
 export async function renderInBrowser(
   props: SklejkaProps,
   onProgress: (p: number) => void,
@@ -91,6 +107,7 @@ export async function renderInBrowser(
       orig[k](...args);
     };
   }
+  const decoding = preferSoftwareDecoding();
   try {
     const [{ renderMediaOnWeb }, { Sklejka, durationInFrames }] = await Promise.all([import("@remotion/web-renderer"), import("@/remotion/Sklejka")]);
     const size = FORMAT_SIZE[props.format];
@@ -115,8 +132,9 @@ export async function renderInBrowser(
       const hit = sources.find((s) => raw.includes(shortUrl(s.url)));
       message = `Przeglądarka nie zdążyła odczytać klatki z nagrania${hit ? ` „${hit.name}”` : ""}. Zostaw kartę Clipzy na wierzchu podczas renderu i spróbuj ponownie — jeśli się powtórzy, wyślij szczegóły.`;
     }
-    throw new RenderFailure(message, `${raw.slice(0, 1500)}\n\nSprawdzenie plików:\n${describeChecks(checks)}\n\nOstatnie logi renderera:\n${logs.slice(-80).join("\n")}\n\n${navigator.userAgent}`);
+    throw new RenderFailure(message, `${raw.slice(0, 1500)}\n\nSprawdzenie plików:\n${describeChecks(checks)}\n\nDekodery programowe: ${decoding.count()}\n\nOstatnie logi renderera:\n${logs.slice(-80).join("\n")}\n\n${navigator.userAgent}`);
   } finally {
+    decoding.restore();
     Object.assign(console, orig);
   }
 }
