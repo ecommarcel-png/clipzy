@@ -6,6 +6,7 @@
    "name": "ding-1",
    "category": "ding",
    "duration": 0.84,
+   "start": 0,
    "bytes": 13835
   },
   {
@@ -13,6 +14,7 @@
    "name": "pop-1",
    "category": "pop",
    "duration": 0.52,
+   "start": 0,
    "bytes": 8820
   },
   {
@@ -20,6 +22,7 @@
    "name": "rip-1",
    "category": "rip",
    "duration": 0.63,
+   "start": 0,
    "bytes": 10492
   },
   {
@@ -27,6 +30,7 @@
    "name": "sparkle-1",
    "category": "sparkle",
    "duration": 1.23,
+   "start": 0,
    "bytes": 20105
   },
   {
@@ -34,6 +38,7 @@
    "name": "strike-1",
    "category": "strike",
    "duration": 0.63,
+   "start": 0,
    "bytes": 10492
   },
   {
@@ -41,6 +46,7 @@
    "name": "whoosh-1",
    "category": "whoosh",
    "duration": 0.73,
+   "start": 0,
    "bytes": 12163
   }
  ]

@@ -55,6 +55,16 @@ export function reviewerKnowledge() {
   return bundle([REZYSER, SKLEJKI, META_CORE]);
 }
 
+// Sklejki: editing rules, effects, hooks and scripts.
+export function clipsKnowledge() {
+  return bundle([
+    REZYSER,
+    SKLEJKI,
+    ["Meta Ads: skrypty i hooki", "meta-ads/references/skrypty-i-hooki.md"],
+    ["Meta Ads: poziomy świadomości", "meta-ads/references/poziomy-swiadomosci.md"],
+  ]);
+}
+
 export function knowledgeText(docs: KnowledgeDoc[]): string {
   return docs.map((d) => `<wiedza tytul="${d.title}">\n${d.content}\n</wiedza>`).join("\n\n");
 }

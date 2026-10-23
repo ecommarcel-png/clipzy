@@ -6,7 +6,11 @@ const nextConfig: NextConfig = {
   // The ad knowledge base is read from disk at runtime; ship it with every route.
   outputFileTracingIncludes: {
     "/**": ["./knowledge/**/*"],
+    // Sklejki: ffmpeg finds hard cuts in clips and pauses in the voiceover.
+    "/clips/**": ["./node_modules/ffmpeg-static/ffmpeg"],
   },
+  // Native binary + its path resolution must stay outside the bundle.
+  serverExternalPackages: ["ffmpeg-static"],
   turbopack: {
     rules: {
       "*.css": {

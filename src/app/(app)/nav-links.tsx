@@ -22,7 +22,7 @@ const ICONS = {
 
 const LINKS: Array<{ href: string; label: string; icon: ReactNode; soon?: boolean }> = [
   { href: "/brands", label: "Marki i produkty", icon: ICONS.brands },
-  { href: "/clips", label: "Sklejki", icon: ICONS.clips, soon: true },
+  { href: "/clips", label: "Sklejki", icon: ICONS.clips },
   { href: "/ai-video", label: "AI nagrania", icon: ICONS.ai, soon: true },
   { href: "/image-ads", label: "Image ads", icon: ICONS.image, soon: true },
   { href: "/text-remover", label: "Usuwanie napisów", icon: ICONS.eraser, soon: true },

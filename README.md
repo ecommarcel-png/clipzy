@@ -23,7 +23,27 @@ Każdy profil marki i produktu przechodzi pętlę jakości (`knowledge/rezyser/S
 - **Gotowość do reklam** liczona z tego, co sprzedaje (grupa docelowa, persony, problemy, kąty) — nie spada po odpowiedziach. „Rozbuduj profil” każe Claude uzupełnić braki samemu.
 - Profil nie pyta o styl, lektora ani muzykę — to wybór w module sklejek, a styl dopracowuje feedback do gotowych reklam (zapisywany w profilu marki jako preferencje).
 
-W kolejnych etapach: sklejki, AI nagrania, image ads, usuwanie napisów, integracja z Meta API.
+## Sklejki (etap 2)
+
+**Sklejki → Nowa sklejka:** wybierasz markę i produkt, wgrywasz nagrania (dowolne — także inne modele produktu) i lektora (opcjonalnie), wybierasz muzykę i formaty. Dalej Clipzy działa samo:
+
+1. **Analiza nagrań** — ffmpeg znajduje cięcia wewnątrz plików (żeby nigdy nie mignęła klatka sąsiedniej sceny), Gemini ogląda każde nagranie: co widać, gdzie jest produkt, czy logo jest w lustrzanym odbiciu, gdzie są artefakty AI.
+2. **Lektor** — ElevenLabs Scribe zapisuje słowa z czasami, Clipzy wycina za długie przerwy (zostawia naturalny oddech po zdaniu), wyrównuje głośność (−16 LUFS) i układa napisy po 3–6 słów. Claude ocenia skrypt.
+3. **Brakujące ujęcia** — jeśli Reżyser uzna, że czegoś nie ma w materiałach (np. pokazania problemu), generuje do 3 ujęć Seedance 2.5 przez fal.ai.
+4. **Montaż** — Reżyser pisze plan (split screen przed/po, szary obraz dla problemu, ikonki przekreślane, obwódki, połysk, przejście w kolorze marki, packshot ze zdjęcia produktu na końcu, muzyka i SFX z biblioteki), Kontroler go sprawdza, a sanitizer wyrównuje każde cięcie do klatki.
+5. **Podgląd i render w przeglądarce** (Remotion) — MP4 1080p w 4:5 / 9:16 / 1:1, pobiera się automatycznie; Gemini ogląda gotowy plik i wystawia ocenę.
+6. **Feedback** — piszesz, co zmienić; trwałe uwagi trafiają do preferencji marki i działają przy kolejnych reklamach.
+
+**Wymagania:**
+
+- Klucze: Anthropic i Gemini (zawsze), ElevenLabs (gdy jest lektor), fal (gdy trzeba coś wygenerować).
+- Render działa w **Chrome lub Edge na komputerze** (WebCodecs). Safari nie renderuje filtrów.
+- Pliki do 50 MB (limit Supabase Free). Większe nagrania i iPhone .mov są automatycznie zmniejszane w przeglądarce przed wysłaniem.
+- Remotion jest darmowy dla osób prywatnych i firm do 3 osób. Większy zespół potrzebuje licencji firmowej (`NEXT_PUBLIC_REMOTION_LICENSE_KEY` w Vercelu).
+
+**Biblioteka muzyki i SFX:** wrzucaj pliki do `public/biblioteka/muzyka/` i `public/biblioteka/sfx/` (zasady nazw w README w tych folderach). Przy każdym deployu Clipzy sam liczy długość utworów i najlepszy moment startu. Pliki są dostępne tylko po zalogowaniu, ale **repozytorium musi być prywatne**, jeśli wrzucasz licencjonowaną muzykę (np. z Epidemic Sound).
+
+W kolejnych etapach: AI nagrania, image ads, usuwanie napisów, integracja z Meta API.
 
 ## Wdrożenie (jednorazowo)
 
@@ -31,7 +51,8 @@ W kolejnych etapach: sklejki, AI nagrania, image ads, usuwanie napisów, integra
 
 1. W projekcie Supabase otwórz **SQL Editor** i uruchom po kolei (wklej → **Run**) pliki z `supabase/migrations/`:
    - `0001_init.sql` — tabele, zabezpieczenia (każdy widzi tylko swoje dane) i prywatny magazyn plików `media`,
-   - `0002_review.sql` — miejsce na wyniki kontroli jakości profili.
+   - `0002_review.sql` — miejsce na wyniki kontroli jakości profili,
+   - `0003_clips.sql` — projekty sklejek, ich pliki oraz zgoda na wideo i audio w magazynie `media`.
 2. **Authentication → URL Configuration:**
    - *Site URL:* adres strony na Vercelu, np. `https://clipzy.vercel.app`
    - *Redirect URLs:* dodaj `https://clipzy.vercel.app/auth/confirm`
