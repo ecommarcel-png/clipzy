@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "predev": "node scripts/build-library.mjs",
+    "prebuild": "node scripts/build-library.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.1.0",
@@ -28,6 +30,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
+    "music-metadata": "^11.16.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^5.0.5"
