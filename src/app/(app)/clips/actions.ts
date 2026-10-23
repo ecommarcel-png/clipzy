@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { userMessage } from "@/lib/errors";
 import {
-  analyzeAsset, applyFeedback, assetInfo, writeProjectScript, loadProject, makePlan, pollGenerations, processVoiceover, requestMissing, reviewRendered,
+  analyzeAsset, applyFeedback, assetInfo, writeProjectScript, generateVoiceovers, loadProject, makePlan, pollGenerations, processVoiceover, requestMissing, reviewRendered,
   type ClipSettings,
 } from "@/lib/clips/pipeline";
 import { FORMATS, EditPlan, sanitizePlan } from "@/lib/clips/plan";
@@ -15,6 +15,7 @@ import { library } from "@/lib/clips/library";
 import { attachLibrary, deleteLibraryItem, pathsInUse } from "@/lib/clips/library-store";
 import { ANALYZE_BATCH, type PipelineState } from "@/lib/clips/steps";
 import { VOICE_SAMPLE_TEXT, getVoice } from "@/lib/voices";
+import { ScriptSchema } from "@/lib/ai/script";
 import { resolveVoiceId, synthesize } from "@/lib/ai/tts";
 import { signedUrls } from "@/lib/storage";
 import { getProviderKey } from "@/lib/api-keys";
@@ -133,6 +134,17 @@ export async function scriptAction(projectId: string, note?: string): Promise<St
   return withProject(projectId, async ({ supabase, data }) => {
     const script = await writeProjectScript(supabase, data.project, data.assets, note);
     return { ok: true, message: `Skrypt gotowy: ${script.angle}` };
+  }) as Promise<StepResult>;
+}
+
+// "Generuj lektora": the edited script → 5 voiceovers (one per hook).
+export async function generateVoiceoverAction(projectId: string, script: unknown): Promise<StepResult> {
+  return withProject(projectId, async ({ supabase, user, data }) => {
+    if (data.project.voiceover) return { ok: false, error: "Lektor tej sklejki jest już wygenerowany." };
+    const parsed = ScriptSchema.safeParse(script);
+    if (!parsed.success) return { ok: false, error: "Skrypt ma nieprawidłowy format — odśwież stronę." };
+    const vo = await generateVoiceovers(supabase, user.id, data.project, parsed.data);
+    return { ok: true, message: `Lektor gotowy: ${vo.variants?.length ?? 1} ${vo.variants?.length === 1 ? "wersja" : "wersje"}, ${vo.timeline.duration.toFixed(1)} s.` };
   }) as Promise<StepResult>;
 }
 

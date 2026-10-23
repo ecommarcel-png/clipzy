@@ -133,3 +133,25 @@ export async function poster(input: string, output: string, at: number): Promise
     maxBuffer: 8 * 1024 * 1024,
   });
 }
+
+// Hook + rest -> one voiceover: `gap` seconds of silence between the parts, steady loudness, mono WAV.
+export async function concatVoice(parts: string[], gap: number, output: string): Promise<void> {
+  const inputs = parts.flatMap((p) => ["-i", p]);
+  const chains = parts.map((_, i) => `[${i}:a]aresample=48000,aformat=channel_layouts=mono${i < parts.length - 1 ? `,apad=pad_dur=${gap}` : ""}[a${i}]`);
+  const filter = `${chains.join(";")};${parts.map((_, i) => `[a${i}]`).join("")}concat=n=${parts.length}:v=0:a=1,loudnorm=I=-16:TP=-1.5:LRA=11[out]`;
+  try {
+    await run(bin(), ["-hide_banner", "-y", ...inputs, "-filter_complex", filter, "-map", "[out]", "-ar", "48000", "-ac", "1", "-c:a", "pcm_s16le", output], {
+      timeout: 120_000,
+      maxBuffer: 32 * 1024 * 1024,
+    });
+  } catch (e) {
+    const err = e as { stderr?: string };
+    throw new Error(`ffmpeg (sklejanie lektora): ${String(err.stderr ?? e).slice(-300)}`);
+  }
+}
+
+// MP3 headers overstate the length a little (encoder padding); a decoded WAV has the exact one.
+export async function decodeAudio(input: string, output: string): Promise<number> {
+  await run(bin(), ["-hide_banner", "-y", "-i", input, "-ar", "48000", "-ac", "1", "-c:a", "pcm_s16le", output], { timeout: 60_000, maxBuffer: 8 * 1024 * 1024 });
+  return (await probe(output)).duration;
+}

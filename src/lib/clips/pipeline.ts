@@ -7,7 +7,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { BUCKET, signedUrls } from "@/lib/storage";
 import { getBrand, getProduct, getProductImages } from "@/lib/data";
 import { getProviderKey } from "@/lib/api-keys";
-import { probe, sceneCuts, silences, normalizeVoice, poster } from "@/lib/media/ffmpeg";
+import { probe, sceneCuts, silences, normalizeVoice, poster, concatVoice, decodeAudio } from "@/lib/media/ffmpeg";
+import { resolveVoiceId, synthesize } from "@/lib/ai/tts";
+import { activeHooks, hookEndBetween, uploadHookEnd, variantWords, HOOK_GAP } from "@/lib/clips/voice-variants";
 import { posterPathFor, saveToLibrary } from "@/lib/clips/library-store";
 import { analyzeClip, reviewRender, type ClipAnalysis, type RenderReview } from "@/lib/ai/gemini";
 import { transcribe } from "@/lib/ai/scribe";
@@ -19,7 +21,7 @@ import { cleanIntervals, sanitizePlan, type AssetInfo, type EditPlan } from "@/l
 import { library } from "@/lib/clips/library";
 import type { Mix } from "@/lib/clips/edit";
 import { fixBrandName } from "@/lib/clips/names";
-import { writeScript, type Script } from "@/lib/ai/script";
+import { writeScript, HOOK_VARIANTS, type Script } from "@/lib/ai/script";
 import { getVoice } from "@/lib/voices";
 import { UserError } from "@/lib/errors";
 
@@ -227,7 +229,11 @@ export async function processVoiceover(supabase: SupabaseClient, project: ClipPr
         unlink(norm).catch(() => {});
       }
     }
-    const voiceover: VoiceoverData = { asset_id: asset.id, text, words, timeline, captions, feedback };
+    // hook versions for an uploaded voiceover: same audio, the opening (1.2–3.5 s) gets 5 different visuals
+    const hookEnd = uploadHookEnd(timeline.phrases);
+    const hookText = timeline.phrases.filter((p) => p.end <= hookEnd + 0.01).map((p) => p.text).join(" ") || timeline.phrases[0]?.text || "";
+    const variants: VoVariant[] = Array.from({ length: HOOK_VARIANTS }, () => ({ asset_id: asset.id, words, timeline, captions, hookEnd, hookText }));
+    const voiceover: VoiceoverData = { asset_id: asset.id, text, words, timeline, captions, feedback, variants, mode: "upload" };
     await supabase.from("clip_assets").update({ status: "ready", path: playPath, meta, error: null }).eq("id", asset.id);
     await supabase.from("clip_projects").update({ voiceover }).eq("id", project.id);
     return voiceover;
@@ -409,4 +415,71 @@ export async function writeProjectScript(supabase: SupabaseClient, project: Clip
   const script = await writeScript(anthropic, ctx, { words, note, previous: note ? project.settings.script : undefined });
   await supabase.from("clip_projects").update({ settings: { ...project.settings, script, script_status: "ready" }, status: "draft" }).eq("id", project.id);
   return script;
+}
+
+// Generated voiceover, step 2: 5 hooks + the shared rest voiced separately (the rest sounds the
+// same in every version), then glued into one voiceover per hook version.
+export async function generateVoiceovers(supabase: SupabaseClient, userId: string, project: ClipProjectRow, script: Script): Promise<VoiceoverData> {
+  const brandName = (await getBrand(supabase, project.brand_id)).name;
+  const fix = (t: string) => fixBrandName(t, brandName);
+  const hooks = activeHooks(script.hooks).map(fix);
+  const body = fix(script.body.trim());
+  if (!hooks.length) throw new UserError("Wpisz przynajmniej jeden hook.");
+  if (!body) throw new UserError("Wpisz resztę skryptu (po hooku).");
+  const key = await getProviderKey(supabase, "elevenlabs");
+  const voice = getVoice(project.settings.voice);
+  const voiceId = project.settings.voice_id || (await resolveVoiceId(key, voice.elevenName));
+
+  // TTS: the rest + every hook, 3 at a time
+  const jobs = [{ text: body, ctx: { previous: hooks[0] } }, ...hooks.map((h) => ({ text: h, ctx: { next: body.slice(0, 300) } }))];
+  const results: Array<Awaited<ReturnType<typeof synthesize>>> = [];
+  for (let i = 0; i < jobs.length; i += 3) {
+    results.push(...(await Promise.all(jobs.slice(i, i + 3).map((j) => synthesize(key, voice, voiceId, j.text, j.ctx)))));
+  }
+  const dir = path.join(/* turbopackIgnore: true */ os.tmpdir(), `vo-${randomUUID()}`);
+  const { mkdir, rm } = await import("node:fs/promises");
+  await mkdir(dir, { recursive: true });
+  try {
+    const wavs: Array<{ file: string; duration: number }> = [];
+    for (const [i, r] of results.entries()) {
+      const mp3 = path.join(dir, `${i}.mp3`);
+      await writeFile(mp3, r.audio);
+      const file = path.join(dir, `${i}.wav`);
+      wavs.push({ file, duration: await decodeAudio(mp3, file) });
+    }
+    const [bodyWav, ...hookWavs] = wavs;
+    const [bodyTts, ...hookTts] = results;
+    const variants: VoVariant[] = [];
+    for (const [k, hookText] of hooks.entries()) {
+      const out = path.join(dir, `vo-hook-${k + 1}.wav`);
+      await concatVoice([hookWavs[k].file, bodyWav.file], HOOK_GAP, out);
+      const total = (await probe(out)).duration;
+      const words = variantWords({ words: hookTts[k].words, duration: hookWavs[k].duration }, { words: bodyTts.words }).map((w) => ({ ...w, text: fix(w.text) }));
+      const timeline = tighten(words, total);
+      const n = hookTts[k].words.length;
+      const hookEnd = n && timeline.words[n] ? hookEndBetween(timeline.words[n - 1].end, timeline.words[n].start) : uploadHookEnd(timeline.phrases);
+      const id = randomUUID();
+      const storagePath = `${userId}/clips/${project.id}/vo-hook-${k + 1}-${id.slice(0, 8)}.wav`;
+      const up = await supabase.storage.from(BUCKET).upload(storagePath, await readFile(out), { contentType: "audio/wav", upsert: true });
+      if (up.error) throw new UserError(`Nie udało się zapisać lektora: ${up.error.message}`);
+      const { error } = await supabase.from("clip_assets").insert({
+        id, user_id: userId, project_id: project.id, kind: "voiceover", path: storagePath, name: `Lektor — hook ${k + 1}`, status: "ready",
+        meta: { variant: k + 1, duration: total, generated: true, voice: voice.id },
+      });
+      if (error) throw new UserError(error.message);
+      variants.push({ asset_id: id, words, timeline, captions: captionChunks(timeline.phrases), hookEnd, hookText });
+    }
+    const first = variants[0];
+    const voiceover: VoiceoverData = {
+      asset_id: first.asset_id, text: `${hooks[0]} ${body}`, words: first.words, timeline: first.timeline, captions: first.captions,
+      feedback: null, variants, mode: "generate",
+    };
+    await supabase
+      .from("clip_projects")
+      .update({ voiceover, settings: { ...project.settings, script: { ...script, hooks: script.hooks.map((h) => ({ ...h, text: fix(h.text) })), body }, script_status: "voiced", voice_id: voiceId } })
+      .eq("id", project.id);
+    return voiceover;
+  } finally {
+    rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
 }
