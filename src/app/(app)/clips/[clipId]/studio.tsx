@@ -17,7 +17,7 @@ import {
 } from "../actions";
 import { nextStep } from "@/lib/clips/steps";
 import { QuickEdit, type Draft } from "./quick-edit";
-import { prepareVideo, renderInBrowser, sklejkaProps } from "./media";
+import { RenderFailure, prepareVideo, renderInBrowser, sklejkaProps } from "./media";
 
 const Preview = dynamic(() => import("./preview"), { ssr: false, loading: () => <div className="aspect-[4/5] w-full animate-pulse rounded-[18px] bg-surface-2" /> });
 
@@ -394,7 +394,7 @@ function Result({ data, renders, onChanged }: { data: StudioData; renders: Studi
           <Preview props={props} playerRef={player} />
         </div>
         <p className="mt-2 text-center text-xs text-faint">{duration.toFixed(1)} s · podgląd może przycinać na słabszym komputerze — gotowy plik będzie płynny</p>
-        <RenderButtons data={data} props={props} format={format} onChanged={onChanged} beforeRender={dirty ? save : undefined} />
+        <RenderButtons data={data} props={props} format={format} onChanged={onChanged} beforeRender={dirty ? save : undefined} sources={renderSources(data, props)} />
       </Card>
 
       <QuickEdit
@@ -428,11 +428,25 @@ function Result({ data, renders, onChanged }: { data: StudioData; renders: Studi
   );
 }
 
+// Every file the render reads, with a human name (for the pre-check and error messages).
+function renderSources(data: StudioData, props: ReturnType<typeof sklejkaProps>) {
+  const out: Array<{ name: string; url: string }> = [];
+  const used = new Set(props.plan.shots.flatMap((s) => (s.type === "clip" ? [s.src.asset] : s.type === "split" ? [s.top.asset, s.bottom.asset] : [])));
+  for (const a of data.assets) if (used.has(a.id) && a.url) out.push({ name: a.name, url: a.url });
+  if (props.vo) out.push({ name: "lektor", url: props.vo.url });
+  if (props.plan.music.file) out.push({ name: "muzyka", url: props.plan.music.file });
+  if (props.packshotUrl) out.push({ name: "zdjęcie produktu", url: props.packshotUrl });
+  return out;
+}
+
 function RenderButtons({
-  data, props, format, onChanged, beforeRender,
-}: { data: StudioData; props: ReturnType<typeof sklejkaProps>; format: Format; onChanged: () => void; beforeRender?: () => Promise<boolean> }) {
+  data, props, format, onChanged, beforeRender, sources,
+}: {
+  data: StudioData; props: ReturnType<typeof sklejkaProps>; format: Format; onChanged: () => void; beforeRender?: () => Promise<boolean>;
+  sources: Array<{ name: string; url: string }>;
+}) {
   const [progress, setProgress] = useState<number | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [err, setErr] = useState<{ message: string; details: string | null } | null>(null);
   const abort = useRef<AbortController | null>(null);
 
   async function render() {
@@ -442,7 +456,7 @@ function RenderButtons({
     setProgress(0);
     abort.current = new AbortController();
     try {
-      const blob = await renderInBrowser(props, setProgress, abort.current.signal);
+      const blob = await renderInBrowser(props, setProgress, abort.current.signal, sources);
       setProgress(1);
       const supabase = createClient();
       const id = crypto.randomUUID();
@@ -459,7 +473,7 @@ function RenderButtons({
       onChanged();
       reviewRenderAction(data.project.id, id).then(() => onChanged());
     } catch (e) {
-      if (!abort.current?.signal.aborted) setErr(e instanceof Error ? e.message : String(e));
+      if (!abort.current?.signal.aborted) setErr({ message: e instanceof Error ? e.message : String(e), details: e instanceof RenderFailure ? e.details : null });
     } finally {
       setProgress(null);
     }
@@ -478,7 +492,18 @@ function RenderButtons({
       ) : (
         <Button className="w-full" onClick={render}>{beforeRender ? "Zapisz zmiany, renderuj" : "Renderuj"} {FORMAT_SIZE[format].label} i pobierz MP4</Button>
       )}
-      {err ? <div className="mt-2"><Notice tone="danger">{err.includes("WebCodecs") || err.includes("codec") ? "Ta przeglądarka nie umie renderować wideo — otwórz Clipzy w Chrome." : err}</Notice></div> : null}
+      {err ? (
+        <div className="mt-2 space-y-2">
+          <Notice tone="danger"><span className="break-words">{err.message.slice(0, 400)}</span></Notice>
+          {err.details ? (
+            <details className="rounded-xl border border-border bg-bg/40 px-3 py-2 text-xs">
+              <summary className="cursor-pointer font-bold text-muted">Szczegóły techniczne</summary>
+              <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all text-[11px] text-faint">{err.details}</pre>
+              <button type="button" className="mt-2 font-bold text-accent hover:text-accent-strong" onClick={() => void navigator.clipboard?.writeText(err.details ?? "")}>Kopiuj szczegóły</button>
+            </details>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
