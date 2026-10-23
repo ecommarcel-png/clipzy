@@ -125,3 +125,11 @@ export async function normalizeVoice(input: string, output: string): Promise<voi
     throw new Error(err.killed ? "Wyrównanie głośności lektora trwało za długo." : `ffmpeg: ${String(err.stderr ?? e).slice(-300)}`);
   }
 }
+
+// One frame as a small JPG — the thumbnail in the library and the picker.
+export async function poster(input: string, output: string, at: number): Promise<void> {
+  await run(bin(), ["-hide_banner", "-y", "-ss", at.toFixed(2), "-i", input, "-frames:v", "1", "-vf", "scale=360:-2", "-q:v", "4", output], {
+    timeout: 60_000,
+    maxBuffer: 8 * 1024 * 1024,
+  });
+}

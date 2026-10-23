@@ -7,6 +7,8 @@ import { BackLink } from "@/components/back-link";
 import { ConfirmButton } from "@/components/confirm-button";
 import { ProductEditor } from "./product-editor";
 import { ResearchCard } from "./research-card";
+import { LibrarySection } from "./library-section";
+import { libraryCards } from "@/lib/clips/library-view";
 import type { ResearchReport } from "@/lib/ai/research";
 import { deleteProduct } from "../actions";
 
@@ -19,6 +21,7 @@ export default async function ProductPage({ params }: PageProps<"/brands/[brandI
   const product = await getProduct(supabase, brand.id, productId);
   const images = await getProductImages(supabase, product.id);
   const urls = await signedUrls(supabase, images.map((i) => i.storage_path));
+  const saved = await libraryCards(supabase, { brandId: brand.id, productId: product.id }, true);
 
   return (
     <>
@@ -41,6 +44,10 @@ export default async function ProductPage({ params }: PageProps<"/brands/[brandI
           productId={product.id}
           research={(product.source.research as ResearchReport | undefined) ?? null}
         />
+      </div>
+
+      <div className="mb-5">
+        <LibrarySection items={saved} brandId={brand.id} productId={product.id} />
       </div>
 
       <ProductEditor

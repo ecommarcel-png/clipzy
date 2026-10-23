@@ -4,14 +4,31 @@ import { useActionState, useState } from "react";
 import { createClipProject } from "../actions";
 import { Button, Card, Disclosure, Input, Label, Notice, Select, Spinner, Textarea, cx } from "@/components/ui";
 import { FORMAT_SIZE, FORMATS } from "@/lib/clips/plan";
+import type { LibraryCard } from "@/lib/clips/library-view";
+import { LibraryPicker } from "./library-picker";
 
 type Brand = { id: string; name: string; products: Array<{ id: string; name: string }> };
 
-export function NewClipForm({ brands, music }: { brands: Brand[]; music: Array<{ file: string; name: string }> }) {
+export function NewClipForm({
+  brands, music, saved, initial,
+}: { brands: Brand[]; music: Array<{ file: string; name: string }>; saved: LibraryCard[]; initial?: { brandId?: string; productId?: string } }) {
   const [state, action, pending] = useActionState(createClipProject, {} as { error?: string });
-  const [brandId, setBrandId] = useState(brands[0]?.id ?? "");
-  const [voiceover, setVoiceover] = useState(true);
+  const [brandId, setBrandId] = useState(brands.find((b) => b.id === initial?.brandId)?.id ?? brands[0]?.id ?? "");
   const products = brands.find((b) => b.id === brandId)?.products ?? [];
+  const [productId, setProductId] = useState(products.find((p) => p.id === initial?.productId)?.id ?? products[0]?.id ?? "");
+  const [voiceover, setVoiceover] = useState(true);
+  const brandItems = saved.filter((i) => i.brandId === brandId);
+  const [chosen, setChosen] = useState(() => brandItems.filter((i) => i.productId === productId && productId).length);
+  const pickBrand = (id: string) => {
+    setBrandId(id);
+    const first = brands.find((b) => b.id === id)?.products[0]?.id ?? "";
+    setProductId(first);
+    setChosen(saved.filter((i) => i.brandId === id && i.productId === first && first).length);
+  };
+  const pickProduct = (id: string) => {
+    setProductId(id);
+    setChosen(brandItems.filter((i) => i.productId === id && id).length);
+  };
 
   return (
     <Card className="max-w-2xl">
@@ -19,17 +36,19 @@ export function NewClipForm({ brands, music }: { brands: Brand[]; music: Array<{
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="brandId">Marka</Label>
-            <Select id="brandId" name="brandId" value={brandId} onChange={(e) => setBrandId(e.target.value)}>
+            <Select id="brandId" name="brandId" value={brandId} onChange={(e) => pickBrand(e.target.value)}>
               {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </Select>
           </div>
           <div>
             <Label htmlFor="productId">Produkt</Label>
-            <Select id="productId" name="productId" key={brandId}>
+            <Select id="productId" name="productId" value={productId} onChange={(e) => pickProduct(e.target.value)}>
               {products.length ? products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>) : <option value="">— brak produktów —</option>}
             </Select>
           </div>
         </div>
+
+        {brandItems.length ? <LibraryPicker key={`${brandId}:${productId}`} items={brandItems} productId={productId} onCount={setChosen} /> : null}
 
         <div>
           <span className="mb-1.5 block text-sm font-bold">Lektor</span>
@@ -90,7 +109,7 @@ export function NewClipForm({ brands, music }: { brands: Brand[]; music: Array<{
         {state.error ? <Notice tone="danger">{state.error}</Notice> : null}
         <Button type="submit" disabled={pending || !brandId}>
           {pending ? <Spinner /> : null}
-          Dalej: wgraj nagrania
+          {chosen ? `Dalej: ${voiceover ? "wgraj lektora" : "zrób sklejkę"}` : "Dalej: wgraj nagrania"}
         </Button>
       </form>
     </Card>

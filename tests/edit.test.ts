@@ -76,3 +76,10 @@ describe("quick edits", () => {
     expect(normalizeMix({ vo: 3, music: -1 })).toEqual({ vo: 1, music: 0, sfx: 1 });
   });
 });
+
+describe("library paths", () => {
+  it("poster sits next to the video", async () => {
+    const { posterPathFor } = await import("@/lib/clips/library-store");
+    expect(posterPathFor("u/clips/p/abc.mp4")).toBe("u/clips/p/abc.poster.jpg");
+  });
+});

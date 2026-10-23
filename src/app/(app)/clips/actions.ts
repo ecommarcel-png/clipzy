@@ -12,6 +12,7 @@ import {
 import { FORMATS, EditPlan, sanitizePlan } from "@/lib/clips/plan";
 import { editCaptions, normalizeMix, type Mix } from "@/lib/clips/edit";
 import { library } from "@/lib/clips/library";
+import { attachLibrary, deleteLibraryItem, pathsInUse } from "@/lib/clips/library-store";
 import { getProviderKey } from "@/lib/api-keys";
 import type { Provider } from "@/lib/providers";
 
@@ -51,6 +52,15 @@ export async function createClipProject(_: unknown, form: FormData): Promise<{ e
     settings,
   });
   if (error) return { error: /relation|does not exist/i.test(error.message) ? "Uruchom w Supabase migrację 0003_clips.sql (instrukcja w README)." : error.message };
+  // saved materials chosen in the form: ready at once, no analysis or generation to pay for again
+  const fromLibrary = form.getAll("library").map(String).filter(isUuid).slice(0, 60);
+  if (fromLibrary.length) {
+    try {
+      await attachLibrary(supabase, user.id, { id, brand_id: brandId }, fromLibrary);
+    } catch (e) {
+      return { error: `Nie udało się dodać materiałów z biblioteki: ${userMessage(e)}` };
+    }
+  }
   redirect(`/clips/${id}`);
 }
 
@@ -206,7 +216,19 @@ export async function deleteClipProject(form: FormData) {
   const id = String(form.get("projectId") ?? "");
   if (!isUuid(id)) return;
   const { data: files } = await supabase.storage.from("media").list(`${user.id}/clips/${id}`, { limit: 1000 });
-  if (files?.length) await supabase.storage.from("media").remove(files.map((f) => `${user.id}/clips/${id}/${f.name}`));
+  const all = (files ?? []).map((f) => `${user.id}/clips/${id}/${f.name}`);
+  // materials saved in the library (or used by another sklejka) stay
+  const keep = await pathsInUse(supabase, all, id);
+  const gone = all.filter((p) => !keep.has(p));
+  if (gone.length) await supabase.storage.from("media").remove(gone);
   await supabase.from("clip_projects").delete().eq("id", id);
   redirect("/clips");
+}
+
+export async function deleteLibraryItemAction(form: FormData) {
+  const { supabase } = await requireUser();
+  const id = String(form.get("itemId") ?? "");
+  const back = String(form.get("back") ?? "");
+  if (isUuid(id)) await deleteLibraryItem(supabase, id);
+  if (back.startsWith("/")) revalidatePath(back);
 }

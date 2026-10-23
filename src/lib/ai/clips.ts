@@ -80,7 +80,7 @@ export async function missingShots(apiKey: string, ctx: ClipsContext): Promise<M
         type: "text",
         text: `${contextBlock(ctx)}
 
-Zadanie: sprawdź, czy każde ważne zdanie lektora (hook, problem, przed/po, efekt WOW, mechanizm) da się zilustrować DOSŁOWNIE nagraniami z <materialy>. Wygeneruj tylko to, czego naprawdę brakuje i co podniesie skuteczność (najczęściej: pokazanie problemu — np. podrażnienia, zacięcia, bólu, bałaganu — którego klient nie nagrał). Najwyżej 3 ujęcia, a jedno zlecenie może zawierać 2–3 krótkie ujęcia z twardymi cięciami (taniej). Nie generuj czegoś, co już jest w nagraniach. Nie generuj fałszywych efektów działania produktu. Gdy nic nie brakuje — pusta lista.`,
+Zadanie: sprawdź, czy każde ważne zdanie lektora (hook, problem, przed/po, efekt WOW, mechanizm) da się zilustrować DOSŁOWNIE nagraniami z <materialy>. Wygeneruj tylko to, czego naprawdę brakuje i co podniesie skuteczność (najczęściej: pokazanie problemu — np. podrażnienia, zacięcia, bólu, bałaganu — którego klient nie nagrał). Najwyżej 3 ujęcia, a jedno zlecenie może zawierać 2–3 krótkie ujęcia z twardymi cięciami (taniej). Nie generuj czegoś, co już jest w nagraniach — także w ujęciach AI z wcześniejszych sklejek (pliki typu generated z opisem celu): jeśli pasują do tego lektora, użyj ich zamiast generować nowe. Każde ujęcie kosztuje użytkownika kilka dolarów. Nie generuj fałszywych efektów działania produktu. Gdy nic nie brakuje — pusta lista.`,
       },
     ],
   });

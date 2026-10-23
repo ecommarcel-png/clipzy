@@ -23,7 +23,7 @@ export default async function ClipPage({ params }: PageProps<"/clips/[clipId]">)
   const brand = await getBrand(supabase, project.brand_id);
   const product = project.product_id ? await getProduct(supabase, brand.id, project.product_id).catch(() => null) : null;
   const images = product ? await getProductImages(supabase, product.id) : [];
-  const paths = [...assets.map((a) => a.path ?? ""), brand.logo_path ?? "", images[0]?.storage_path ?? ""];
+  const paths = [...assets.map((a) => a.path ?? ""), ...assets.map((a) => (typeof a.meta.poster === "string" ? a.meta.poster : "")), brand.logo_path ?? "", images[0]?.storage_path ?? ""];
   // Long-lived links: the browser renders the video from these.
   const urls = await signedUrls(supabase, paths, 6 * 3600);
   const colors = brand.profile.colors as unknown as Record<string, string>;
@@ -47,6 +47,8 @@ export default async function ClipPage({ params }: PageProps<"/clips/[clipId]">)
       id: a.id, kind: a.kind, name: a.name, status: a.status, error: a.error, url: a.path ? urls[a.path] ?? null : null,
       mirrored: Boolean(a.meta.mirrored), format: (a.meta.format as string) ?? null, duration: Number(a.meta.duration ?? 0) || null,
       cuts: Array.isArray(a.meta.cuts) ? (a.meta.cuts as number[]) : [],
+      poster: typeof a.meta.poster === "string" ? urls[a.meta.poster] ?? null : null,
+      fromLibrary: Boolean(a.meta.from_library),
       review: a.kind === "render" ? (a.analysis as StudioData["assets"][number]["review"]) : null,
       created_at: a.created_at,
     })),

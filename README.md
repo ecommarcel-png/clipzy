@@ -35,6 +35,8 @@ Każdy profil marki i produktu przechodzi pętlę jakości (`knowledge/rezyser/S
 6. **Feedback** — piszesz, co zmienić; trwałe uwagi trafiają do preferencji marki i działają przy kolejnych reklamach.
 7. **Szybkie poprawki (bez AI)** — pod podglądem: głośność lektora, muzyki i SFX, zmiana utworu, lista ujęć (krócej/dłużej, inny plik, inny fragment, usuń), poprawa tekstu napisów i packshotu. Zmiany widać od razu w podglądzie; „Przywróć wersję Reżysera” cofa ręczne poprawki ujęć.
 
+**Biblioteka materiałów:** każde wgrane nagranie i każde ujęcie AI zapisuje się po analizie w bibliotece produktu (z miniaturą i gotową analizą). Przy nowej sklejce zapisane materiały tego produktu są od razu zaznaczone — wystarczy nowy lektor. Reżyser używa wcześniejszych ujęć AI zamiast generować je ponownie, więc kolejne sklejki kosztują głównie Claude (~$0,5–1) zamiast generowania (~$0,46 za sekundę Seedance 720p). Bibliotekę produktu widać na stronie produktu; usunięcie z biblioteki ani usunięcie sklejki nie psuje innych sklejek.
+
 **Wymagania:**
 
 - Klucze: Anthropic i Gemini (zawsze), ElevenLabs (gdy jest lektor), fal (gdy trzeba coś wygenerować).
@@ -53,7 +55,8 @@ W kolejnych etapach: AI nagrania, image ads, usuwanie napisów, integracja z Met
 1. W projekcie Supabase otwórz **SQL Editor** i uruchom po kolei (wklej → **Run**) pliki z `supabase/migrations/`:
    - `0001_init.sql` — tabele, zabezpieczenia (każdy widzi tylko swoje dane) i prywatny magazyn plików `media`,
    - `0002_review.sql` — miejsce na wyniki kontroli jakości profili,
-   - `0003_clips.sql` — projekty sklejek, ich pliki oraz zgoda na wideo i audio w magazynie `media`.
+   - `0003_clips.sql` — projekty sklejek, ich pliki oraz zgoda na wideo i audio w magazynie `media`,
+   - `0004_library.sql` — biblioteka materiałów (nagrania i ujęcia AI do ponownego użycia).
 2. **Authentication → URL Configuration:**
    - *Site URL:* adres strony na Vercelu, np. `https://clipzy.vercel.app`
    - *Redirect URLs:* dodaj `https://clipzy.vercel.app/auth/confirm`

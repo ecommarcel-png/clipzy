@@ -37,7 +37,7 @@ export type StudioData = {
   };
   assets: Array<{
     id: string; kind: "clip" | "voiceover" | "generated" | "render"; name: string; status: string; error: string | null; url: string | null;
-    mirrored: boolean; format: string | null; duration: number | null; cuts: number[]; review: RenderReview; created_at: string;
+    mirrored: boolean; format: string | null; duration: number | null; cuts: number[]; poster: string | null; fromLibrary: boolean; review: RenderReview; created_at: string;
   }>;
   brand: { name: string; logoUrl: string | null; accent: string };
   product: { name: string | null };
@@ -64,11 +64,11 @@ function nextStep(d: StudioData, inFlight: Set<string>): Step {
 export function Studio({ data }: { data: StudioData }) {
   const router = useRouter();
   const p = data.project;
-  const clips = data.assets.filter((a) => a.kind === "clip");
   const generated = data.assets.filter((a) => a.kind === "generated");
+  const media = data.assets.filter((a) => a.kind === "clip" || a.kind === "generated");
   const vo = data.assets.find((a) => a.kind === "voiceover");
   const renders = data.assets.filter((a) => a.kind === "render").sort((a, b) => b.created_at.localeCompare(a.created_at));
-  const [running, setRunning] = useState(RUNNING.has(p.status) && clips.length > 0);
+  const [running, setRunning] = useState(RUNNING.has(p.status) && media.length > 0);
   const [error, setError] = useState<string | null>(p.status === "error" ? p.error : null);
   const [log, setLog] = useState<string[]>([]);
   const inFlight = useRef(new Set<string>());
@@ -138,19 +138,19 @@ export function Studio({ data }: { data: StudioData }) {
           {error ? <div className="mt-3"><Notice tone="danger">{error}</Notice></div> : null}
           {log.length ? <ul className="mt-3 space-y-1 text-xs text-muted">{log.slice(-4).map((l, i) => <li key={i}>{l}</li>)}</ul> : null}
           {!p.plan || error ? (
-            <Button className="mt-4 w-full" onClick={start} disabled={running || clips.length === 0 || (p.settings.voiceover && !vo)}>
+            <Button className="mt-4 w-full" onClick={start} disabled={running || media.length === 0 || (p.settings.voiceover && !vo)}>
               {running ? <Spinner /> : null}
               {running ? "Reżyser pracuje…" : p.plan ? "Spróbuj ponownie" : "Zrób sklejkę"}
             </Button>
           ) : null}
-          {clips.length === 0 ? <p className="mt-2 text-xs text-faint">Najpierw wgraj nagrania.</p> : p.settings.voiceover && !vo ? <p className="mt-2 text-xs text-faint">Wgraj plik lektora.</p> : null}
+          {media.length === 0 ? <p className="mt-2 text-xs text-faint">Najpierw wgraj nagrania.</p> : p.settings.voiceover && !vo ? <p className="mt-2 text-xs text-faint">Wgraj plik lektora.</p> : null}
           {running ? <p className="mt-2 text-xs text-faint">Możesz zostawić tę stronę otwartą — całość trwa zwykle 5–15 minut (najdłużej generowanie ujęć).</p> : null}
         </Card>
-        {generated.length ? (
+        {generated.some((g) => !g.fromLibrary) ? (
           <Card className="py-4">
             <div className="text-sm font-bold">Ujęcia wygenerowane przez AI</div>
             <ul className="mt-2 space-y-1.5 text-xs text-muted">
-              {generated.map((g) => (
+              {generated.filter((g) => !g.fromLibrary).map((g) => (
                 <li key={g.id} className="flex items-start gap-2">
                   <StatusDot status={g.status} />
                   <span>{g.name}{g.error ? ` — ${g.error}` : ""}</span>
@@ -174,12 +174,13 @@ function Progress({ data, running }: { data: StudioData; running: boolean }) {
   const media = data.assets.filter((a) => a.kind === "clip");
   const ready = media.filter((a) => a.status === "ready").length;
   const vo = data.assets.find((a) => a.kind === "voiceover");
-  const gen = data.assets.filter((a) => a.kind === "generated");
+  const gen = data.assets.filter((a) => a.kind === "generated" && !a.fromLibrary);
+  const reusedAi = data.assets.filter((a) => a.kind === "generated" && a.fromLibrary).length;
   const p = data.project;
   const steps: Array<{ label: string; state: "done" | "active" | "todo" | "error" }> = [
     { label: `Analiza nagrań (${ready}/${media.length})`, state: media.length && ready === media.length ? "done" : media.some((a) => a.status === "error") ? "error" : running ? "active" : "todo" },
     ...(p.settings.voiceover ? [{ label: p.voiceover ? `Lektor: ${p.voiceover.original.toFixed(1)} s → ${p.voiceover.duration.toFixed(1)} s bez pauz` : "Lektor: transkrypcja i cięcie pauz", state: (p.voiceover ? "done" : vo?.status === "error" ? "error" : running && ready === media.length ? "active" : "todo") as "done" | "active" | "todo" | "error" }] : []),
-    { label: gen.length ? `Brakujące ujęcia: ${gen.filter((g) => g.status === "ready").length}/${gen.length} gotowe` : "Brakujące ujęcia", state: p.settings.generated === "done" && gen.every((g) => g.status === "ready" || g.status === "error") ? "done" : running && p.status === "generating" ? "active" : "todo" },
+    { label: gen.length ? `Brakujące ujęcia: ${gen.filter((g) => g.status === "ready").length}/${gen.length} gotowe` : reusedAi ? `Brakujące ujęcia (${reusedAi} AI z biblioteki)` : "Brakujące ujęcia", state: p.settings.generated === "done" && gen.every((g) => g.status === "ready" || g.status === "error") ? "done" : running && p.status === "generating" ? "active" : "todo" },
     { label: "Plan montażu + Kontroler", state: p.plan ? "done" : p.status === "planning" ? "active" : "todo" },
   ];
   return (
@@ -210,7 +211,9 @@ function ScriptCard({ vo }: { vo: NonNullable<StudioData["project"]["voiceover"]
 // ---------- uploads ----------
 
 function Uploader({ data, disabled, onDone }: { data: StudioData; disabled: boolean; onDone: () => void }) {
-  const clips = data.assets.filter((a) => a.kind === "clip");
+  // own uploads + everything brought in from the library (AI shots too)
+  const clips = data.assets.filter((a) => a.kind === "clip" || (a.kind === "generated" && a.fromLibrary));
+  const reused = clips.filter((a) => a.fromLibrary).length;
   const vo = data.assets.find((a) => a.kind === "voiceover");
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -253,7 +256,11 @@ function Uploader({ data, disabled, onDone }: { data: StudioData; disabled: bool
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-extrabold">Materiały</h2>
-          <p className="text-xs text-faint">Nagrania produktu z telefonu — im więcej ujęć (użycie, efekt, problem, detal), tym lepsza sklejka.</p>
+          <p className="text-xs text-faint">
+            {reused
+              ? `${reused} ${plural(reused, "materiał", "materiały", "materiałów")} z biblioteki — gotowe, bez ponownej analizy. Możesz dorzucić nowe nagrania.`
+              : "Nagrania produktu z telefonu — im więcej ujęć (użycie, efekt, problem, detal), tym lepsza sklejka. Zapiszą się w bibliotece produktu."}
+          </p>
         </div>
         {!locked ? (
           <div className="flex flex-wrap gap-2">
@@ -276,7 +283,18 @@ function Uploader({ data, disabled, onDone }: { data: StudioData; disabled: bool
         <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
           {clips.map((c) => (
             <div key={c.id} className="relative aspect-[9/16] overflow-hidden rounded-xl border border-border bg-surface-2">
-              {c.url ? <video src={c.url} muted playsInline preload="metadata" className="h-full w-full object-cover" /> : null}
+              {c.poster ? (
+                // eslint-disable-next-line @next/next/no-img-element -- signed storage URL
+                <img src={c.poster} alt="" loading="lazy" className="h-full w-full object-cover" />
+              ) : c.url ? (
+                <video src={c.url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+              ) : null}
+              {c.fromLibrary || c.kind === "generated" ? (
+                <span className="absolute left-1 top-1 flex gap-1">
+                  {c.kind === "generated" ? <span className="rounded-full bg-accent px-1.5 py-0.5 text-[9px] font-extrabold text-on-accent">AI</span> : null}
+                  {c.fromLibrary ? <span className="rounded-full bg-[#100c16]/80 px-1.5 py-0.5 text-[9px] font-bold">Biblioteka</span> : null}
+                </span>
+              ) : null}
               <div className="absolute inset-x-1 bottom-1 flex items-center gap-1 rounded-full bg-[#100c16]/80 px-2 py-0.5 text-[10px]">
                 <StatusDot status={c.status} />
                 <span className="truncate">{c.status === "error" ? c.error : c.name}</span>

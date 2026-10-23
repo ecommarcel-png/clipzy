@@ -3,11 +3,15 @@ import { requireUser } from "@/lib/auth";
 import { PageHeader, Card, buttonClass } from "@/components/ui";
 import { BackLink } from "@/components/back-link";
 import { library } from "@/lib/clips/library";
+import { libraryCards } from "@/lib/clips/library-view";
 import { NewClipForm } from "./new-clip-form";
 
-export default async function NewClipPage() {
+export default async function NewClipPage({ searchParams }: PageProps<"/clips/new">) {
+  const sp = await searchParams;
+  const pick = (v: string | string[] | undefined) => (typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v) ? v : undefined);
   const { supabase } = await requireUser();
   const { data: brands } = await supabase.from("brands").select("id, name, products(id, name)").order("created_at", { ascending: false });
+  const saved = brands?.length ? await libraryCards(supabase, {}) : [];
 
   return (
     <>
@@ -20,6 +24,8 @@ export default async function NewClipPage() {
         <NewClipForm
           brands={brands.map((b) => ({ id: b.id, name: b.name, products: ((b.products as unknown as Array<{ id: string; name: string }>) ?? []).map((p) => ({ id: p.id, name: p.name })) }))}
           music={library.music.map((m) => ({ file: m.file, name: m.name }))}
+          saved={saved}
+          initial={{ brandId: pick(sp.brand), productId: pick(sp.product) }}
         />
       )}
     </>

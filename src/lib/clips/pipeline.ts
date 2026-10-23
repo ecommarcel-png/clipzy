@@ -7,14 +7,15 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { BUCKET, signedUrls } from "@/lib/storage";
 import { getBrand, getProduct, getProductImages } from "@/lib/data";
 import { getProviderKey } from "@/lib/api-keys";
-import { probe, sceneCuts, silences, normalizeVoice } from "@/lib/media/ffmpeg";
+import { probe, sceneCuts, silences, normalizeVoice, poster } from "@/lib/media/ffmpeg";
+import { posterPathFor, saveToLibrary } from "@/lib/clips/library-store";
 import { analyzeClip, reviewRender, type ClipAnalysis, type RenderReview } from "@/lib/ai/gemini";
 import { transcribe } from "@/lib/ai/scribe";
 import { submitShot, shotStatus } from "@/lib/ai/fal";
 import { missingShots, planEdit, reviewPlan, scriptFeedback, interpretFeedback, type ClipsContext, type ScriptFeedback } from "@/lib/ai/clips";
 import { controlLoop, type ControlReport } from "@/lib/ai/control";
 import { tighten, captionChunks, type TightTimeline, type CaptionChunk, type Word } from "@/lib/clips/timeline";
-import { sanitizePlan, type AssetInfo, type EditPlan } from "@/lib/clips/plan";
+import { cleanIntervals, sanitizePlan, type AssetInfo, type EditPlan } from "@/lib/clips/plan";
 import { library } from "@/lib/clips/library";
 import type { Mix } from "@/lib/clips/edit";
 import { UserError } from "@/lib/errors";
@@ -30,6 +31,7 @@ export type ClipAssetRow = {
   analysis: unknown;
   error: string | null;
   created_at: string;
+  library_id?: string | null;
 };
 
 export type ClipSettings = { voiceover: boolean; music: string; formats: string[]; notes: string; generated?: "pending" | "done" };
@@ -110,8 +112,22 @@ export async function analyzeAsset(supabase: SupabaseClient, project: ClipProjec
     const geminiKey = await getProviderKey(supabase, "gemini");
     const brief = asset.kind === "generated" ? String(asset.meta.prompt ?? "") : null;
     const analysis: ClipAnalysis = await analyzeClip(geminiKey, tmp.data, mimeFor(asset.path, tmp.mime), await productLine(supabase, project), brief);
-    const meta = { ...asset.meta, duration: info.duration, width: info.width, height: info.height, fps: info.fps, has_audio: info.hasAudio, cuts, mirrored: analysis.text_mirrored };
+    const meta: Record<string, unknown> = { ...asset.meta, duration: info.duration, width: info.width, height: info.height, fps: info.fps, has_audio: info.hasAudio, cuts, mirrored: analysis.text_mirrored };
+    // thumbnail for the library and the picker — a frame from the longest clean part
+    try {
+      const jpg = tmp.file + ".jpg";
+      const ints = cleanIntervals({ id: asset.id, duration: info.duration, cuts });
+      const best = ints.length ? ints.reduce((b, x) => (x[1] - x[0] > b[1] - b[0] ? x : b)) : [0, info.duration];
+      await poster(tmp.file, jpg, Math.max(0, (best[0] + best[1]) / 2));
+      const target = posterPathFor(asset.path);
+      const up = await supabase.storage.from(BUCKET).upload(target, await readFile(jpg), { contentType: "image/jpeg", upsert: true });
+      if (!up.error) meta.poster = target;
+      unlink(jpg).catch(() => {});
+    } catch {
+      // no thumbnail is fine
+    }
     await supabase.from("clip_assets").update({ status: "ready", meta, analysis, error: null }).eq("id", asset.id);
+    await saveToLibrary(supabase, project, { ...asset, meta, analysis });
   } catch (e) {
     await supabase.from("clip_assets").update({ status: "error", error: e instanceof Error ? e.message : String(e) }).eq("id", asset.id);
     throw e;
