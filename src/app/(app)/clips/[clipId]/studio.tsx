@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
 import { Badge, Button, Card, Disclosure, Notice, Spinner, Textarea, cx } from "@/components/ui";
 import { FORMAT_SIZE, FPS, type EditPlan, type Format } from "@/lib/clips/plan";
-import { editCaptions, normalizeMix, setPackshot, type Mix } from "@/lib/clips/edit";
+import { editCaptions, finalize, normalizeMix, setPackshot, type Mix } from "@/lib/clips/edit";
+import { composeVariant, decomposeVariant } from "@/lib/clips/variants";
 import type { PlayerRef } from "@remotion/player";
 import type { CaptionChunk, VoSegment } from "@/lib/clips/timeline";
 import type { ControlReport } from "@/lib/ai/control";
@@ -48,7 +49,7 @@ export type StudioData = {
   };
   assets: Array<{
     id: string; kind: "clip" | "voiceover" | "generated" | "render"; name: string; status: string; error: string | null; url: string | null;
-    mirrored: boolean; format: string | null; duration: number | null; cuts: number[]; poster: string | null; fromLibrary: boolean; review: RenderReview; created_at: string;
+    mirrored: boolean; format: string | null; duration: number | null; cuts: number[]; poster: string | null; fromLibrary: boolean; variant: number | null; review: RenderReview; created_at: string;
   }>;
   brand: { name: string; logoUrl: string | null; accent: string; swatches: string[]; logoColors: string[] };
   product: { name: string | null };
@@ -371,21 +372,37 @@ function Result({ data, renders, onChanged }: { data: StudioData; renders: Studi
   const player = useRef<PlayerRef | null>(null);
   const previewBox = useRef<HTMLDivElement | null>(null);
   const dirty = JSON.stringify(draft) !== JSON.stringify(savedDraft(data));
-  const plan = draft.plan;
-  const voAsset = data.assets.find((a) => a.kind === "voiceover");
+  // hook versions: the stored plan is version 1 + alternative openings; we show and edit version k
+  const variants = p.voiceover?.variants ?? [];
+  const versions = Math.max(1, variants.length);
+  const [k, setK] = useState(1);
+  const hookEnds = variants.map((v) => v.hookEnd);
   const mediaAssets = data.assets.filter((a) => (a.kind === "clip" || a.kind === "generated") && a.status === "ready");
-  const captions = p.voiceover ? editCaptions(p.voiceover.captions, draft.captions) : [];
-  const props = sklejkaProps(format, plan, {
-    assets: data.assets.filter((a) => a.kind === "clip" || a.kind === "generated").map((a) => ({ id: a.id, url: a.url, mirrored: a.mirrored })),
-    vo: p.voiceover && voAsset?.url ? { url: voAsset.url, segments: p.voiceover.segments } : null,
-    captions,
-    brand: { name: data.brand.name, logoUrl: data.brand.logoUrl, accent: draft.accent },
-    packshotUrl: data.packshotUrl,
-    mix: draft.mix,
-  });
+  const infos = mediaAssets.map((a) => ({ id: a.id, duration: a.duration ?? 0, cuts: a.cuts, mirrored: a.mirrored }));
+  const sameVoice = p.voiceover?.variants ? new Set(variants.map((v) => v.assetId)).size === 1 : true;
+  const propsFor = (kk: number, fmt: Format = format) => {
+    const composed = kk > 1 ? finalize(composeVariant(draft.plan, kk, hookEnds), infos).plan : draft.plan;
+    const v = variants[kk - 1];
+    const voUrl = v ? data.assets.find((a) => a.id === v.assetId)?.url : data.assets.find((a) => a.kind === "voiceover")?.url;
+    // caption edits belong to version 1 (and to all versions when they share one recording)
+    const caps = !p.voiceover ? [] : kk === 1 || sameVoice ? editCaptions(p.voiceover.captions, draft.captions) : v.captions;
+    return sklejkaProps(fmt, composed, {
+      assets: data.assets.filter((a) => a.kind === "clip" || a.kind === "generated").map((a) => ({ id: a.id, url: a.url, mirrored: a.mirrored })),
+      vo: p.voiceover && voUrl ? { url: voUrl, segments: v ? v.segments : p.voiceover.segments } : null,
+      captions: caps,
+      brand: { name: data.brand.name, logoUrl: data.brand.logoUrl, accent: draft.accent },
+      packshotUrl: data.packshotUrl,
+      mix: draft.mix,
+    });
+  };
+  const props = propsFor(k);
+  const plan = props.plan;
+  // quick edits on version k go back into the stored plan
+  const editDraft: Draft = { ...draft, plan };
+  const setEditDraft = (d: Draft) => setDraft({ ...d, plan: k > 1 ? decomposeVariant(d.plan, draft.plan, k, hookEnds) : d.plan });
   const duration = plan.shots.reduce((m, s) => Math.max(m, s.end), 0);
 
-  async function save(): Promise<boolean> {
+  async function save(refresh = true): Promise<boolean> {
     setSaving(true);
     setMessage(null);
     // empty benefit slots were kept only while typing
@@ -398,7 +415,7 @@ function Result({ data, renders, onChanged }: { data: StudioData; renders: Studi
       setMessage({ tone: "danger", text: r.error });
       return false;
     }
-    onChanged();
+    if (refresh) onChanged(); // before a render the refresh waits until the files are done
     return true;
   }
 
@@ -421,18 +438,30 @@ function Result({ data, renders, onChanged }: { data: StudioData; renders: Studi
           </div>
         </div>
         <p className="mt-1 text-sm text-muted">{plan.summary}</p>
+        {versions > 1 ? (
+          <div className="mt-3">
+            <div className="flex flex-wrap gap-1 rounded-full bg-surface-2 p-1">
+              {Array.from({ length: versions }, (_, i) => i + 1).map((n) => (
+                <button key={n} type="button" onClick={() => setK(n)} className={cx("rounded-full px-3 py-1 text-xs font-bold", n === k ? "bg-accent text-on-accent" : "text-muted hover:text-text")} title={variants[n - 1]?.hookText}>
+                  Hook {n}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-sm"><span className="font-bold">Hook {k}:</span> <span className="text-muted">„{variants[k - 1]?.hookText}”</span></p>
+          </div>
+        ) : null}
         <div ref={previewBox} className={cx("mx-auto mt-4 scroll-mt-6", format === "9x16" ? "max-w-[340px]" : "max-w-[420px]")}>
           <Preview props={props} playerRef={player} />
         </div>
         <p className="mt-2 text-center text-xs text-faint">{duration.toFixed(1)} s · podgląd może przycinać na słabszym komputerze — gotowy plik będzie płynny</p>
-        <RenderButtons data={data} props={props} format={format} onChanged={onChanged} beforeRender={dirty ? save : undefined} sources={renderSources(data, props)} />
+        <RenderButtons data={data} format={format} variant={k} versions={versions} propsFor={propsFor} onChanged={onChanged} beforeRender={dirty ? () => save(false) : undefined} />
       </Card>
 
       <QuickEdit
-        draft={draft}
-        setDraft={setDraft}
+        draft={editDraft}
+        setDraft={setEditDraft}
         dirty={dirty}
-        captions={p.voiceover?.captions ?? []}
+        captions={k === 1 || sameVoice ? (p.voiceover?.captions ?? []) : []}
         media={mediaAssets.map((a) => ({ id: a.id, name: a.name, kind: a.kind, url: a.url, info: { id: a.id, duration: a.duration ?? 0, cuts: a.cuts, mirrored: a.mirrored } }))}
         hasDirector={Boolean(p.plan!.director)}
         swatches={data.brand.swatches}
@@ -473,42 +502,54 @@ function renderSources(data: StudioData, props: ReturnType<typeof sklejkaProps>)
 }
 
 function RenderButtons({
-  data, props, format, onChanged, beforeRender, sources,
+  data, format, variant, versions, propsFor, onChanged, beforeRender,
 }: {
-  data: StudioData; props: ReturnType<typeof sklejkaProps>; format: Format; onChanged: () => void; beforeRender?: () => Promise<boolean>;
-  sources: Array<{ name: string; url: string }>;
+  data: StudioData; format: Format; variant: number; versions: number;
+  propsFor: (k: number, fmt?: Format) => ReturnType<typeof sklejkaProps>;
+  onChanged: () => void; beforeRender?: () => Promise<boolean>;
 }) {
   const [progress, setProgress] = useState<number | null>(null);
+  const [batch, setBatch] = useState<{ at: number; of: number } | null>(null);
   const [err, setErr] = useState<{ message: string; details: string | null } | null>(null);
   const abort = useRef<AbortController | null>(null);
 
-  async function render() {
+  async function renderOne(k: number, review: boolean) {
+    const props = propsFor(k, format);
+    const blob = await renderInBrowser(props, setProgress, abort.current!.signal, renderSources(data, props));
+    const supabase = createClient();
+    const id = crypto.randomUUID();
+    const path = `${data.userId}/clips/${data.project.id}/${id}.mp4`;
+    const { error } = await supabase.storage.from("media").upload(path, blob, { contentType: "video/mp4" });
+    if (error) throw new Error(error.message);
+    const r = await saveRenderAction(data.project.id, { id, path, format, variant: versions > 1 ? k : undefined });
+    if (!r.ok) throw new Error(r.error);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${data.brand.name}-${format}${versions > 1 ? `-hook${k}` : ""}.mp4`.replace(/\s+/g, "-");
+    a.click();
+    // the Kontroler watches the file in the background — in a batch only the first one
+    if (review) void reviewRenderAction(data.project.id, id).then(() => onChanged());
+  }
+
+  async function render(all: boolean) {
     setErr(null);
-    // render exactly what is saved, so the file and the project never disagree
+    // render exactly what is saved, so the files and the project never disagree
     if (beforeRender && !(await beforeRender())) return;
-    setProgress(0);
     abort.current = new AbortController();
+    const list = all ? Array.from({ length: versions }, (_, i) => i + 1) : [variant];
     try {
-      const blob = await renderInBrowser(props, setProgress, abort.current.signal, sources);
-      setProgress(1);
-      const supabase = createClient();
-      const id = crypto.randomUUID();
-      const path = `${data.userId}/clips/${data.project.id}/${id}.mp4`;
-      const { error } = await supabase.storage.from("media").upload(path, blob, { contentType: "video/mp4" });
-      if (error) throw new Error(error.message);
-      const r = await saveRenderAction(data.project.id, { id, path, format });
-      if (!r.ok) throw new Error(r.error);
-      // download right away; the Kontroler watches it in the background
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `${data.brand.name}-${format}.mp4`.replace(/\s+/g, "-");
-      a.click();
-      onChanged();
-      reviewRenderAction(data.project.id, id).then(() => onChanged());
+      for (const [i, k] of list.entries()) {
+        if (abort.current.signal.aborted) break;
+        setBatch(list.length > 1 ? { at: i + 1, of: list.length } : null);
+        setProgress(0);
+        await renderOne(k, i === 0);
+      }
     } catch (e) {
       if (!abort.current?.signal.aborted) setErr({ message: e instanceof Error ? e.message : String(e), details: e instanceof RenderFailure ? e.details : null });
     } finally {
       setProgress(null);
+      setBatch(null);
+      onChanged();
     }
   }
 
@@ -518,12 +559,19 @@ function RenderButtons({
         <div className="space-y-2">
           <div className="h-2 overflow-hidden rounded-full bg-surface-3"><div className="h-full bg-accent transition-all" style={{ width: `${Math.round(progress * 100)}%` }} /></div>
           <div className="flex items-center justify-between text-xs text-muted">
-            <span>Renderuję w przeglądarce… {Math.round(progress * 100)}% — nie zamykaj karty</span>
+            <span>{batch ? `Wersja ${batch.at}/${batch.of} · ` : ""}Renderuję w przeglądarce… {Math.round(progress * 100)}% — nie zamykaj karty</span>
             <button type="button" className="font-bold hover:text-text" onClick={() => abort.current?.abort()}>Przerwij</button>
           </div>
         </div>
       ) : (
-        <Button className="w-full" onClick={render}>{beforeRender ? "Zapisz zmiany, renderuj" : "Renderuj"} {FORMAT_SIZE[format].label} i pobierz MP4</Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button className="flex-1" onClick={() => void render(false)}>
+            {beforeRender ? "Zapisz zmiany, renderuj" : "Renderuj"} {versions > 1 ? `hook ${variant} · ` : ""}{FORMAT_SIZE[format].label}
+          </Button>
+          {versions > 1 ? (
+            <Button variant="secondary" className="flex-1" onClick={() => void render(true)}>Renderuj wszystkie ({versions}) · {FORMAT_SIZE[format].label}</Button>
+          ) : null}
+        </div>
       )}
       {err ? (
         <div className="mt-2 space-y-2">
@@ -551,6 +599,7 @@ function Renders({ renders, projectId, onChanged }: { renders: StudioData["asset
           <li key={r.id} className="rounded-2xl border border-border bg-bg/40 p-3">
             <div className="flex flex-wrap items-center gap-3">
               <span className="font-bold">{r.format ? FORMAT_SIZE[r.format as Format]?.label ?? r.format : "MP4"}</span>
+              {r.variant ? <Badge tone="neutral">Hook {r.variant}</Badge> : null}
               <span className="text-xs text-faint">{new Date(r.created_at).toLocaleString("pl-PL")}</span>
               {r.review ? <Badge tone={r.review.score >= 8 ? "ok" : "warn"} dot>Kontroler {r.review.score}/10</Badge> : <Badge tone="neutral">Kontroler sprawdza…</Badge>}
               {r.url ? <a href={r.url} download className="ml-auto text-sm font-bold text-accent hover:text-accent-strong">Pobierz</a> : null}

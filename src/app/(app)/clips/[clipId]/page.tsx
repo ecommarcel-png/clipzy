@@ -59,6 +59,7 @@ export default async function ClipPage({ params }: PageProps<"/clips/[clipId]">)
       cuts: Array.isArray(a.meta.cuts) ? (a.meta.cuts as number[]) : [],
       poster: typeof a.meta.poster === "string" ? urls[a.meta.poster] ?? null : null,
       fromLibrary: Boolean(a.meta.from_library),
+      variant: Number(a.meta.variant) || null,
       review: a.kind === "render" ? (a.analysis as StudioData["assets"][number]["review"]) : null,
       created_at: a.created_at,
     })),
