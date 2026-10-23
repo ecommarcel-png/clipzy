@@ -1,14 +1,16 @@
 "use client";
 
-import { Player } from "@remotion/player";
+import type { RefObject } from "react";
+import { Player, type PlayerRef } from "@remotion/player";
 import { Sklejka, durationInFrames, type SklejkaProps } from "@/remotion/Sklejka";
 import { FORMAT_SIZE, FPS } from "@/lib/clips/plan";
 
 // Live preview of the plan — same composition the renderer uses.
-export default function Preview({ props }: { props: SklejkaProps }) {
+export default function Preview({ props, playerRef }: { props: SklejkaProps; playerRef?: RefObject<PlayerRef | null> }) {
   const size = FORMAT_SIZE[props.format];
   return (
     <Player
+      ref={playerRef}
       component={Sklejka}
       inputProps={props}
       durationInFrames={durationInFrames(props.plan)}

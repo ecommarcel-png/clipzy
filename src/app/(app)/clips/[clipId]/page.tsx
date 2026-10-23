@@ -46,6 +46,7 @@ export default async function ClipPage({ params }: PageProps<"/clips/[clipId]">)
     assets: assets.map((a) => ({
       id: a.id, kind: a.kind, name: a.name, status: a.status, error: a.error, url: a.path ? urls[a.path] ?? null : null,
       mirrored: Boolean(a.meta.mirrored), format: (a.meta.format as string) ?? null, duration: Number(a.meta.duration ?? 0) || null,
+      cuts: Array.isArray(a.meta.cuts) ? (a.meta.cuts as number[]) : [],
       review: a.kind === "render" ? (a.analysis as StudioData["assets"][number]["review"]) : null,
       created_at: a.created_at,
     })),

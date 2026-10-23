@@ -22,6 +22,8 @@ export type SklejkaProps = {
   captions: CaptionChunk[];
   brand: { name: string; logoUrl: string | null; accent: string };
   packshotUrl: string | null;
+  /** manual volume multipliers from the quick-edit panel */
+  mix?: { vo: number; music: number; sfx: number };
 };
 
 const INK = "#1C1A1E";
@@ -320,7 +322,7 @@ const AudioTrack: React.FC<{ p: SklejkaProps; duration: number }> = ({ p, durati
     <>
       {p.vo?.segments.map((s, i) => (
         <Sequence key={`vo${i}`} from={f(s.outStart)} durationInFrames={Math.max(1, f(s.srcEnd - s.srcStart))}>
-          <Audio src={p.vo!.url} trimBefore={f(s.srcStart)} trimAfter={f(s.srcEnd)} volume={1} />
+          <Audio src={p.vo!.url} trimBefore={f(s.srcStart)} trimAfter={f(s.srcEnd)} volume={Math.min(1, p.mix?.vo ?? 1)} />
         </Sequence>
       ))}
       {plan.music.file ? (
@@ -332,20 +334,21 @@ const AudioTrack: React.FC<{ p: SklejkaProps; duration: number }> = ({ p, durati
             const v = p.vo ? plan.music.volume : Math.max(plan.music.volume, 0.5);
             const endBoost = p.vo ? Math.min(0.38, v * 2.2) : v;
             const voEnd = p.vo ? p.vo.segments.reduce((m, s) => Math.max(m, s.outStart + (s.srcEnd - s.srcStart)), 0) : 0;
-            return interpolate(t, [0, Math.max(0.01, voEnd), voEnd + 0.4, duration - 0.7, duration], [v, v, endBoost, endBoost, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+            const m = p.mix?.music ?? 1;
+            return Math.min(1, m * interpolate(t, [0, Math.max(0.01, voEnd), voEnd + 0.4, duration - 0.7, duration], [v, v, endBoost, endBoost, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }));
           }}
         />
       ) : null}
       {plan.original_audio.map((o, i) =>
         p.assets[o.asset] ? (
           <Sequence key={`oa${i}`} from={f(o.at)} durationInFrames={Math.max(1, f(o.len))}>
-            <Audio src={p.assets[o.asset].url} trimBefore={f(o.from)} volume={o.volume} />
+            <Audio src={p.assets[o.asset].url} trimBefore={f(o.from)} volume={Math.min(1, o.volume * (p.mix?.sfx ?? 1))} />
           </Sequence>
         ) : null,
       )}
       {plan.sfx.map((s, i) => (
         <Sequence key={`sfx${i}`} from={f(s.at)} durationInFrames={f(2)}>
-          <Audio src={s.file} volume={Math.min(0.4, s.volume)} />
+          <Audio src={s.file} volume={Math.min(1, Math.min(0.4, s.volume) * (p.mix?.sfx ?? 1))} />
         </Sequence>
       ))}
     </>

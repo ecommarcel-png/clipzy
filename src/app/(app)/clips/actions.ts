@@ -6,10 +6,12 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { userMessage } from "@/lib/errors";
 import {
-  analyzeAsset, applyFeedback, loadProject, makePlan, pollGenerations, processVoiceover, requestMissing, reviewRendered,
+  analyzeAsset, applyFeedback, assetInfo, loadProject, makePlan, pollGenerations, processVoiceover, requestMissing, reviewRendered,
   type ClipSettings,
 } from "@/lib/clips/pipeline";
-import { FORMATS } from "@/lib/clips/plan";
+import { FORMATS, EditPlan, sanitizePlan } from "@/lib/clips/plan";
+import { editCaptions, normalizeMix, type Mix } from "@/lib/clips/edit";
+import { library } from "@/lib/clips/library";
 import { getProviderKey } from "@/lib/api-keys";
 import type { Provider } from "@/lib/providers";
 
@@ -155,6 +157,47 @@ export async function reviewRenderAction(projectId: string, renderId: string): P
     if (!r) return { ok: false, error: "Nie znaleziono renderu." };
     const review = await reviewRendered(supabase, data.project, r);
     return { ok: true, message: `Kontroler: ${review.score}/10` };
+  }) as Promise<StepResult>;
+}
+
+// Quick edits from the panel — saved as they are (re-checked and fitted), no AI call.
+export async function saveEditsAction(projectId: string, edits: { plan: unknown; captions?: string[]; mix?: Partial<Mix> }): Promise<StepResult> {
+  return withProject(projectId, async ({ supabase, data }) => {
+    const stored = data.project.plan;
+    if (!stored) return { ok: false, error: "Ta sklejka nie ma jeszcze planu." };
+    const parsed = EditPlan.safeParse(edits.plan);
+    if (!parsed.success) return { ok: false, error: "Nie udało się zapisać zmian — odśwież stronę i spróbuj ponownie." };
+    const plan = parsed.data;
+    const media = data.assets.filter((a) => a.kind === "clip" || a.kind === "generated");
+    const known = new Set(media.map((a) => a.id));
+    const srcs = plan.shots.flatMap((s) => (s.type === "clip" ? [s.src] : s.type === "split" ? [s.top, s.bottom] : []));
+    if (srcs.some((x) => !known.has(x.asset))) return { ok: false, error: "Ujęcie wskazuje na plik, którego nie ma w tej sklejce." };
+    // only files from the library, never arbitrary URLs
+    if (plan.music.file && !library.music.some((m) => m.file === plan.music.file)) plan.music.file = null;
+    plan.sfx = plan.sfx.filter((x) => library.sfx.some((l) => l.file === x.file));
+    const { plan: clean } = sanitizePlan(plan, media.map(assetInfo));
+    const next = { ...stored, plan: clean, mix: normalizeMix(edits.mix ?? stored.mix), director: stored.director ?? stored.plan, edited_at: new Date().toISOString() };
+    const update: Record<string, unknown> = { plan: next };
+    if (edits.captions && data.project.voiceover) {
+      update.voiceover = { ...data.project.voiceover, captions: editCaptions(data.project.voiceover.captions, edits.captions.map(String)) };
+    }
+    const { error } = await supabase.from("clip_projects").update(update).eq("id", projectId);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath(`/clips/${projectId}`);
+    return { ok: true, message: "Zapisano zmiany." };
+  }) as Promise<StepResult>;
+}
+
+export async function restoreDirectorAction(projectId: string): Promise<StepResult> {
+  return withProject(projectId, async ({ supabase, data }) => {
+    const stored = data.project.plan;
+    if (!stored?.director) return { ok: false, error: "Nie ma czego przywracać." };
+    const { director, edited_at: _e, ...rest } = stored;
+    void _e;
+    const { error } = await supabase.from("clip_projects").update({ plan: { ...rest, plan: director, mix: undefined } }).eq("id", projectId);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath(`/clips/${projectId}`);
+    return { ok: true, message: "Przywrócono wersję Reżysera." };
   }) as Promise<StepResult>;
 }
 

@@ -5,13 +5,17 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
 import { Badge, Button, Card, Disclosure, Notice, Spinner, Textarea, cx } from "@/components/ui";
-import { FORMAT_SIZE, type EditPlan, type Format } from "@/lib/clips/plan";
+import { FORMAT_SIZE, FPS, type EditPlan, type Format } from "@/lib/clips/plan";
+import { editCaptions, normalizeMix, setPackshot, type Mix } from "@/lib/clips/edit";
+import type { PlayerRef } from "@remotion/player";
 import type { CaptionChunk, VoSegment } from "@/lib/clips/timeline";
 import type { ControlReport } from "@/lib/ai/control";
 import { plural } from "@/lib/plural";
 import {
-  analyzeAssetAction, feedbackAction, missingAction, planAction, pollAction, registerUploads, reviewRenderAction, saveRenderAction, voiceoverAction,
+  analyzeAssetAction, feedbackAction, missingAction, planAction, pollAction, registerUploads, restoreDirectorAction, reviewRenderAction, saveEditsAction,
+  saveRenderAction, voiceoverAction,
 } from "../actions";
+import { QuickEdit, type Draft } from "./quick-edit";
 import { prepareVideo, renderInBrowser, sklejkaProps } from "./media";
 
 const Preview = dynamic(() => import("./preview"), { ssr: false, loading: () => <div className="aspect-[4/5] w-full animate-pulse rounded-[18px] bg-surface-2" /> });
@@ -26,14 +30,14 @@ export type StudioData = {
     status: string;
     settings: { voiceover: boolean; music: string; formats: string[]; notes: string; generated?: string };
     voiceover: { segments: VoSegment[]; captions: CaptionChunk[]; original: number; duration: number; feedback: { verdict: string; notes: string[] } | null; assetId: string } | null;
-    plan: { plan: EditPlan; notes: string[]; report: ControlReport | null } | null;
+    plan: { plan: EditPlan; notes: string[]; report: ControlReport | null; mix?: Mix; director?: EditPlan; edited_at?: string } | null;
     error: string | null;
     feedback: Array<{ at: string; text: string; changes: string }>;
     missingNotes: string | null;
   };
   assets: Array<{
     id: string; kind: "clip" | "voiceover" | "generated" | "render"; name: string; status: string; error: string | null; url: string | null;
-    mirrored: boolean; format: string | null; duration: number | null; review: RenderReview; created_at: string;
+    mirrored: boolean; format: string | null; duration: number | null; cuts: number[]; review: RenderReview; created_at: string;
   }>;
   brand: { name: string; logoUrl: string | null; accent: string };
   product: { name: string | null };
@@ -124,7 +128,7 @@ export function Studio({ data }: { data: StudioData }) {
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="space-y-5">
         <Uploader data={data} disabled={running} onDone={() => router.refresh()} />
-        {p.plan ? <Result data={data} renders={renders} onChanged={() => router.refresh()} /> : null}
+        {p.plan ? <Result key={draftKey(data)} data={data} renders={renders} onChanged={() => router.refresh()} /> : null}
       </div>
 
       <aside className="order-first space-y-4 lg:sticky lg:top-6 lg:order-none lg:self-start">
@@ -296,20 +300,64 @@ function Uploader({ data, disabled, onDone }: { data: StudioData; disabled: bool
 
 // ---------- result: preview, render, Kontroler, feedback ----------
 
+// Remount the editor (and drop the draft) whenever the saved version changes.
+function draftKey(d: StudioData) {
+  const str = JSON.stringify([d.project.plan?.plan, d.project.plan?.mix, d.project.voiceover?.captions.map((c) => c.text)]);
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
+  return String(h);
+}
+
+function savedDraft(d: StudioData): Draft {
+  const stored = d.project.plan!;
+  return { plan: stored.plan, captions: (d.project.voiceover?.captions ?? []).map((c) => c.text), mix: normalizeMix(stored.mix) };
+}
+
 function Result({ data, renders, onChanged }: { data: StudioData; renders: StudioData["assets"]; onChanged: () => void }) {
   const p = data.project;
-  const plan = p.plan!.plan;
   const formats = (p.settings.formats.length ? p.settings.formats : ["4x5"]) as Format[];
   const [format, setFormat] = useState<Format>(formats[0]);
+  const [draft, setDraft] = useState<Draft>(() => savedDraft(data));
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ tone: "ok" | "danger"; text: string } | null>(null);
+  const player = useRef<PlayerRef | null>(null);
+  const previewBox = useRef<HTMLDivElement | null>(null);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(savedDraft(data));
+  const plan = draft.plan;
   const voAsset = data.assets.find((a) => a.kind === "voiceover");
+  const mediaAssets = data.assets.filter((a) => (a.kind === "clip" || a.kind === "generated") && a.status === "ready");
+  const captions = p.voiceover ? editCaptions(p.voiceover.captions, draft.captions) : [];
   const props = sklejkaProps(format, plan, {
     assets: data.assets.filter((a) => a.kind === "clip" || a.kind === "generated").map((a) => ({ id: a.id, url: a.url, mirrored: a.mirrored })),
     vo: p.voiceover && voAsset?.url ? { url: voAsset.url, segments: p.voiceover.segments } : null,
-    captions: p.voiceover?.captions ?? [],
+    captions,
     brand: data.brand,
     packshotUrl: data.packshotUrl,
+    mix: draft.mix,
   });
   const duration = plan.shots.reduce((m, s) => Math.max(m, s.end), 0);
+
+  async function save(): Promise<boolean> {
+    setSaving(true);
+    setMessage(null);
+    // empty benefit slots were kept only while typing
+    const i = draft.plan.shots.findIndex((s) => s.type === "packshot");
+    const shot = draft.plan.shots[i];
+    const clean = shot?.type === "packshot" ? setPackshot(draft.plan, i, { chips: shot.chips }) : draft.plan;
+    const r = await saveEditsAction(p.id, { plan: clean, captions: p.voiceover ? draft.captions : undefined, mix: draft.mix });
+    setSaving(false);
+    if (!r.ok) {
+      setMessage({ tone: "danger", text: r.error });
+      return false;
+    }
+    onChanged();
+    return true;
+  }
+
+  function seek(t: number) {
+    player.current?.seekTo(Math.max(0, Math.round(t * FPS)));
+    previewBox.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
 
   return (
     <>
@@ -325,27 +373,55 @@ function Result({ data, renders, onChanged }: { data: StudioData; renders: Studi
           </div>
         </div>
         <p className="mt-1 text-sm text-muted">{plan.summary}</p>
-        <div className={cx("mx-auto mt-4", format === "9x16" ? "max-w-[340px]" : "max-w-[420px]")}>
-          <Preview props={props} />
+        <div ref={previewBox} className={cx("mx-auto mt-4 scroll-mt-6", format === "9x16" ? "max-w-[340px]" : "max-w-[420px]")}>
+          <Preview props={props} playerRef={player} />
         </div>
         <p className="mt-2 text-center text-xs text-faint">{duration.toFixed(1)} s · podgląd może przycinać na słabszym komputerze — gotowy plik będzie płynny</p>
-        <RenderButtons data={data} props={props} format={format} onChanged={onChanged} />
+        <RenderButtons data={data} props={props} format={format} onChanged={onChanged} beforeRender={dirty ? save : undefined} />
       </Card>
+
+      <QuickEdit
+        draft={draft}
+        setDraft={setDraft}
+        dirty={dirty}
+        captions={p.voiceover?.captions ?? []}
+        media={mediaAssets.map((a) => ({ id: a.id, name: a.name, kind: a.kind, url: a.url, info: { id: a.id, duration: a.duration ?? 0, cuts: a.cuts, mirrored: a.mirrored } }))}
+        hasDirector={Boolean(p.plan!.director)}
+        saving={saving}
+        message={message}
+        onSave={() => void save()}
+        onUndo={() => {
+          setDraft(savedDraft(data));
+          setMessage(null);
+        }}
+        onRestore={async () => {
+          setSaving(true);
+          const r = await restoreDirectorAction(p.id);
+          setSaving(false);
+          if (r.ok) onChanged();
+          else setMessage({ tone: "danger", text: r.error });
+        }}
+        onSeek={seek}
+      />
 
       {renders.length ? <Renders renders={renders} projectId={p.id} onChanged={onChanged} /> : null}
       <PlanReport report={p.plan!.report} notes={p.plan!.notes} missing={p.missingNotes} />
-      <FeedbackCard projectId={p.id} history={p.feedback} onChanged={onChanged} />
+      <FeedbackCard projectId={p.id} history={p.feedback} onChanged={onChanged} blocked={dirty} />
     </>
   );
 }
 
-function RenderButtons({ data, props, format, onChanged }: { data: StudioData; props: ReturnType<typeof sklejkaProps>; format: Format; onChanged: () => void }) {
+function RenderButtons({
+  data, props, format, onChanged, beforeRender,
+}: { data: StudioData; props: ReturnType<typeof sklejkaProps>; format: Format; onChanged: () => void; beforeRender?: () => Promise<boolean> }) {
   const [progress, setProgress] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
 
   async function render() {
     setErr(null);
+    // render exactly what is saved, so the file and the project never disagree
+    if (beforeRender && !(await beforeRender())) return;
     setProgress(0);
     abort.current = new AbortController();
     try {
@@ -383,7 +459,7 @@ function RenderButtons({ data, props, format, onChanged }: { data: StudioData; p
           </div>
         </div>
       ) : (
-        <Button className="w-full" onClick={render}>Renderuj {FORMAT_SIZE[format].label} i pobierz MP4</Button>
+        <Button className="w-full" onClick={render}>{beforeRender ? "Zapisz zmiany, renderuj" : "Renderuj"} {FORMAT_SIZE[format].label} i pobierz MP4</Button>
       )}
       {err ? <div className="mt-2"><Notice tone="danger">{err.includes("WebCodecs") || err.includes("codec") ? "Ta przeglądarka nie umie renderować wideo — otwórz Clipzy w Chrome." : err}</Notice></div> : null}
     </div>
@@ -442,7 +518,7 @@ function PlanReport({ report, notes, missing }: { report: ControlReport | null; 
   );
 }
 
-function FeedbackCard({ projectId, history, onChanged }: { projectId: string; history: StudioData["project"]["feedback"]; onChanged: () => void }) {
+function FeedbackCard({ projectId, history, onChanged, blocked }: { projectId: string; history: StudioData["project"]["feedback"]; onChanged: () => void; blocked: boolean }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ tone: "ok" | "danger"; text: string } | null>(null);
@@ -453,7 +529,7 @@ function FeedbackCard({ projectId, history, onChanged }: { projectId: string; hi
       <Textarea className="mt-3" rows={3} value={text} onChange={(e) => setText(e.target.value)} placeholder="np. więcej efektów w hooku, muzyka ciszej, mniej zbliżeń skóry" />
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <Button
-          disabled={busy || !text.trim()}
+          disabled={busy || blocked || !text.trim()}
           onClick={async () => {
             setBusy(true);
             setMsg(null);
@@ -469,6 +545,7 @@ function FeedbackCard({ projectId, history, onChanged }: { projectId: string; hi
           {busy ? <Spinner /> : null}
           {busy ? "Reżyser poprawia plan…" : "Popraw sklejkę"}
         </Button>
+        {blocked ? <span className="text-xs text-warn">Najpierw zapisz szybkie poprawki — Reżyser pracuje na zapisanej wersji.</span> : null}
       </div>
       {msg ? <div className="mt-3"><Notice tone={msg.tone}>{msg.text}</Notice></div> : null}
       {history.length ? (

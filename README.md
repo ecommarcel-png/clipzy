@@ -33,6 +33,7 @@ Każdy profil marki i produktu przechodzi pętlę jakości (`knowledge/rezyser/S
 4. **Montaż** — Reżyser pisze plan (split screen przed/po, szary obraz dla problemu, ikonki przekreślane, obwódki, połysk, przejście w kolorze marki, packshot ze zdjęcia produktu na końcu, muzyka i SFX z biblioteki), Kontroler go sprawdza, a sanitizer wyrównuje każde cięcie do klatki.
 5. **Podgląd i render w przeglądarce** (Remotion) — MP4 1080p w 4:5 / 9:16 / 1:1, pobiera się automatycznie; Gemini ogląda gotowy plik i wystawia ocenę.
 6. **Feedback** — piszesz, co zmienić; trwałe uwagi trafiają do preferencji marki i działają przy kolejnych reklamach.
+7. **Szybkie poprawki (bez AI)** — pod podglądem: głośność lektora, muzyki i SFX, zmiana utworu, lista ujęć (krócej/dłużej, inny plik, inny fragment, usuń), poprawa tekstu napisów i packshotu. Zmiany widać od razu w podglądzie; „Przywróć wersję Reżysera” cofa ręczne poprawki ujęć.
 
 **Wymagania:**
 

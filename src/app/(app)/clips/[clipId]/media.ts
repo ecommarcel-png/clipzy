@@ -53,9 +53,10 @@ export function sklejkaProps(
     captions: SklejkaProps["captions"];
     brand: SklejkaProps["brand"];
     packshotUrl: string | null;
+    mix?: SklejkaProps["mix"];
   },
 ): SklejkaProps {
   const assets: SklejkaProps["assets"] = {};
   for (const a of data.assets) if (a.url) assets[a.id] = { url: a.url, mirrored: a.mirrored };
-  return { format, plan, assets, vo: data.vo, captions: data.vo ? data.captions : [], brand: data.brand, packshotUrl: data.packshotUrl };
+  return { format, plan, assets, vo: data.vo, captions: data.vo ? data.captions : [], brand: data.brand, packshotUrl: data.packshotUrl, mix: data.mix };
 }

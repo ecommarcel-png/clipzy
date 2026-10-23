@@ -16,6 +16,7 @@ import { controlLoop, type ControlReport } from "@/lib/ai/control";
 import { tighten, captionChunks, type TightTimeline, type CaptionChunk, type Word } from "@/lib/clips/timeline";
 import { sanitizePlan, type AssetInfo, type EditPlan } from "@/lib/clips/plan";
 import { library } from "@/lib/clips/library";
+import type { Mix } from "@/lib/clips/edit";
 import { UserError } from "@/lib/errors";
 
 export type ClipAssetRow = {
@@ -50,7 +51,16 @@ export type ClipProjectRow = {
   status: string;
   settings: ClipSettings;
   voiceover: VoiceoverData | null;
-  plan: { plan: EditPlan; notes: string[]; aliases: Record<string, string>; report: ControlReport | null; missing_notes?: string } | null;
+  plan: {
+    plan: EditPlan;
+    notes: string[];
+    aliases: Record<string, string>;
+    report: ControlReport | null;
+    missing_notes?: string;
+    mix?: Mix; // manual volumes from the quick-edit panel — kept across new plans
+    director?: EditPlan; // the Reżyser's version before manual edits
+    edited_at?: string;
+  } | null;
   review: unknown;
   feedback: Array<{ at: string; text: string; changes: string }>;
   error: string | null;
@@ -188,7 +198,7 @@ export async function processVoiceover(supabase: SupabaseClient, project: ClipPr
   }
 }
 
-function assetInfo(a: ClipAssetRow): AssetInfo {
+export function assetInfo(a: ClipAssetRow): AssetInfo {
   return { id: a.id, duration: Number(a.meta.duration ?? 0), cuts: (a.meta.cuts as number[]) ?? [], mirrored: Boolean(a.meta.mirrored) };
 }
 
@@ -310,7 +320,7 @@ export async function makePlan(supabase: SupabaseClient, project: ClipProjectRow
   mapped.sfx = mapped.sfx.filter((x) => library.sfx.some((s) => s.file === x.file));
   const infos = assets.filter((a) => a.kind === "clip" || a.kind === "generated").map(assetInfo);
   const { plan, notes } = sanitizePlan(mapped, infos);
-  const stored = { plan, notes, aliases, report, missing_notes: (project.review as { missing_notes?: string } | null)?.missing_notes };
+  const stored = { plan, notes, aliases, report, missing_notes: (project.review as { missing_notes?: string } | null)?.missing_notes, mix: project.plan?.mix };
   await supabase.from("clip_projects").update({ plan: stored, status: "ready", error: null }).eq("id", project.id);
   return stored;
 }
