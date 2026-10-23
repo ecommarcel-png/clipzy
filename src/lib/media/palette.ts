@@ -1,5 +1,4 @@
 import "server-only";
-import sharp from "sharp";
 
 // Brand colours straight from the logo: the most common saturated hues.
 // (Shop CSS is full of "sale" reds and UI greys; the logo is the identity.)
@@ -56,6 +55,8 @@ export function paletteFromPixels(data: Uint8Array | Buffer, channels: number, m
 
 export async function logoPalette(image: Buffer): Promise<string[]> {
   try {
+    // loaded on use: if the image library is missing on a server, only the swatches are lost
+    const sharp = (await import("sharp")).default;
     const { data, info } = await sharp(image, { density: 72 }).resize(160, 160, { fit: "inside" }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
     return paletteFromPixels(data, info.channels);
   } catch {
