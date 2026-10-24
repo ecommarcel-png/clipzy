@@ -46,3 +46,18 @@ describe("voices", () => {
     expect(v.settings).toEqual({ speed: 1.1, stability: 0.5, similarity_boost: 0.75, style: 0.15, use_speaker_boost: true });
   });
 });
+
+describe("ElevenLabs error messages", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const voice = getVoice("test");
+  it("shows ElevenLabs' own reason for a 402 instead of guessing 'no credits'", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ detail: { status: "paid_plan_required", message: "Free users cannot use library voices via the API." } }), { status: 402 })));
+    const { synthesize } = await import("@/lib/ai/tts");
+    await expect(synthesize("k", voice, "v", "Test.")).rejects.toThrow(/Voice Library.*płatnym planie/);
+  });
+  it("passes through other 402 reasons verbatim", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ detail: { status: "quota_exceeded", message: "You have 3 credits remaining." } }), { status: 402 })));
+    const { synthesize } = await import("@/lib/ai/tts");
+    await expect(synthesize("k", voice, "v", "Test.")).rejects.toThrow("You have 3 credits remaining.");
+  });
+});

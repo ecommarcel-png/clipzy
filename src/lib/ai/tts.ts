@@ -32,10 +32,25 @@ export function alignmentToWords(a: Alignment, offset = 0): Word[] {
 }
 
 async function fail(res: Response, what: string): Promise<never> {
-  const body = (await res.text().catch(() => "")).slice(0, 200);
+  const raw = (await res.text().catch(() => "")).slice(0, 600);
+  // ElevenLabs says why: {"detail":{"status":"…","message":"…"}} or {"detail":"…"}
+  let status = "";
+  let message = raw.slice(0, 200);
+  try {
+    const d = (JSON.parse(raw) as { detail?: { status?: string; message?: string } | string }).detail;
+    if (typeof d === "string") message = d;
+    else if (d) {
+      status = d.status ?? "";
+      message = d.message ?? message;
+    }
+  } catch {
+    // not JSON — keep the raw text
+  }
   if (res.status === 401) throw new TtsError("Klucz ElevenLabs został odrzucony. Sprawdź go w Ustawieniach.");
-  if (res.status === 402 || res.status === 429 || /quota|credits|limit/i.test(body)) throw new TtsError(`ElevenLabs: brak kredytów albo limit zapytań (${res.status}). Sprawdź plan w ElevenLabs.`);
-  throw new TtsError(`ElevenLabs: ${what} nie powiodło się (${res.status}). ${body}`);
+  if (/library|paid_plan|subscription|upgrade/i.test(`${status} ${message}`)) {
+    throw new TtsError(`ElevenLabs: ten głos pochodzi z Voice Library — przez API działa tylko na płatnym planie ElevenLabs (od Starter). Odpowiedź: „${message}”`);
+  }
+  throw new TtsError(`ElevenLabs: ${what} nie powiodło się (${res.status}${status ? `, ${status}` : ""}). ${message}`.trim());
 }
 
 export async function resolveVoiceId(apiKey: string, elevenName: string): Promise<string> {
