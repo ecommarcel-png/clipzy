@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { Badge, Card, PageHeader, buttonClass } from "@/components/ui";
+import { Card, PageHeader, buttonClass } from "@/components/ui";
+import { ClipRow } from "./clip-row";
 
 const STATUS: Record<string, { label: string; tone: "neutral" | "ok" | "warn" | "danger" | "accent" }> = {
   draft: { label: "Szkic", tone: "neutral" },
@@ -40,17 +41,8 @@ export default async function ClipsPage() {
             const st = STATUS[p.status] ?? STATUS.draft;
             const brand = (p.brands as unknown as { name: string } | null)?.name;
             const product = (p.products as unknown as { name: string } | null)?.name;
-            return (
-              <Link key={p.id} href={`/clips/${p.id}`} className="group rounded-[22px] focus-visible:outline-2 focus-visible:outline-accent">
-                <Card className="flex items-center gap-4 py-4 transition group-hover:border-border-strong">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-extrabold">{p.name}</div>
-                    <div className="truncate text-xs text-muted">{[brand, product].filter(Boolean).join(" — ")}</div>
-                  </div>
-                  <Badge tone={st.tone} dot>{st.label}</Badge>
-                </Card>
-              </Link>
-            );
+            const date = new Date(p.created_at).toLocaleString("pl-PL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Warsaw" });
+            return <ClipRow key={p.id} id={p.id} name={p.name} status={st} meta={[brand, product, date].filter(Boolean).join(" — ")} />;
           })}
         </div>
       )}

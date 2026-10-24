@@ -320,3 +320,14 @@ export async function voiceSampleAction(voiceId: string): Promise<{ ok: true; ur
     return { ok: false, error: userMessage(e) };
   }
 }
+
+export async function renameClipProject(projectId: string, name: string): Promise<StepResult> {
+  const { supabase } = await requireUser();
+  const clean = name.replace(/\s+/g, " ").trim().slice(0, 80);
+  if (!isUuid(projectId) || !clean) return { ok: false, error: "Podaj nazwę." };
+  const { error } = await supabase.from("clip_projects").update({ name: clean }).eq("id", projectId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/clips");
+  revalidatePath(`/clips/${projectId}`);
+  return { ok: true };
+}
