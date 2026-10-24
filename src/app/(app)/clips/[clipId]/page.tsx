@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { after } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { getBrand, getProduct, getProductImages } from "@/lib/data";
 import { loadProject } from "@/lib/clips/pipeline";
@@ -21,14 +22,24 @@ export default async function ClipPage({ params }: PageProps<"/clips/[clipId]">)
   if (!data) notFound();
   const { project, assets } = data;
 
-  const brand = await getBrand(supabase, project.brand_id);
-  const product = project.product_id ? await getProduct(supabase, brand.id, project.product_id).catch(() => null) : null;
-  const images = product ? await getProductImages(supabase, product.id) : [];
+  // independent reads in parallel — every round trip to the database adds up on each click
+  const [brand, product, images] = await Promise.all([
+    getBrand(supabase, project.brand_id),
+    project.product_id ? getProduct(supabase, project.brand_id, project.product_id).catch(() => null) : Promise.resolve(null),
+    project.product_id ? getProductImages(supabase, project.product_id).catch(() => []) : Promise.resolve([]),
+  ]);
   const paths = [...assets.map((a) => a.path ?? ""), ...assets.map((a) => (typeof a.meta.poster === "string" ? a.meta.poster : "")), brand.logo_path ?? "", images[0]?.storage_path ?? ""];
   // Long-lived links: the browser renders the video from these.
-  const urls = await signedUrls(supabase, paths, 6 * 3600);
+  const cachedLogo = Array.isArray(brand.source.logo_colors) ? (brand.source.logo_colors as string[]) : null;
+  const [urls, fromLogo] = await Promise.all([
+    signedUrls(supabase, paths, 6 * 3600),
+    cachedLogo ? Promise.resolve(cachedLogo) : logoColors(supabase, brand.logo_path).catch(() => [] as string[]),
+  ]);
+  // logo colours are computed once and remembered on the brand
+  if (!cachedLogo && brand.logo_path && fromLogo.length) {
+    after(() => supabase.from("brands").update({ source: { ...brand.source, logo_colors: fromLogo } }).eq("id", brand.id));
+  }
   const colors = brand.profile.colors as unknown as Record<string, string>;
-  const fromLogo = Array.isArray(brand.source.logo_colors) ? (brand.source.logo_colors as string[]) : await logoColors(supabase, brand.logo_path).catch(() => []);
   const isHex = (c: unknown): c is string => typeof c === "string" && /^#[0-9a-f]{6}$/i.test(c);
   const swatches = [...new Set([...fromLogo, colors.accent, colors.primary, colors.secondary].filter(isHex).map((c) => c.toLowerCase()))]
     .filter((c) => !["#ffffff", "#000000"].includes(c))

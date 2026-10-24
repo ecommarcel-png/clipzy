@@ -13,14 +13,15 @@ import { deleteBrand } from "../actions";
 export default async function BrandPage({ params }: PageProps<"/brands/[brandId]">) {
   const { brandId } = await params;
   const { supabase } = await requireUser();
-  const brand = await getBrand(supabase, brandId);
+  const [brand, { data: products }] = await Promise.all([
+    getBrand(supabase, brandId),
+    supabase
+      .from("products")
+      .select("id, name, status, completeness, product_images(storage_path, sort_order)")
+      .eq("brand_id", brandId)
+      .order("created_at", { ascending: false }),
+  ]);
   const p = brand.profile;
-
-  const { data: products } = await supabase
-    .from("products")
-    .select("id, name, status, completeness, product_images(storage_path, sort_order)")
-    .eq("brand_id", brand.id)
-    .order("created_at", { ascending: false });
 
   const thumbs = (products ?? []).map((pr) => {
     const imgs = (pr.product_images as Array<{ storage_path: string; sort_order: number }>) ?? [];

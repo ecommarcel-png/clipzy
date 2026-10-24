@@ -17,11 +17,13 @@ export const maxDuration = 300;
 export default async function ProductPage({ params }: PageProps<"/brands/[brandId]/products/[productId]">) {
   const { brandId, productId } = await params;
   const { supabase, user } = await requireUser();
-  const brand = await getBrand(supabase, brandId);
-  const product = await getProduct(supabase, brand.id, productId);
-  const images = await getProductImages(supabase, product.id);
+  const [brand, product, images, saved] = await Promise.all([
+    getBrand(supabase, brandId),
+    getProduct(supabase, brandId, productId),
+    getProductImages(supabase, productId),
+    libraryCards(supabase, { brandId, productId }, true),
+  ]);
   const urls = await signedUrls(supabase, images.map((i) => i.storage_path));
-  const saved = await libraryCards(supabase, { brandId: brand.id, productId: product.id }, true);
 
   return (
     <>

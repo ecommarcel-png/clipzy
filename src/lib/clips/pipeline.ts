@@ -93,9 +93,11 @@ export type ClipProjectRow = {
 };
 
 export async function loadProject(supabase: SupabaseClient, id: string) {
-  const { data: project } = await supabase.from("clip_projects").select("*").eq("id", id).maybeSingle();
+  const [{ data: project }, { data: assets }] = await Promise.all([
+    supabase.from("clip_projects").select("*").eq("id", id).maybeSingle(),
+    supabase.from("clip_assets").select("*").eq("project_id", id).order("created_at"),
+  ]);
   if (!project) return null;
-  const { data: assets } = await supabase.from("clip_assets").select("*").eq("project_id", id).order("created_at");
   return { project: project as ClipProjectRow, assets: (assets ?? []) as ClipAssetRow[] };
 }
 
