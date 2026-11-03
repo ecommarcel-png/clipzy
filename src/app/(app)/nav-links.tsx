@@ -31,7 +31,7 @@ const GROUPS: Array<{ id: string; label: string; links: NavLink[] }> = [
     label: "Twoja przestrzeń",
     links: [
       { href: "/brands", label: "Marki i produkty", icon: ICONS.brands },
-      { href: "/files", label: "Twoje pliki", icon: ICONS.files, soon: true },
+      { href: "/files", label: "Twoje pliki", icon: ICONS.files },
       { href: "/settings", label: "Ustawienia", icon: ICONS.settings },
     ],
   },
