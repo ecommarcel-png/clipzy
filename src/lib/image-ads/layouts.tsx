@@ -100,7 +100,8 @@ function Logo({ brand, pal, height = 54, onPhoto = false }: { brand: AdBrand; pa
     const img = <img src={brand.logo} alt="" height={height} style={{ height, objectFit: "contain", maxWidth: height * 5 }} />;
     return onPhoto ? <div style={{ display: "flex", background: "rgba(255,255,255,0.92)", borderRadius: 16, padding: "10px 18px" }}>{img}</div> : img;
   }
-  return <Text size={height * 0.62} weight={900} color={onPhoto ? "#ffffff" : pal.ink} style={{ letterSpacing: -0.5 }}>{brand.name}</Text>;
+  const name = <Text size={height * 0.62} weight={900} color={onPhoto ? "#121014" : pal.ink} style={{ letterSpacing: -0.5 }}>{brand.name}</Text>;
+  return onPhoto ? <div style={{ display: "flex", background: "rgba(255,255,255,0.92)", borderRadius: 999, padding: "8px 22px" }}>{name}</div> : name;
 }
 
 function Photo({ src, width, height, radius = 0, focus = "center", style }: { src: string | null; width: number | string; height: number | string; radius?: number; focus?: AdStyle["focus"]; style?: CSSProperties }) {

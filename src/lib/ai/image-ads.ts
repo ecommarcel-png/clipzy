@@ -112,9 +112,9 @@ const PhotoSchema = z.object({
   focus: z.enum(["center", "top", "bottom", "left", "right"]).describe("gdzie na zdjęciu jest główny obiekt"),
 });
 
-/** How many AI photos a creative needs (layouts without photos still need one when there's no product photo to cut out). */
-export function photosNeeded(template: TemplateKey, hasProductPhotos: boolean): number {
-  return photoSlots(template) || (usesCutout(template) && !hasProductPhotos ? 1 : 0);
+/** How many AI photos a creative needs (packshot layouts need one when there's no product without background). */
+export function photosNeeded(template: TemplateKey, cutout: boolean): number {
+  return photoSlots(template) || (usesCutout(template) && !cutout ? 1 : 0);
 }
 
 const SLOT_HINT: Partial<Record<TemplateKey, string>> = {
@@ -132,11 +132,12 @@ const SLOT_HINT: Partial<Record<TemplateKey, string>> = {
   us_vs_them: "1 zdjęcie: packshot produktu na jednolitym jasnym tle, cały produkt w kadrze.",
 };
 
-export async function photoPrompts(apiKey: string, ctx: AdContext, items: Array<Item & { fields: Fields }>): Promise<Record<string, { photos: PhotoBrief[]; focus: AdStyle["focus"] }>> {
-  const need = items.filter((i) => photosNeeded(i.template, ctx.hasProductPhotos) > 0);
+/** `cutout`: a product without background is ready — packshot layouts then need no photo. */
+export async function photoPrompts(apiKey: string, ctx: AdContext, items: Array<Item & { fields: Fields }>, cutout: boolean): Promise<Record<string, { photos: PhotoBrief[]; focus: AdStyle["focus"] }>> {
+  const need = items.filter((i) => photosNeeded(i.template, cutout) > 0);
   if (!need.length) return {};
   const schema = z.object(Object.fromEntries(need.map((i) => [i.key, PhotoSchema])));
-  const brief = need.map((i) => ({ id: i.key, szablon: i.template, ile_zdjec: photosNeeded(i.template, ctx.hasProductPhotos), wskazowki: SLOT_HINT[i.template] ?? "", koncept: i.concept, teksty: i.fields }));
+  const brief = need.map((i) => ({ id: i.key, szablon: i.template, ile_zdjec: photosNeeded(i.template, cutout), wskazowki: SLOT_HINT[i.template] ?? "", koncept: i.concept, teksty: i.fields }));
   const r = await structuredCall({
     apiKey,
     system: await system("Jesteś Fotografem Clipzy. Piszesz prompty do modelu obrazu (fal.ai nano-banana) dla zdjęć do reklam statycznych."),
@@ -147,7 +148,7 @@ export async function photoPrompts(apiKey: string, ctx: AdContext, items: Array<
   const out: Record<string, { photos: PhotoBrief[]; focus: AdStyle["focus"] }> = {};
   for (const i of need) {
     const v = (r as Record<string, z.infer<typeof PhotoSchema>>)[i.key];
-    const n = photosNeeded(i.template, ctx.hasProductPhotos);
+    const n = photosNeeded(i.template, cutout);
     const photos = v.photos.slice(0, n);
     while (photos.length < n) photos.push(photos[photos.length - 1] ?? { prompt: i.concept.visual, with_product: ctx.hasProductPhotos });
     out[i.key] = { photos: photos.map((p) => ({ prompt: p.prompt, with_product: p.with_product && ctx.hasProductPhotos })), focus: v.focus };

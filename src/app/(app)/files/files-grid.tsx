@@ -62,13 +62,26 @@ export function FilesGrid({ files }: { files: AdFile[] }) {
   );
 }
 
+function CopyButton({ copy }: { copy: NonNullable<AdFile["copy"]> }) {
+  const [ok, setOk] = useState(false);
+  const text = `${copy.primary_text}\n\nNagłówek: ${copy.headline}\nOpis: ${copy.description}`;
+  return (
+    <button type="button" className="self-start text-xs font-bold text-accent hover:text-accent-strong" onClick={async () => { await navigator.clipboard.writeText(text); setOk(true); setTimeout(() => setOk(false), 1500); }}>
+      {ok ? "Skopiowano copy" : "Kopiuj copy (tekst, nagłówek, opis)"}
+    </button>
+  );
+}
+
 function FileCard({ file: f }: { file: AdFile }) {
   const date = new Date(f.createdAt).toLocaleString("pl-PL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Warsaw" });
   return (
     <li>
       <Card className="flex h-full flex-col gap-3 p-3">
         <div className="flex h-72 items-center justify-center overflow-hidden rounded-xl bg-[#0d0b10]">
-          {f.url ? (
+          {f.url && f.kind === "image" ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={f.url} alt={f.name} className="h-full max-w-full object-contain" />
+          ) : f.url ? (
             <video
               src={`${f.url}#t=0.1`}
               preload="metadata"
@@ -89,10 +102,12 @@ function FileCard({ file: f }: { file: AdFile }) {
           {f.format ? <Badge tone="neutral">{formatRatio(f.format)}</Badge> : null}
           {f.variant ? <Badge tone="neutral">Hook {f.variant}</Badge> : null}
           {f.review ? <Badge tone={f.review.score >= 8 ? "ok" : "warn"} dot>Kontroler {f.review.score}/10</Badge> : null}
+          {f.kind === "image" ? <Badge tone="neutral">Image ad</Badge> : null}
         </div>
+        {f.copy ? <CopyButton copy={f.copy} /> : null}
         <div className="mt-auto flex items-center gap-3 border-t border-border pt-3 text-sm">
           {f.downloadUrl ? <a href={f.downloadUrl} download className="font-bold text-accent hover:text-accent-strong">Pobierz</a> : null}
-          {f.projectId ? <Link href={`/clips/${f.projectId}`} className="font-semibold text-muted hover:text-text">Otwórz sklejkę</Link> : <span className="text-xs text-faint">Sklejka usunięta</span>}
+          {f.source ? <Link href={f.source.href} className="font-semibold text-muted hover:text-text">{f.source.label}</Link> : <span className="text-xs text-faint">{f.kind === "image" ? "Zestaw usunięty" : "Sklejka usunięta"}</span>}
           <form action={deleteFileAction} className="ml-auto">
             <input type="hidden" name="fileId" value={f.id} />
             <ConfirmButton subtle message={`Usunąć „${f.name}” na zawsze? Zniknie też ze sklejki.`}>Usuń</ConfirmButton>

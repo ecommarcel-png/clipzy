@@ -12,6 +12,10 @@ export type AdFile = {
   projectId: string | null;
   createdAt: string;
   review: { score: number } | null;
+  kind: "video" | "image";
+  /** where the file came from: the sklejka or the image ads set */
+  source: { href: string; label: string } | null;
+  copy: { primary_text: string; headline: string; description: string } | null;
   /** signed link for the preview */
   url: string | null;
   /** signed link that downloads under the file's name */

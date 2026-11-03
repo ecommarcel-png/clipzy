@@ -3,7 +3,7 @@ import { cleanName, defaultFileName, downloadName, filterFiles, formatRatio, typ
 
 const file = (over: Partial<AdFile>): AdFile => ({
   id: "1", name: "x", path: "p", format: "4x5", variant: null, brandId: "b1", brandName: "Depli", productName: null,
-  projectId: null, createdAt: "2026-11-03T00:00:00Z", review: null, url: null, downloadUrl: null, ...over,
+  projectId: null, createdAt: "2026-11-03T00:00:00Z", review: null, url: null, downloadUrl: null, kind: "video", source: null, copy: null, ...over,
 });
 
 describe("files", () => {

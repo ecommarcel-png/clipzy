@@ -47,7 +47,19 @@ Każdy profil marki i produktu przechodzi pętlę jakości (`knowledge/rezyser/S
 
 **Biblioteka muzyki i SFX:** wrzucaj pliki do `public/biblioteka/muzyka/` i `public/biblioteka/sfx/` (zasady nazw w README w tych folderach). Przy każdym deployu Clipzy sam liczy długość utworów i najlepszy moment startu. Pliki są dostępne tylko po zalogowaniu, ale **repozytorium musi być prywatne**, jeśli wrzucasz licencjonowaną muzykę (np. z Epidemic Sound).
 
-W kolejnych etapach: AI nagrania, image ads, usuwanie napisów, integracja z Meta API.
+## Image ads (etap 3)
+
+**Image ads → Nowe image ads:** wybierasz markę i produkt, suwakiem liczbę kreacji (1–20) i klikasz „Generuj”. Każda kreacja wychodzi w **1:1 (1080×1080) i 9:16 (1080×1920)** z gotowym copy Meta: tekst główny, nagłówek, opis. Pracuje zespół:
+
+1. **Strateg** — dobiera format i kąt każdej kreacji (12 układów: przed/po, korzyści z ikonami, strzałki do cech, my kontra inni, problem → rozwiązanie, karteczki post-it, tablica, notatka odręczna, lista „5 znaków”, oferta, opinia, pytanie-hak). Gdy produkt ma efekt przed/po, przed/po idzie na początek. Opinia tylko z prawdziwych opinii z profilu.
+2. **Copywriter** — teksty na grafikę i copy w stylu zwycięskich reklam (hak z emoji, korzyści, oferta, CTA), bez zmyślonych liczb.
+3. **Fotograf** — zamawia zdjęcia w fal.ai (nano-banana-2) ze zdjęciami produktu jako wzorem; wycięty produkt bez tła (BiRefNet) do packshotów.
+4. **Grafik** — motyw, krój i kolor akcentu z palety marki (logo + profil); grafika rysuje się na serwerze (bez przeglądarki), polskie znaki z fontów w `assets/fonts`.
+5. **Kontroler** — ogląda obie wersje każdej grafiki, wystawia ocenę 1–10 i sam wdraża poprawki (tekst, wygląd, nowe zdjęcie), potem ocenia jeszcze raz.
+
+Gotowe grafiki trafiają do **Twoich plików** (z copy do skopiowania). Na karcie kreacji: pobieranie 1:1 / 9:16, copy z „Kopiuj”, **Edytuj** (teksty, wygląd, copy — bez AI, przerysowuje się od razu) i **Przegeneruj**. Strona musi być otwarta, gdy zespół pracuje; po powrocie wznawia od miejsca, w którym skończył. Baza wiedzy agentów: `knowledge/image-ads/SKILL.md`. Klucze: Anthropic i fal. Koszt: ok. 0,12 $ za zdjęcie AI (przed/po = 2) + Claude.
+
+W kolejnych etapach: AI nagrania, usuwanie napisów, integracja z Meta API.
 
 ## Wdrożenie (jednorazowo)
 
@@ -58,7 +70,8 @@ W kolejnych etapach: AI nagrania, image ads, usuwanie napisów, integracja z Met
    - `0002_review.sql` — miejsce na wyniki kontroli jakości profili,
    - `0003_clips.sql` — projekty sklejek, ich pliki oraz zgoda na wideo i audio w magazynie `media`,
    - `0004_library.sql` — biblioteka materiałów (nagrania i ujęcia AI do ponownego użycia),
-   - `0005_files.sql` — „Twoje pliki”: archiwum gotowych reklam (zostają po usunięciu sklejki lub marki).
+   - `0005_files.sql` — „Twoje pliki”: archiwum gotowych reklam (zostają po usunięciu sklejki lub marki),
+   - `0006_image_ads.sql` — image ads: zestawy reklam graficznych (1:1 + 9:16 + copy).
 2. **Authentication → URL Configuration:**
    - *Site URL:* adres strony na Vercelu, np. `https://clipzy.vercel.app`
    - *Redirect URLs:* dodaj `https://clipzy.vercel.app/auth/confirm`
