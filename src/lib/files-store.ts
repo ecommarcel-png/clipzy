@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { BUCKET } from "@/lib/storage";
-import { cleanName } from "@/lib/files";
+import { cleanName, downloadName } from "@/lib/files";
 
 // "Twoje pliki" storage. Until migration 0005 runs the table is missing:
 // every helper then quietly does nothing, so renders keep working.
@@ -44,5 +44,17 @@ export async function fileNames(supabase: SupabaseClient, ids: string[]): Promis
   if (!ids.length) return out;
   const { data } = await supabase.from("ad_files").select("id, name").in("id", ids);
   for (const r of (data ?? []) as Array<{ id: string; name: string }>) if (r.name) out.set(r.id, r.name);
+  return out;
+}
+
+/** Signed links that download under the file's own name, keyed by id. */
+export async function downloadLinks(supabase: SupabaseClient, items: Array<{ id: string; path: string; name: string; ext?: string }>, expiresIn = 3600): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  await Promise.all(
+    items.map(async (it) => {
+      const { data } = await supabase.storage.from(BUCKET).createSignedUrl(it.path, expiresIn, { download: downloadName(it.name, it.ext) });
+      if (data?.signedUrl) out[it.id] = data.signedUrl;
+    }),
+  );
   return out;
 }

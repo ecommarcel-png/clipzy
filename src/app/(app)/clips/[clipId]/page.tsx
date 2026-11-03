@@ -10,6 +10,8 @@ import { ConfirmButton } from "@/components/confirm-button";
 import { Studio, type StudioData } from "./studio";
 import { deleteClipProject } from "../actions";
 import { logoColors } from "@/lib/brand-colors";
+import { defaultFileName } from "@/lib/files";
+import { downloadLinks, fileNames } from "@/lib/files-store";
 
 // Each pipeline step (analysis, plan + Kontroler) runs as a server action on this page.
 export const maxDuration = 300;
@@ -23,17 +25,22 @@ export default async function ClipPage({ params }: PageProps<"/clips/[clipId]">)
   const { project, assets } = data;
 
   // independent reads in parallel — every round trip to the database adds up on each click
-  const [brand, product, images] = await Promise.all([
+  const renders = assets.filter((a) => a.kind === "render" && a.path);
+  const [brand, product, images, stored] = await Promise.all([
     getBrand(supabase, project.brand_id),
     project.product_id ? getProduct(supabase, project.brand_id, project.product_id).catch(() => null) : Promise.resolve(null),
     project.product_id ? getProductImages(supabase, project.product_id).catch(() => []) : Promise.resolve([]),
+    fileNames(supabase, renders.map((a) => a.id)),
   ]);
+  // finished renders: the name from "Twoje pliki" (fallback: the default one) and a download link under that name
+  const renderName = new Map(renders.map((a) => [a.id, stored.get(a.id) ?? defaultFileName({ brand: brand.name, product: product?.name, format: String(a.meta.format ?? "4x5"), variant: Number(a.meta.variant) || null })]));
   const paths = [...assets.map((a) => a.path ?? ""), ...assets.map((a) => (typeof a.meta.poster === "string" ? a.meta.poster : "")), brand.logo_path ?? "", images[0]?.storage_path ?? ""];
   // Long-lived links: the browser renders the video from these.
   const cachedLogo = Array.isArray(brand.source.logo_colors) ? (brand.source.logo_colors as string[]) : null;
-  const [urls, fromLogo] = await Promise.all([
+  const [urls, fromLogo, downloads] = await Promise.all([
     signedUrls(supabase, paths, 6 * 3600),
     cachedLogo ? Promise.resolve(cachedLogo) : logoColors(supabase, brand.logo_path).catch(() => [] as string[]),
+    downloadLinks(supabase, renders.map((a) => ({ id: a.id, path: a.path!, name: renderName.get(a.id)! })), 6 * 3600),
   ]);
   // logo colours are computed once and remembered on the brand
   if (!cachedLogo && brand.logo_path && fromLogo.length) {
@@ -65,7 +72,7 @@ export default async function ClipPage({ params }: PageProps<"/clips/[clipId]">)
       missingNotes: (project.review as { missing_notes?: string } | null)?.missing_notes ?? null,
     },
     assets: assets.map((a) => ({
-      id: a.id, kind: a.kind, name: a.name, status: a.status, error: a.error, url: a.path ? urls[a.path] ?? null : null,
+      id: a.id, kind: a.kind, name: renderName.get(a.id) ?? a.name, downloadUrl: downloads[a.id] ?? null, status: a.status, error: a.error, url: a.path ? urls[a.path] ?? null : null,
       mirrored: Boolean(a.meta.mirrored), format: (a.meta.format as string) ?? null, duration: Number(a.meta.duration ?? 0) || null,
       cuts: Array.isArray(a.meta.cuts) ? (a.meta.cuts as number[]) : [],
       poster: typeof a.meta.poster === "string" ? urls[a.meta.poster] ?? null : null,
@@ -90,7 +97,7 @@ export default async function ClipPage({ params }: PageProps<"/clips/[clipId]">)
       <div className="mt-16 flex justify-end">
         <form action={deleteClipProject}>
           <input type="hidden" name="projectId" value={project.id} />
-          <ConfirmButton subtle message="Usunąć tę sklejkę razem z nagraniami i renderami?">Usuń sklejkę</ConfirmButton>
+          <ConfirmButton subtle message="Usunąć tę sklejkę? Gotowe reklamy zostaną w „Twoich plikach”.">Usuń sklejkę</ConfirmButton>
         </form>
       </div>
     </>

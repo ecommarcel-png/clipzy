@@ -21,6 +21,8 @@ import { QuickEdit, type Draft } from "./quick-edit";
 import { ScriptCard as VoiceScriptCard, type ScriptView } from "./script-card";
 import { getVoice } from "@/lib/voices";
 import { RenderFailure, prepareVideo, renderInBrowser, sklejkaProps } from "./media";
+import { FileName } from "@/components/file-name";
+import { defaultFileName, downloadName, formatRatio } from "@/lib/files";
 
 const Preview = dynamic(() => import("./preview"), { ssr: false, loading: () => <div className="aspect-[4/5] w-full animate-pulse rounded-[18px] bg-surface-2" /> });
 
@@ -50,6 +52,8 @@ export type StudioData = {
   assets: Array<{
     id: string; kind: "clip" | "voiceover" | "generated" | "render"; name: string; status: string; error: string | null; url: string | null;
     mirrored: boolean; format: string | null; duration: number | null; cuts: number[]; poster: string | null; fromLibrary: boolean; variant: number | null; review: RenderReview; created_at: string;
+    /** renders: signed link that downloads under the file's name */
+    downloadUrl?: string | null;
   }>;
   brand: { name: string; logoUrl: string | null; accent: string; swatches: string[]; logoColors: string[] };
   product: { name: string | null };
@@ -525,7 +529,7 @@ function RenderButtons({
     if (!r.ok) throw new Error(r.error);
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${data.brand.name}-${format}${versions > 1 ? `-hook${k}` : ""}.mp4`.replace(/\s+/g, "-");
+    a.download = downloadName(defaultFileName({ brand: data.brand.name, product: data.product.name, format, variant: versions > 1 ? k : null }));
     a.click();
     // the Kontroler watches the file in the background — in a batch only the first one
     if (review) void reviewRenderAction(data.project.id, id).then(() => onChanged());
@@ -598,11 +602,12 @@ function Renders({ renders, projectId, onChanged }: { renders: StudioData["asset
         {renders.map((r) => (
           <li key={r.id} className="rounded-2xl border border-border bg-bg/40 p-3">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="font-bold">{r.format ? FORMAT_SIZE[r.format as Format]?.label ?? r.format : "MP4"}</span>
+              <FileName id={r.id} name={r.name} className="basis-full sm:basis-auto" onRenamed={onChanged} />
+              <Badge tone="neutral">{r.format ? formatRatio(r.format) : "MP4"}</Badge>
               {r.variant ? <Badge tone="neutral">Hook {r.variant}</Badge> : null}
               <span className="text-xs text-faint">{new Date(r.created_at).toLocaleString("pl-PL")}</span>
               {r.review ? <Badge tone={r.review.score >= 8 ? "ok" : "warn"} dot>Kontroler {r.review.score}/10</Badge> : <Badge tone="neutral">Kontroler sprawdza…</Badge>}
-              {r.url ? <a href={r.url} download className="ml-auto text-sm font-bold text-accent hover:text-accent-strong">Pobierz</a> : null}
+              {r.downloadUrl ?? r.url ? <a href={r.downloadUrl ?? r.url ?? undefined} download className="ml-auto text-sm font-bold text-accent hover:text-accent-strong">Pobierz</a> : null}
             </div>
             {r.review?.issues.length ? (
               <Disclosure plain title={`Uwagi (${r.review.issues.length})`}>
