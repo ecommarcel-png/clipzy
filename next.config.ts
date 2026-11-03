@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
     "/**": ["./knowledge/**/*"],
     // Sklejki: ffmpeg finds hard cuts in clips and pauses in the voiceover.
     "/clips/**": ["./node_modules/ffmpeg-static/ffmpeg"],
+    // Image ads: graphics are drawn on the server with these fonts (Polish letters).
+    "/image-ads/**": ["./assets/fonts/*.ttf"],
   },
   // Native binary + its path resolution must stay outside the bundle.
   serverExternalPackages: ["ffmpeg-static"],
