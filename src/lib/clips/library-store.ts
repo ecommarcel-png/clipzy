@@ -112,6 +112,9 @@ export async function pathsInUse(supabase: SupabaseClient, paths: string[], exce
       keep.add(r.path);
       if (r.poster_path) keep.add(r.poster_path);
     }
+    // finished ads live on in "Twoje pliki" (before migration 0005 this just returns nothing)
+    const files = await supabase.from("ad_files").select("path").in("path", chunk);
+    for (const r of (files.data ?? []) as Array<{ path: string }>) keep.add(r.path);
     let a = supabase.from("clip_assets").select("path, meta").in("path", chunk);
     if (exceptProjectId) a = a.neq("project_id", exceptProjectId);
     const used = await a;

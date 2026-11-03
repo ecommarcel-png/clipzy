@@ -57,7 +57,8 @@ W kolejnych etapach: AI nagrania, image ads, usuwanie napisów, integracja z Met
    - `0001_init.sql` — tabele, zabezpieczenia (każdy widzi tylko swoje dane) i prywatny magazyn plików `media`,
    - `0002_review.sql` — miejsce na wyniki kontroli jakości profili,
    - `0003_clips.sql` — projekty sklejek, ich pliki oraz zgoda na wideo i audio w magazynie `media`,
-   - `0004_library.sql` — biblioteka materiałów (nagrania i ujęcia AI do ponownego użycia).
+   - `0004_library.sql` — biblioteka materiałów (nagrania i ujęcia AI do ponownego użycia),
+   - `0005_files.sql` — „Twoje pliki”: archiwum gotowych reklam (zostają po usunięciu sklejki lub marki).
 2. **Authentication → URL Configuration:**
    - *Site URL:* adres strony na Vercelu, np. `https://clipzy.vercel.app`
    - *Redirect URLs:* dodaj `https://clipzy.vercel.app/auth/confirm`

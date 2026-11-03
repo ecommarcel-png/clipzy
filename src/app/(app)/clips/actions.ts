@@ -18,6 +18,8 @@ import { VOICE_SAMPLE_TEXT, getVoice } from "@/lib/voices";
 import { ScriptSchema } from "@/lib/ai/script";
 import { resolveVoiceId, synthesize } from "@/lib/ai/tts";
 import { signedUrls } from "@/lib/storage";
+import { defaultFileName } from "@/lib/files";
+import { recordFile } from "@/lib/files-store";
 import { getProviderKey } from "@/lib/api-keys";
 import type { Provider } from "@/lib/providers";
 
@@ -208,13 +210,29 @@ export async function feedbackAction(projectId: string, text: string): Promise<S
 }
 
 export async function saveRenderAction(projectId: string, file: { id: string; path: string; format: string; variant?: number }): Promise<StepResult & { assetId?: string }> {
-  return withProject(projectId, async ({ supabase, user }) => {
+  return withProject(projectId, async ({ supabase, user, data }) => {
     if (!isUuid(file.id) || !file.path.startsWith(`${user.id}/clips/${projectId}/`)) return { ok: false as const, error: "Zła ścieżka renderu." };
+    if (!(FORMATS as readonly string[]).includes(file.format)) return { ok: false as const, error: "Zły format renderu." };
+    const variant = file.variant && Number.isInteger(file.variant) && file.variant >= 1 && file.variant <= 5 ? file.variant : undefined;
+    const project = data.project;
+    const [{ data: brand }, { data: product }] = await Promise.all([
+      supabase.from("brands").select("name").eq("id", project.brand_id).maybeSingle(),
+      project.product_id ? supabase.from("products").select("name").eq("id", project.product_id).maybeSingle() : Promise.resolve({ data: null }),
+    ]);
+    const brandName = (brand?.name as string | undefined) ?? "";
+    const productName = (product?.name as string | undefined) ?? null;
+    const name = defaultFileName({ brand: brandName, product: productName, format: file.format, variant });
     const { error } = await supabase.from("clip_assets").insert({
-      id: file.id, user_id: user.id, project_id: projectId, kind: "render", path: file.path, name: `Render ${file.format}${file.variant ? ` hook ${file.variant}` : ""}`, status: "ready",
-      meta: { format: file.format, ...(file.variant && Number.isInteger(file.variant) && file.variant >= 1 && file.variant <= 5 ? { variant: file.variant } : {}) },
+      id: file.id, user_id: user.id, project_id: projectId, kind: "render", path: file.path, name, status: "ready",
+      meta: { format: file.format, ...(variant ? { variant } : {}) },
     });
     if (error) return { ok: false as const, error: error.message };
+    // "Twoje pliki": the same file, kept after the sklejka is deleted
+    await recordFile(supabase, {
+      id: file.id, userId: user.id, brandId: project.brand_id, productId: project.product_id, projectId, path: file.path, format: file.format, variant, name,
+      meta: { brand_name: brandName, product_name: productName, project_name: project.name },
+    }).catch(() => {});
+    revalidatePath("/files");
     await supabase.from("clip_projects").update({ status: "rendered" }).eq("id", projectId);
     return { ok: true as const, assetId: file.id };
   }) as Promise<StepResult & { assetId?: string }>;

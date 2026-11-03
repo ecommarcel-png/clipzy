@@ -412,6 +412,7 @@ export async function reviewRendered(supabase: SupabaseClient, project: ClipProj
     const key = await getProviderKey(supabase, "gemini");
     const review = await reviewRender(key, tmp.data, { product: product.name, audience: brand.audience, preferences: brand.preferences });
     await supabase.from("clip_assets").update({ analysis: review }).eq("id", render.id);
+    await supabase.from("ad_files").update({ review }).eq("id", render.id); // no-op before migration 0005
     return review;
   } finally {
     unlink(tmp.file).catch(() => {});
