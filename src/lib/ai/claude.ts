@@ -24,9 +24,9 @@ const TOO_LONG =
 // JSON Schema for the tool input. Profiles are too big for strict structured
 // outputs (the API refuses to compile the grammar), so the schema is sent as
 // a regular tool and the result is validated here with Zod instead.
-export function toolSchema(schema: z.ZodType): Anthropic.Messages.Tool.InputSchema {
+export function toolSchema(schema: z.ZodType, io: "input" | "output" = "output"): Anthropic.Messages.Tool.InputSchema {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { $schema, ...json } = z.toJSONSchema(schema) as Record<string, unknown>;
+  const { $schema, ...json } = z.toJSONSchema(schema, { io }) as Record<string, unknown>;
   return json as Anthropic.Messages.Tool.InputSchema;
 }
 
@@ -59,13 +59,15 @@ export async function structuredCall<S extends z.ZodType>(opts: {
   content: ContentBlock[];
   schema: S;
   maxTokens?: number;
+  /** "input": describe the schema as accepted before transforms (schemas that clean their own output) */
+  io?: "input" | "output";
 }): Promise<z.infer<S>> {
   const client = claudeClient(opts.apiKey);
   const tools: Anthropic.Messages.Tool[] = [
     {
       name: RESULT_TOOL,
       description: "Zapisz końcowy wynik. Wywołaj to narzędzie dokładnie raz, z kompletnym wynikiem zgodnym ze schematem.",
-      input_schema: toolSchema(opts.schema),
+      input_schema: toolSchema(opts.schema, opts.io),
     },
   ];
   const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: opts.content }];

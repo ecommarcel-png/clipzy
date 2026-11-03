@@ -75,6 +75,16 @@ export function scriptKnowledge() {
   ]);
 }
 
+// Image ads: layouts, copy, AI photos and the checklist (from the winning statics in the inspiration set).
+export function imageAdsKnowledge() {
+  return bundle([
+    ["Image ads Clipzy: statyki pod Meta Ads", "image-ads/SKILL.md"],
+    META_CORE,
+    ["Meta Ads: poziomy świadomości", "meta-ads/references/poziomy-swiadomosci.md"],
+    ["Meta Ads: oferta", "meta-ads/references/oferta.md"],
+  ]);
+}
+
 export function knowledgeText(docs: KnowledgeDoc[]): string {
   return docs.map((d) => `<wiedza tytul="${d.title}">\n${d.content}\n</wiedza>`).join("\n\n");
 }

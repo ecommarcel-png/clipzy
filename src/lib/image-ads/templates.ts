@@ -113,3 +113,19 @@ export function fitFont(text: string, o: { font: keyof typeof GLYPH; width: numb
   }
   return o.min;
 }
+
+/** What each field means — for the Copywriter and the Kontroler. */
+export const FIELD_GUIDE: Record<TemplateKey, string> = {
+  hero_benefits: "eyebrow: krótki nadtytuł (np. „Nowość”, kategoria) albo puste; headline: nagłówek 3–8 słów; benefits: 2–4 × {icon, text} korzyść 2–5 słów; cta; badge: plakietka (np. „-40%”, „1+1 gratis”) TYLKO z realnej oferty, inaczej puste; trust: 0–3 krótkie dowody/bezpieczeństwo zakupu z profilu (np. „Wysyłka 24h”).",
+  before_after: "headline: efekt w 3–8 słowach; before_label/after_label: np. „PRZED”/„PO”; benefits: 0–4 × {icon, text}; cta; badge: realna oferta albo puste.",
+  callouts: "headline; subheadline: 1 zdanie co to jest albo puste; callouts: 3–4 cechy konstrukcji/składu, 2–5 słów każda; cta; badge.",
+  us_vs_them: "headline; ours_label: nazwa produktu/marki; theirs_label: zamiennik (np. „Zwykłe szczoteczki”, „Sucha karma”); rows: 3–5 × {ours, theirs} — ta sama cecha z dwóch stron, krótko; cta.",
+  sticky_notes: "notes: 2–3 karteczki pisane ręcznie (ból/sytuacja, gwarancja, zachęta), max ~10 słów każda; headline: zwykle puste; badge: ostatnia karteczka z ofertą (np. „DZIŚ -38%”) albo puste.",
+  whiteboard: "headline: pytanie/hasło markerem (np. „Boli cię bark?”); lines: 2–4 krótkie linie markerem (mechanizm, korzyść); banner: czerwony pasek z ofertą lub obietnicą; sub_banner: gwarancja albo puste.",
+  handwritten_note: "note: jedno szczere zdanie pisane ręcznie, emocja lub historia klienta (max 90 znaków); caption: krótki podpis z produktem/CTA albo puste.",
+  listicle: "headline: „N znaków, że…”/„N powodów…”; items: 3–5 objawów/powodów, 2–4 słowa; question: np. „Masz dość?” albo puste; solution: 1 zdanie z nazwą produktu; cta.",
+  offer: "headline; offer: rabat/zestaw (np. „-40%”, „2+1”); old_price/new_price: TYLKO z profilu, inaczej puste; perks: 2–3 korzyści oferty (dostawa, gratis, zwrot); urgency: pilność zgodna z prawdą albo puste; cta.",
+  testimonial: "quote: dosłowny fragment prawdziwej opinii z profilu (bez zmyślania); author: imię z opinii lub „Klientka”/„Klient”; rating_note: ocena/liczba opinii z profilu albo puste; cta.",
+  problem_solution: "problem_label: np. „PROBLEM”; problem: ból w 1 zdaniu; solution_label: np. „ROZWIĄZANIE”; solution: jak produkt to rozwiązuje, 1 zdanie; cta.",
+  question_hook: "question: pytanie-hak 3–7 słów; sub: 1 zdanie odpowiedzi z produktem albo puste; cta.",
+};
