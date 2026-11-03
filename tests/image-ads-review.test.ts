@@ -32,3 +32,15 @@ describe("Kontroler fixes", () => {
     expect(p.photos?.[0]).toMatchObject({ prompt: "new", state: "pending" });
   });
 });
+
+import { isAccountError } from "@/lib/image-ads/pipeline";
+import { FalError } from "@/lib/ai/fal";
+
+describe("fal account errors", () => {
+  it("stop the set only for key / balance problems", () => {
+    expect(isAccountError(new FalError("Brak środków na koncie fal.ai."))).toBe(true);
+    expect(isAccountError(new FalError("Klucz fal.ai został odrzucony albo nie ma uprawnień do generowania."))).toBe(true);
+    expect(isAccountError(new FalError("fal.ai (422): prompt blocked"))).toBe(false);
+    expect(isAccountError(new Error("Brak środków"))).toBe(false);
+  });
+});

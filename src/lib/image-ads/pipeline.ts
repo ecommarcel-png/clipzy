@@ -10,6 +10,7 @@ import { nextStep, type AdState, type PhotoState, type SetState, type Stage, typ
 import { AD_FORMATS, StyleSchema, clip, parseFields, usesCutout, type AdFormat, type AdStyle, type Fields, type TemplateKey } from "./templates";
 import type { Concept } from "./concepts";
 import { cutout as cutoutImage, imageStatus, submitImage, type ImageJob } from "@/lib/ai/fal-image";
+import { FalError } from "@/lib/ai/fal";
 import { designStyles, photoPrompts, photosNeeded, planConcepts, reviewAds, writeCopy, type AdContext, type AdCopy, type AdReview } from "@/lib/ai/image-ads";
 import { downloadName } from "@/lib/files";
 
@@ -112,12 +113,18 @@ async function updateAd(supabase: SupabaseClient, id: string, patch: Partial<Ima
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e)).slice(0, 300);
 
+/** Account problems (bad key, no balance) stop the whole set instead of failing every creative. */
+export const isAccountError = (e: unknown) => e instanceof FalError && /środków|odrzucony/.test(e.message);
+
 // ---------- steps ----------
 
 async function stepStrategy(supabase: SupabaseClient, set: ImageAdSetRow, ctx: Ctx) {
   const key = await getProviderKey(supabase, "anthropic");
   const concepts = await planConcepts(key, ctx, set.count);
   if (!concepts.length) throw new Error("Strateg nie zaplanował żadnej kreacji.");
+  // the set open in two tabs: the other one already planned it
+  const { count: existing } = await supabase.from("image_ads").select("id", { count: "exact", head: true }).eq("set_id", set.id);
+  if (existing) return;
   const rows = concepts.map((c, idx) => ({ user_id: set.user_id, set_id: set.id, idx, stage: "copy", template: c.template, concept: c }));
   const { error } = await supabase.from("image_ads").insert(rows);
   if (error) throw new Error(error.message);
@@ -176,6 +183,10 @@ async function stepSubmit(supabase: SupabaseClient, ctx: Ctx, ads: ImageAdRow[])
       }
       await updateAd(supabase, a.id, { photos });
     } catch (e) {
+      if (isAccountError(e)) {
+        await updateAd(supabase, a.id, { photos });
+        throw e;
+      }
       await updateAd(supabase, a.id, { photos, stage: "error", error: `Zdjęcie (fal.ai): ${errText(e)}` });
     }
   }));
@@ -218,6 +229,7 @@ async function stepPoll(supabase: SupabaseClient, set: ImageAdSetRow, ctx: Ctx, 
           failed = photos[s].error!;
         }
       } catch (e) {
+        if (isAccountError(e)) throw e;
         failed = errText(e);
       }
     }
