@@ -222,7 +222,6 @@ function Halves({ P, st, f, pal, W, height, size }: { P: Array<string | null>; s
 
 function BeforeAfter({ f, st, pal, b, P, cut, W, H, tall }: L<"before_after">) {
   if (tall) {
-    const prodH = 620;
     return (
       <Fill style={{ flexDirection: "column", background: pal.bg }}>
         <div style={{ display: "flex", flexDirection: "column", padding: `${ST}px 70px 40px`, gap: 18 }}>
