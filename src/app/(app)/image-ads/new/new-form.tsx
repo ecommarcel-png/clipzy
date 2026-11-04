@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { createImageAdSet } from "../actions";
-import { Button, Card, Label, Notice, Select, Spinner } from "@/components/ui";
+import { Button, Card, Label, Notice, Select, Spinner, Textarea } from "@/components/ui";
 
 type Brand = { id: string; name: string; products: Array<{ id: string; name: string }> };
 
@@ -50,6 +50,20 @@ export function NewImageAdsForm({ brands, initial }: { brands: Brand[]; initial?
           <p className="mt-1 text-xs text-muted">
             Każda kreacja w 1:1 i 9:16 + copy (tekst główny, nagłówek, opis). Koszt w Twoich kluczach: ok. {cost} $ (fal.ai + Claude).
           </p>
+        </div>
+
+        <label className="flex items-start gap-3 rounded-2xl border border-border p-4">
+          <input type="checkbox" name="beforeAfter" defaultChecked className="mt-1 h-4 w-4 accent-[var(--accent)]" />
+          <span>
+            <span className="block font-bold">Przed / po jako priorytet</span>
+            <span className="text-sm text-muted">Ok. połowa kreacji to efekt przed i po, każda z innym problemem. Wyłącz, jeśli produkt nie daje widocznego efektu.</span>
+          </span>
+        </label>
+
+        <div>
+          <Label htmlFor="brief" hint="opcjonalnie">Wskazówki dla zespołu</Label>
+          <Textarea id="brief" name="brief" rows={3} maxLength={1500} placeholder="Np. kluczowy problem to truskawkowe nogi; komunikat prosty: ogolone nogi w jeden wieczór; bez promocji." />
+          <p className="mt-1 text-xs text-muted">Strateg, Copywriter, Fotograf, Grafik i Kontroler traktują to jako najważniejsze.</p>
         </div>
 
         <ul className="space-y-1.5 rounded-2xl border border-border bg-bg/40 p-4 text-sm">

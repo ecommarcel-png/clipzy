@@ -44,3 +44,24 @@ describe("fal account errors", () => {
     expect(isAccountError(new Error("Brak środków"))).toBe(false);
   });
 });
+
+import { photoRecs, promoteWaiting } from "@/lib/image-ads/pipeline";
+
+describe("before/after photos", () => {
+  it("makes the after photo first and the before photo as its edit", () => {
+    const recs = photoRecs("before_after", [{ prompt: "edit: add problem", with_product: true }, { prompt: "smooth leg", with_product: false }], true);
+    expect(recs[0]).toMatchObject({ state: "waiting", edit_of: 1, with_product: false });
+    expect(recs[1]).toMatchObject({ state: "pending" });
+    expect(photoRecs("problem_solution", [{ prompt: "a", with_product: false }, { prompt: "b", with_product: true }], true).map((p) => p.state)).toEqual(["pending", "pending"]);
+  });
+  it("releases the edit once the after photo is ready", () => {
+    const recs = photoRecs("before_after", [{ prompt: "e", with_product: false }, { prompt: "a", with_product: false }], false);
+    expect(promoteWaiting(recs)[0].state).toBe("waiting");
+    expect(promoteWaiting([recs[0], { ...recs[1], state: "done", path: "a.jpg" }])[0].state).toBe("pending");
+  });
+  it("Kontroler redoing the after photo redoes the before too", () => {
+    const a = { ...ad(), template: "before_after" as const, photos: [{ prompt: "e", with_product: false, state: "done" as const, edit_of: 1, path: "b.jpg" }, { prompt: "a", with_product: false, state: "done" as const, path: "a.jpg" }] };
+    const p = applyReview(a, { score: 4, issues: ["słaby efekt"], photo_redo: [{ slot: 1, prompt: "closer", with_product: false }] });
+    expect(p.photos?.map((x) => x.state)).toEqual(["waiting", "pending"]);
+  });
+});

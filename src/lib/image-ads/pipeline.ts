@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { BUCKET, signedUrls } from "@/lib/storage";
 import { getProviderKey } from "@/lib/api-keys";
 import { getBrand, getProduct, getProductImages } from "@/lib/data";
-import { isHex } from "./colors";
+import { brandPalette } from "./colors";
 import { renderAd } from "./render";
 import { nextStep, type AdState, type PhotoState, type SetState, type Stage, type Step } from "./steps";
 import { AD_FORMATS, StyleSchema, clip, parseFields, usesCutout, type AdFormat, type AdStyle, type Fields, type TemplateKey } from "./templates";
@@ -17,12 +17,36 @@ import { downloadName } from "@/lib/files";
 // Image ads pipeline: one bounded step per server action, state kept in the database
 // (image_ad_sets / image_ads), so leaving the page pauses and coming back resumes.
 
-export type PhotoRec = { prompt: string; with_product: boolean; state: PhotoState; job?: ImageJob; path?: string; error?: string; attempts?: number; submitted_at?: string };
+export type PhotoRec = {
+  prompt: string; with_product: boolean; state: PhotoState; job?: ImageJob; path?: string; error?: string; attempts?: number; submitted_at?: string;
+  /** made as an edit of this photo slot (before/after: "before" = the "after" photo with the problem added — same frame) */
+  edit_of?: number;
+};
+
+/** Before/after: the "after" photo (slot 1) is generated first, the "before" (slot 0) is an edit of it. */
+export function photoRecs(template: TemplateKey, briefs: Array<{ prompt: string; with_product: boolean }>, hasRefs: boolean): PhotoRec[] {
+  return briefs.map((x, slot) =>
+    template === "before_after" && slot === 0 && briefs.length > 1
+      ? { prompt: x.prompt, with_product: false, state: "waiting", edit_of: 1 }
+      : { prompt: x.prompt, with_product: x.with_product && hasRefs, state: "pending" },
+  );
+}
+
+/** Edits whose source photo is ready can go to fal. */
+export function promoteWaiting(photos: PhotoRec[]): PhotoRec[] {
+  return photos.map((p) => (p.state === "waiting" && p.edit_of !== undefined && photos[p.edit_of]?.state === "done" ? { ...p, state: "pending" } : p));
+}
 export type Renders = { "1x1"?: string; "9x16"?: string; v?: number; files?: Partial<Record<AdFormat, string>> };
 
 export type ImageAdSetRow = {
   id: string; user_id: string; brand_id: string; product_id: string | null; name: string; count: number; status: string;
-  settings: { cutout_path?: string | null; cutout_error?: string; last_poll_at?: string };
+  settings: {
+    cutout_path?: string | null; cutout_error?: string; last_poll_at?: string;
+    /** "Wskazówki dla zespołu" from the form — the agents treat them as the top priority */
+    brief?: string;
+    /** "Przed/po jako priorytet" (default: on) */
+    before_after?: boolean;
+  };
   error: string | null; created_at: string;
 };
 export type ImageAdRow = {
@@ -82,19 +106,18 @@ async function buildContext(supabase: SupabaseClient, set: ImageAdSetRow): Promi
   ]);
   const usable = images.filter((i) => /\.(png|jpe?g|webp)$/i.test(i.storage_path)).slice(0, 6);
   const urls = await signedUrls(supabase, usable.map((i) => i.storage_path), 3600);
-  const colors = brand.profile.colors as unknown as Record<string, string>;
-  const fromLogo = Array.isArray(brand.source.logo_colors) ? (brand.source.logo_colors as string[]) : [];
-  const palette = [...new Set([colors.accent, ...fromLogo, colors.primary, colors.secondary].filter(isHex).map((c) => c.toLowerCase()))].filter((c) => !["#ffffff", "#000000"].includes(c));
+  const palette = brandPalette(brand.profile.colors as unknown as Record<string, string>, Array.isArray(brand.source.logo_colors) ? (brand.source.logo_colors as string[]) : []);
   const pp = product?.profile;
   const quotes = (pp?.social_proof ?? []).filter((s) => s.split(/\s+/).length >= 8);
   return {
     userId: set.user_id,
     brand: { ...brand.profile, name: brand.name },
     product: product ? { ...product.profile, name: product.name } : null,
-    palette: palette.length ? palette : ["#ff5a36"],
+    palette,
+    brief: (set.settings.brief ?? "").trim(),
     hasProductPhotos: usable.length > 0,
     allowed: {
-      beforeAfter: Boolean(pp?.before_after?.possible),
+      beforeAfter: set.settings.before_after ?? Boolean(pp?.before_after?.possible),
       testimonial: quotes.length > 0,
       offer: Boolean(pp?.offer?.trim() || brand.profile.typical_offers.length),
     },
@@ -128,21 +151,31 @@ async function stepStrategy(supabase: SupabaseClient, set: ImageAdSetRow, ctx: C
   const rows = concepts.map((c, idx) => ({ user_id: set.user_id, set_id: set.id, idx, stage: "copy", template: c.template, concept: c }));
   const { error } = await supabase.from("image_ads").insert(rows);
   if (error) throw new Error(error.message);
-  // product without background, once per set (packshot layouts, product over before/after)
-  if (ctx.refs[0] && concepts.some((c) => usesCutout(c.template))) {
-    const settings = { ...set.settings };
-    try {
-      const fal = await getProviderKey(supabase, "fal");
-      const url = await cutoutImage(fal, ctx.refs[0]);
-      const path = `${folder(ctx, set.id)}/cutout.png`;
-      await upload(supabase, path, await fetchBytes(url), "image/png");
-      settings.cutout_path = path;
-    } catch (e) {
-      settings.cutout_error = errText(e);
-      settings.cutout_path = null;
-    }
-    await supabase.from("image_ad_sets").update({ settings }).eq("id", set.id);
+  if (concepts.some((c) => usesCutout(c.template))) await ensureCutout(supabase, set, ctx);
+}
+
+/** Product without background, once per set (packshot layouts, product over before/after). */
+async function ensureCutout(supabase: SupabaseClient, set: ImageAdSetRow, ctx: Ctx) {
+  if (ctx.cutoutPath || !ctx.refs[0] || set.settings.cutout_error) return;
+  const { data } = await supabase.from("image_ad_sets").select("settings").eq("id", set.id).maybeSingle();
+  const settings = { ...((data?.settings as ImageAdSetRow["settings"]) ?? set.settings) };
+  if (settings.cutout_path) {
+    ctx.cutoutPath = settings.cutout_path;
+    return;
   }
+  try {
+    const fal = await getProviderKey(supabase, "fal");
+    const url = await cutoutImage(fal, ctx.refs[0]);
+    const path = `${folder(ctx, set.id)}/cutout.png`;
+    await upload(supabase, path, await fetchBytes(url), "image/png");
+    settings.cutout_path = path;
+    ctx.cutoutPath = path;
+  } catch (e) {
+    if (isAccountError(e)) throw e;
+    settings.cutout_error = errText(e);
+    settings.cutout_path = null;
+  }
+  await supabase.from("image_ad_sets").update({ settings }).eq("id", set.id);
 }
 
 async function stepCopy(supabase: SupabaseClient, ctx: Ctx, ads: ImageAdRow[]) {
@@ -155,8 +188,10 @@ async function stepCopy(supabase: SupabaseClient, ctx: Ctx, ads: ImageAdRow[]) {
   }));
 }
 
-async function stepDesign(supabase: SupabaseClient, ctx: Ctx, ads: ImageAdRow[]) {
+async function stepDesign(supabase: SupabaseClient, set: ImageAdSetRow, ctx: Ctx, ads: ImageAdRow[]) {
   const key = await getProviderKey(supabase, "anthropic");
+  // a creative regenerated into a packshot layout may need the cut-out product now
+  if (ads.some((a) => usesCutout(a.template))) await ensureCutout(supabase, set, ctx);
   const cut = Boolean(ctx.cutoutPath);
   const items = ads.map((a, i) => ({ key: `k${i + 1}`, template: a.template, concept: a.concept, fields: a.fields as Fields }));
   const [photos, styles] = await Promise.all([photoPrompts(key, ctx, items, cut), designStyles(key, ctx, items)]);
@@ -165,7 +200,7 @@ async function stepDesign(supabase: SupabaseClient, ctx: Ctx, ads: ImageAdRow[])
     const p = photos[k];
     const need = photosNeeded(a.template, cut);
     const style = StyleSchema.parse({ ...styles[k], focus: p?.focus ?? "center" });
-    const recs: PhotoRec[] = need ? (p?.photos ?? []).slice(0, need).map((x) => ({ prompt: x.prompt, with_product: x.with_product && ctx.refs.length > 0, state: "pending" })) : [];
+    const recs: PhotoRec[] = need ? photoRecs(a.template, (p?.photos ?? []).slice(0, need), ctx.refs.length > 0) : [];
     if (need && recs.length < need) return updateAd(supabase, a.id, { stage: "error", error: "Fotograf nie przygotował zdjęć." });
     return updateAd(supabase, a.id, { style, photos: recs, stage: recs.length ? "photos" : "render" });
   }));
@@ -178,7 +213,9 @@ async function stepSubmit(supabase: SupabaseClient, ctx: Ctx, ads: ImageAdRow[])
     try {
       for (let s = 0; s < photos.length; s++) {
         if (photos[s].state !== "pending") continue;
-        const job = await submitImage(fal, { prompt: photos[s].prompt, imageUrls: photos[s].with_product ? ctx.refs : [] });
+        const src = photos[s].edit_of !== undefined ? photos[photos[s].edit_of!]?.path : undefined;
+        const editUrl = src ? (await supabase.storage.from(BUCKET).createSignedUrl(src, 3600)).data?.signedUrl : undefined;
+        const job = await submitImage(fal, { prompt: photos[s].prompt, imageUrls: editUrl ? [editUrl] : photos[s].with_product ? ctx.refs : [] });
         photos[s] = { ...photos[s], state: "submitted", job, submitted_at: new Date().toISOString(), attempts: (photos[s].attempts ?? 0) + 1 };
       }
       await updateAd(supabase, a.id, { photos });
@@ -233,8 +270,9 @@ async function stepPoll(supabase: SupabaseClient, set: ImageAdSetRow, ctx: Ctx, 
         failed = errText(e);
       }
     }
-    const allDone = photos.every((p) => p.state === "done");
-    await updateAd(supabase, a.id, failed ? { photos, stage: "error", error: `Zdjęcie (fal.ai): ${failed}` } : { photos, stage: allDone ? "render" : "photos" });
+    const next = promoteWaiting(photos);
+    const allDone = next.every((p) => p.state === "done");
+    await updateAd(supabase, a.id, failed ? { photos: next, stage: "error", error: `Zdjęcie (fal.ai): ${failed}` } : { photos: next, stage: allDone ? "render" : "photos" });
   }));
 }
 
@@ -298,8 +336,13 @@ export function applyReview(a: ImageAdRow, r: AdReview): Partial<ImageAdRow> {
   let redo = false;
   for (const p of r.photo_redo ?? []) {
     if (!photos[p.slot]) continue;
-    photos[p.slot] = { prompt: p.prompt, with_product: p.with_product && photos[p.slot].with_product, state: "pending", path: photos[p.slot].path, attempts: 0 };
+    const old = photos[p.slot];
+    photos[p.slot] = { prompt: p.prompt, with_product: p.with_product && old.with_product, state: old.edit_of !== undefined && (r.photo_redo ?? []).some((x) => x.slot === old.edit_of) ? "waiting" : "pending", path: old.path, attempts: 0, ...(old.edit_of !== undefined ? { edit_of: old.edit_of } : {}) };
     redo = true;
+  }
+  // a new "after" photo means the "before" made from it is redone too
+  for (const [i, p] of photos.entries()) {
+    if (p.edit_of !== undefined && photos[p.edit_of].state === "pending" && p.state === "done") photos[i] = { ...p, state: "waiting", attempts: 0 };
   }
   return { review: { first: r }, fields, style: style.success ? style.data : a.style, copy, photos, round: 1, stage: redo ? "photos" : "render" };
 }
@@ -307,7 +350,7 @@ export function applyReview(a: ImageAdRow, r: AdReview): Partial<ImageAdRow> {
 async function reviewItems(supabase: SupabaseClient, ads: ImageAdRow[]) {
   return Promise.all(ads.map(async (a, i) => ({
     key: `k${i + 1}`, template: a.template, fields: a.fields as Fields, copy: a.copy as AdCopy, style: a.style as AdStyle,
-    square: await small(supabase, a.renders["1x1"]!), tall: await small(supabase, a.renders["9x16"]!),
+    square: await small(supabase, a.renders["1x1"]!), tall: await small(supabase, a.renders["9x16"]!), note: a.concept.note,
   })));
 }
 
@@ -371,7 +414,7 @@ export async function advance(supabase: SupabaseClient, setId: string): Promise<
   switch (step.kind) {
     case "strategy": await stepStrategy(supabase, set, ctx); break;
     case "copy": await stepCopy(supabase, ctx, pick(step.ids)); break;
-    case "design": await stepDesign(supabase, ctx, pick(step.ids)); break;
+    case "design": await stepDesign(supabase, set, ctx, pick(step.ids)); break;
     case "submit": await stepSubmit(supabase, ctx, pick(step.ids)); break;
     case "poll": await stepPoll(supabase, set, ctx, pick(step.ids), step.wait); break;
     case "render": await stepRender(supabase, set, ctx, pick(step.ids)); break;
@@ -397,8 +440,11 @@ export async function failStep(supabase: SupabaseClient, setId: string, message:
 
 // ---------- user actions ----------
 
-export async function resetAd(supabase: SupabaseClient, ad: ImageAdRow) {
-  await updateAd(supabase, ad.id, { stage: "copy", fields: null, copy: null, style: null, photos: [], review: null, round: 0, error: null });
+export async function resetAd(supabase: SupabaseClient, ad: ImageAdRow, change: { template?: TemplateKey; note?: string } = {}) {
+  const template = change.template ?? ad.template;
+  const note = change.note?.trim().slice(0, 600);
+  const concept: Concept = { ...ad.concept, template, ...(note ? { note } : {}) };
+  await updateAd(supabase, ad.id, { stage: "copy", template, concept, fields: null, copy: null, style: null, photos: [], review: null, round: 0, error: null });
   await supabase.from("image_ad_sets").update({ status: "running", error: null }).eq("id", ad.set_id);
 }
 

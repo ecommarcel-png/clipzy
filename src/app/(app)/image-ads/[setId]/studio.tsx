@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Badge, Button, Card, Disclosure, Notice, Spinner, cx } from "@/components/ui";
-import type { AdStyle, Fields, TemplateKey } from "@/lib/image-ads/templates";
+import { Badge, Button, Card, Disclosure, Label, Notice, Select, Spinner, Textarea, cx } from "@/components/ui";
+import { TEMPLATES, TEMPLATE_INFO, type AdStyle, type Fields, type TemplateKey } from "@/lib/image-ads/templates";
 import type { Stage } from "@/lib/image-ads/steps";
 import { advanceImageSetAction, regenerateImageAdAction, retryImageSetAction } from "../actions";
 import { EditPanel } from "./edit-panel";
@@ -37,6 +37,7 @@ export function ImageAdsStudio({ set, ads, palette }: { set: { id: string; count
   const [err, setErr] = useState<string | null>(null);
   const [fmt, setFmt] = useState<"1x1" | "9x16">("1x1");
   const [editing, setEditing] = useState<string | null>(null);
+  const [redo, setRedo] = useState<string | null>(null);
 
   const run = useCallback(async () => {
     if (looping.current) return;
@@ -122,15 +123,24 @@ export function ImageAdsStudio({ set, ads, palette }: { set: { id: string; count
             fmt={fmt}
             busy={running}
             onEdit={() => setEditing(a.id)}
-            onRegenerate={async () => {
-              if (!window.confirm("Przegenerować tę kreację od nowa (teksty, zdjęcie, grafika)? To zużyje kredyty fal.ai i Claude.")) return;
-              await regenerateImageAdAction(set.id, a.id);
-              router.refresh();
-              void run();
-            }}
+            onRegenerate={() => setRedo(a.id)}
           />
         ))}
       </ul>
+
+      {redo ? (
+        <RegenerateDialog
+          ad={ads.find((a) => a.id === redo)!}
+          onClose={() => setRedo(null)}
+          onConfirm={async (change) => {
+            const r = await regenerateImageAdAction(set.id, redo, change);
+            setRedo(null);
+            if (!r.ok) return setErr(r.error ?? "Nie udało się.");
+            router.refresh();
+            void run();
+          }}
+        />
+      ) : null}
 
       {editing ? (
         <EditPanel
@@ -206,5 +216,36 @@ function AdCard({ ad, fmt, busy, onEdit, onRegenerate }: { ad: StudioAd; fmt: "1
         </div>
       </Card>
     </li>
+  );
+}
+
+function RegenerateDialog({ ad, onClose, onConfirm }: { ad: StudioAd; onClose: () => void; onConfirm: (c: { template: TemplateKey; note: string }) => Promise<void> }) {
+  const [template, setTemplate] = useState<TemplateKey>(ad.template);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 sm:p-10" role="dialog" aria-modal="true" aria-label={`Przegeneruj kreację #${ad.idx + 1}`}>
+      <div className="w-full max-w-lg space-y-4 rounded-3xl border border-border bg-surface p-5 shadow-2xl">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-extrabold">Przegeneruj kreację #{ad.idx + 1}</h2>
+          <button type="button" onClick={onClose} className="text-sm font-bold text-muted hover:text-text">Zamknij</button>
+        </div>
+        <div>
+          <Label htmlFor="rg-template">Format</Label>
+          <Select id="rg-template" value={template} onChange={(e) => setTemplate(e.target.value as TemplateKey)}>
+            {TEMPLATES.map((t) => <option key={t} value={t}>{TEMPLATE_INFO[t].label}{t === ad.template ? " (obecny)" : ""}</option>)}
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="rg-note" hint="opcjonalnie">Co ma być w tej kreacji</Label>
+          <Textarea id="rg-note" rows={4} maxLength={600} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Np. przed: truskawkowe nogi (ciemne kropki w porach), po: gładka skóra. Nagłówek prosto: Koniec z truskawkowymi nogami." />
+        </div>
+        <p className="text-xs text-muted">Zespół zrobi tę kreację od nowa (teksty, zdjęcie, grafika) — zużyje kredyty fal.ai i Claude. Pozostałe kreacje zostają bez zmian.</p>
+        <div className="flex gap-3">
+          <Button disabled={busy} onClick={async () => { setBusy(true); await onConfirm({ template, note }); }}>{busy ? <><Spinner /> Zaczynam…</> : "Przegeneruj"}</Button>
+          <Button variant="secondary" onClick={onClose} disabled={busy}>Anuluj</Button>
+        </div>
+      </div>
+    </div>
   );
 }

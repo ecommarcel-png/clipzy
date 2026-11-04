@@ -21,3 +21,19 @@ describe("ad colours", () => {
     expect(isHex("red")).toBe(false);
   });
 });
+
+import { brandPalette, isSaleRed } from "@/lib/image-ads/colors";
+
+describe("brand palette", () => {
+  it("puts logo colours first and drops sale reds from the shop", () => {
+    expect(isSaleRed("#e5312b")).toBe(true);
+    expect(isSaleRed("#7e9a86")).toBe(false);
+    expect(brandPalette({ accent: "#e5312b", primary: "#2f3a33", secondary: "#ffffff" }, ["#7e9a86"])).toEqual(["#7e9a86", "#2f3a33"]);
+  });
+  it("keeps red when the logo is red", () => {
+    expect(brandPalette({ accent: "#e5312b" }, ["#d62828"])).toEqual(["#d62828"]);
+  });
+  it("has a fallback", () => {
+    expect(brandPalette({}, [])).toEqual(["#ff5a36"]);
+  });
+});

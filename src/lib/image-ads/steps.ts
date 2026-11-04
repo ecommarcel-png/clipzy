@@ -2,7 +2,8 @@
 // server state. Pure, so it can be tested.
 
 export type Stage = "copy" | "design" | "photos" | "render" | "review" | "fix" | "final" | "done" | "error";
-export type PhotoState = "pending" | "submitted" | "done" | "error";
+/** waiting = an edit of another photo of the same creative (before/after), queued until that one is ready */
+export type PhotoState = "pending" | "waiting" | "submitted" | "done" | "error";
 
 export type AdState = { id: string; stage: Stage; photos: PhotoState[] };
 
@@ -33,7 +34,7 @@ export function nextStep(s: SetState): Step {
   const photos = at("photos");
   const pending = photos.filter((a) => a.photos.includes("pending"));
   if (pending.length) return take("submit", pending);
-  const running = photos.filter((a) => a.photos.includes("submitted")).map((a) => a.id);
+  const running = photos.filter((a) => a.photos.includes("submitted") || a.photos.includes("waiting")).map((a) => a.id);
   if (running.length && s.pollDue) return { kind: "poll", ids: running, wait: false };
   for (const stage of ["render", "review", "fix", "final"] as const) {
     const list = at(stage);

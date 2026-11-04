@@ -13,6 +13,14 @@
 - **CTA w pigułce** („Kup teraz”, „Zamów teraz”, „Sprawdź”, „Wypróbuj bez ryzyka”) — krótko, czasownik.
 - **Kontrast i czytelność na telefonie**: tekst ≥ 26 px przy 1080 px szerokości, ciemne tło pod tekst na zdjęciu.
 
+## 1a. Prosty komunikat (najczęstszy błąd)
+Klient ma zrozumieć grafikę w sekundę. Nagłówek mówi wprost efekt albo znikający problem, słowami klienta:
+- ✓ „Ogolone nogi w jeden wieczór”, „Koniec z truskawkowymi nogami”, „Gładkie nogi bez podrażnień”, „Odmraża szybę w 15 sekund”
+- ✗ „Nogi gotowe na urlop w jeden wieczór” (dodatkowa okoliczność rozmywa obietnicę)
+- ✗ „Gumka do ścierania dla nóg” (metafora — klient nie wie, co kupuje)
+Bez metafor, porównań, gier słów i „sprytnych” haseł. Jeśli wskazówki użytkownika albo profil wymieniają kluczowy problem
+(np. truskawkowe nogi), musi się pojawić w zestawie — najlepiej jako przed/po.
+
 ## 2. Formaty (szablony Clipzy) i kiedy który
 | Szablon | Kiedy | Wzór |
 |---|---|---|
@@ -37,8 +45,8 @@ Goodbye („Pożegnaj ból…” → hero_benefits / whiteboard), Don't Buy This
 ## 3. Dobór zestawu (Strateg)
 - Każda kreacja to inny **kąt**: persona × problem × poziom świadomości (nieświadomy problemu → świadomy produktu).
   Mieszaj: ból, efekt/WOW, oferta, porównanie, emocja/prezent, edukacja, dowód społeczny.
-- **Przed/po zawsze na początku**, gdy produkt ma efekt; przy większym zestawie 2–3 przed/po z różnymi kątami
-  (np. inny problem, inna persona, inny moment dnia).
+- **Przed/po to priorytet**: gdy produkt ma efekt, ok. połowa zestawu to przed/po, pierwsza kreacja też. Każde przed/po
+  pokazuje INNY problem (jedno ogólne, kolejne: konkretny problem → efekt, np. truskawkowe nogi → gładka skóra).
 - Nie powtarzaj szablonu, dopóki nie użyjesz pozostałych pasujących. Pomiń szablony, które nie pasują
   (offer bez promocji, testimonial bez opinii, callouts dla usług).
 - 1. kreacja = najmocniejszy kąt (główny problem + główny efekt).
@@ -85,6 +93,8 @@ Długość: 300–700 znaków. Bez linków (dodaje je użytkownik w Menedżerze 
 4. Czy przed/po jest wyraźne i z tym samym kadrem?
 5. Czy 9:16 trzyma ważne elementy z dala od górnych ~12% i dolnych ~15% (UI Reels/Stories)?
 6. Czy teksty są po polsku bez błędów, z polskimi znakami, zgodne z profilem (bez zmyślonych liczb)?
-7. Czy kolory pasują do marki i tekst ma kontrast?
+7. Czy kolory pasują do marki (akcent z logo, nie wyprzedażowa czerwień) i tekst ma kontrast?
+8. Czy komunikat jest prosty (bez metafor i okoliczności dookoła)? Jeśli nie — popraw nagłówek na wprost: efekt / znikający problem.
+9. Czy kreacja realizuje wskazówki użytkownika i polecenie z pola note?
 Poprawki: najpierw tekst (skróć, zmień słowa wyróżnione), potem styl (motyw jasny/ciemny, krój), a nowe zdjęcie
 tylko przy błędzie obrazu (zły produkt, artefakty, nieczytelny efekt).

@@ -6,7 +6,7 @@ import { imageAdsKnowledge, knowledgeText } from "@/lib/knowledge";
 import type { BrandProfile } from "@/lib/profiles/brand";
 import type { ProductProfile } from "@/lib/profiles/product";
 import { FIELDS, FIELD_GUIDE, TEMPLATES, TEMPLATE_INFO, clip, photoSlots, usesCutout, type AdStyle, type Fields, type TemplateKey } from "@/lib/image-ads/templates";
-import { allowedTemplates, balanceConcepts, type Allowed, type Concept } from "@/lib/image-ads/concepts";
+import { allowedTemplates, balanceConcepts, beforeAfterTarget, type Allowed, type Concept } from "@/lib/image-ads/concepts";
 
 // The image ads team: Strateg → Copywriter → Fotograf + Grafik → Kontroler.
 // Every agent reads the same brand/product context and the image ads knowledge base.
@@ -18,6 +18,8 @@ export type AdContext = {
   palette: string[];
   hasProductPhotos: boolean;
   allowed: Allowed;
+  /** "Wskazówki dla zespołu" typed by the user — top priority for every agent */
+  brief: string;
 };
 
 export type AdCopy = { primary_text: string; headline: string; description: string };
@@ -38,11 +40,14 @@ function contextBlock(ctx: AdContext): string {
         katy: p.ad_angles.map((a) => ({ kat: a.angle, persona: a.persona, problem: a.problem })), zakazane: p.forbidden_claims,
       }
     : null;
-  return `<marka>${JSON.stringify(brand)}</marka>\n<produkt>${JSON.stringify(product ?? "brak — reklamy marki")}</produkt>`;
+  const brief = ctx.brief ? `\n<wskazowki_uzytkownika priorytet="najwyższy">${ctx.brief}</wskazowki_uzytkownika>` : "";
+  return `<marka>${JSON.stringify(brand)}</marka>\n<produkt>${JSON.stringify(product ?? "brak — reklamy marki")}</produkt>${brief}`;
 }
 
+const PRIORITY = "Wskazówki użytkownika (<wskazowki_uzytkownika>) i pole note w koncepcie kreacji to polecenia od właściciela marki — mają pierwszeństwo przed wszystkim innym, także przed bazą wiedzy.";
+
 async function system(role: string) {
-  return `${role}\n\n${knowledgeText(await imageAdsKnowledge())}`;
+  return `${role}\n${PRIORITY}\n\n${knowledgeText(await imageAdsKnowledge())}`;
 }
 
 // ---------- 1) Strateg ----------
@@ -68,7 +73,8 @@ export async function planConcepts(apiKey: string, ctx: AdContext, count: number
       type: "text",
       text: `${contextBlock(ctx)}\n<szablony>${JSON.stringify(templates)}</szablony>\n\nZaplanuj dokładnie ${count} kreacji. Zasady:
 - Używaj TYLKO szablonów z listy. Nie powtarzaj szablonu, dopóki nie użyjesz pozostałych pasujących do produktu.
-${ctx.allowed.beforeAfter ? `- Produkt ma widoczny efekt: pierwsza kreacja to before_after${count >= 6 ? `, a w całym zestawie 2–3 before_after z różnymi kątami` : ""}.` : "- Produkt nie ma efektu przed/po — nie używaj before_after."}
+${ctx.allowed.beforeAfter ? `- PRZED/PO TO PRIORYTET: pierwsza kreacja to before_after, a w całym zestawie ${beforeAfterTarget(count, true)} z ${count} to before_after. KAŻDE before_after pokazuje INNY problem z profilu produktu i ze wskazówek użytkownika (np. jedno ogólne przed/po, kolejne: konkretny problem → efekt). W polu visual opisz dokładnie „PRZED: … / PO: …” — ta sama część ciała / ten sam przedmiot, ten sam kadr.` : "- Produkt nie ma efektu przed/po — nie używaj before_after."}
+- Najpierw najważniejsze problemy klienta z profilu i wskazówek — żaden kluczowy problem nie może zostać pominięty.
 - Każda kreacja: inny kąt (ból, efekt, oferta, porównanie, emocja/prezent, edukacja, dowód). Pierwsza = najmocniejszy kąt.
 - Pole visual opisuje zdjęcie, które zrobi AI${ctx.hasProductPhotos ? " (mamy zdjęcia produktu jako wzór)" : " (brak zdjęć produktu — produkt opisz słowami)"}.`,
     }],
@@ -95,7 +101,8 @@ export async function writeCopy(apiKey: string, ctx: AdContext, items: Item[]): 
     schema,
     io: "input",
     maxTokens: 12000,
-    content: [{ type: "text", text: `${contextBlock(ctx)}\n<kreacje>${JSON.stringify(brief)}</kreacje>\n\nDla każdej kreacji (klucz = id) oddaj fields zgodnie z opisem pól szablonu oraz copy. Teksty na grafice krótkie i czytelne na telefonie. Ikony korzyści wybieraj z listy dozwolonych. Nie wymyślaj liczb, cen, promocji, gwarancji ani opinii spoza profilu.` }],
+    content: [{ type: "text", text: `${contextBlock(ctx)}\n<kreacje>${JSON.stringify(brief)}</kreacje>\n\nDla każdej kreacji (klucz = id) oddaj fields zgodnie z opisem pól szablonu oraz copy. Teksty na grafice krótkie i czytelne na telefonie.
+PROSTO: nagłówek mówi wprost, co klient dostaje albo jaki problem znika, słowami klienta („Ogolone nogi w jeden wieczór”, „Koniec z truskawkowymi nogami”). Żadnych metafor, porównań, gier słów ani okoliczności dookoła („Nogi gotowe na urlop…” ✗, „Gumka do ścierania dla nóg” ✗). Jedna myśl na grafikę. Ikony korzyści wybieraj z listy dozwolonych. Nie wymyślaj liczb, cen, promocji, gwarancji ani opinii spoza profilu.` }],
   });
   return r as Record<string, { fields: Fields; copy: AdCopy }>;
 }
@@ -118,7 +125,7 @@ export function photosNeeded(template: TemplateKey, cutout: boolean): number {
 }
 
 const SLOT_HINT: Partial<Record<TemplateKey, string>> = {
-  before_after: "2 zdjęcia: [0] PRZED — stan problemu, [1] PO — efekt; identyczny kadr, kąt kamery i światło; produkt raczej nie w kadrze (wstawiamy go osobno).",
+  before_after: "2 zdjęcia, KOLEJNOŚĆ WAŻNA: [1] PO = pełny opis sceny z efektem (zbliżenie wypełniające kadr: łydka / twarz / szyba / przedmiot — tak, żeby problem byłby widoczny na telefonie; bez produktu w kadrze). [0] PRZED = polecenie EDYCJI zdjęcia PO, po angielsku, np. \"Edit this photo: keep the exact same leg, framing, light and background; only add clearly visible strawberry legs — dense dark dots in every pore, dark stubble regrowth across the whole calf, red razor bumps. Make the problem obvious even at small size.\" — problem ma być mocno widoczny, ale realistyczny. Produkt wstawiamy osobno w rogu.",
   problem_solution: "2 zdjęcia: [0] problem bez produktu, [1] produkt rozwiązuje problem w tej samej sytuacji.",
   hero_benefits: "1 zdjęcie: produkt w scenie użycia; w 1:1 tekst jest po lewej, więc produkt/obiekt w prawej-środkowej części, spokojne tło po lewej.",
   sticky_notes: "1 zdjęcie: produkt leży na naturalnej powierzchni (blat, podłoga), z góry, wokół wolne miejsce na karteczki.",
@@ -167,13 +174,13 @@ const DesignSchema = z.object({
 
 export async function designStyles(apiKey: string, ctx: AdContext, items: Array<Item & { fields: Fields }>): Promise<Record<string, Omit<AdStyle, "focus">>> {
   const schema = z.object(Object.fromEntries(items.map((i) => [i.key, DesignSchema])));
-  const brief = items.map((i) => ({ id: i.key, szablon: i.template, koncept: i.concept.idea, teksty: i.fields }));
+  const brief = items.map((i) => ({ id: i.key, szablon: i.template, koncept: i.concept.idea, note: i.concept.note, teksty: i.fields }));
   const r = await structuredCall({
     apiKey,
     system: await system("Jesteś Grafikiem Clipzy. Dobierasz wygląd kreacji: motyw, krój nagłówka, wyróżnione słowa i kolor akcentu — spójnie z marką, różnorodnie w zestawie."),
     schema,
     maxTokens: 3000,
-    content: [{ type: "text", text: `${contextBlock(ctx)}\n<paleta>${JSON.stringify(ctx.palette)}</paleta>\n<kreacje>${JSON.stringify(brief)}</kreacje>\n\nDla każdej kreacji dobierz wygląd. Akcent wybierz z palety (czytelny na wybranym tle). Zróżnicuj motywy w zestawie, ale trzymaj się charakteru marki (${ctx.brand.typography_style || "brak opisu kroju"}).` }],
+    content: [{ type: "text", text: `${contextBlock(ctx)}\n<paleta>${JSON.stringify(ctx.palette)}</paleta>\n<kreacje>${JSON.stringify(brief)}</kreacje>\n\nDla każdej kreacji dobierz wygląd. Akcent wybierz z palety — domyślnie PIERWSZY kolor (główny kolor marki z logo); inne tylko dla urozmaicenia, nigdy kolor spoza palety. Zróżnicuj motywy w zestawie, ale trzymaj się charakteru marki (${ctx.brand.typography_style || "brak opisu kroju"}).` }],
   });
   const out: Record<string, Omit<AdStyle, "focus">> = {};
   for (const i of items) {
@@ -196,13 +203,13 @@ const FixSchema = z.object({
 });
 export type AdReview = z.infer<typeof FixSchema>;
 
-export type ReviewItem = { key: string; template: TemplateKey; fields: Fields; copy: AdCopy; style: AdStyle; square: string; tall: string };
+export type ReviewItem = { key: string; template: TemplateKey; fields: Fields; copy: AdCopy; style: AdStyle; square: string; tall: string; note?: string };
 
 export async function reviewAds(apiKey: string, ctx: AdContext, items: ReviewItem[], final: boolean): Promise<Record<string, AdReview>> {
   const schema = z.object(Object.fromEntries(items.map((i) => [i.key, FixSchema])));
   const content: Anthropic.Messages.ContentBlockParam[] = [{ type: "text", text: contextBlock(ctx) }];
   for (const i of items) {
-    content.push({ type: "text", text: `<kreacja id="${i.key}" szablon="${i.template}">${JSON.stringify({ pola: i.fields, opis_pol: FIELD_GUIDE[i.template], copy: i.copy, styl: i.style })}</kreacja>\nPoniżej ${i.key}: 1:1, potem 9:16.` });
+    content.push({ type: "text", text: `<kreacja id="${i.key}" szablon="${i.template}">${JSON.stringify({ pola: i.fields, opis_pol: FIELD_GUIDE[i.template], copy: i.copy, styl: i.style, ...(i.note ? { note: i.note } : {}) })}</kreacja>\nPoniżej ${i.key}: 1:1, potem 9:16.` });
     content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: i.square } });
     content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: i.tall } });
   }

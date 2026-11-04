@@ -52,3 +52,29 @@ export function readableAccent(accent: string, bg: string): string {
   for (let i = 0; i < 6 && contrast(c, bg) < 3; i++) c = shade(c, dark ? 0.18 : -0.18);
   return c;
 }
+
+function hue(hex: string): { h: number; s: number; l: number } {
+  const [r, g, b] = rgb(hex).map((v) => v / 255);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return { h: 0, s: 0, l };
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  const h = (max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4) * 60;
+  return { h, s, l };
+}
+
+/** Strong red — the shop's "sale" colour, not the brand's (unless the logo itself is red). */
+export function isSaleRed(hex: string): boolean {
+  const { h, s } = hue(hex);
+  return (h >= 340 || h <= 12) && s > 0.45;
+}
+
+/** Accent colours for the ads: logo colours first, then the brand profile; no near-white/black, no sale reds. */
+export function brandPalette(profile: { accent?: string; primary?: string; secondary?: string }, logo: string[]): string[] {
+  const fromLogo = logo.filter(isHex).map((c) => c.toLowerCase());
+  const fromProfile = [profile.accent, profile.primary, profile.secondary].filter(isHex).map((c) => c.toLowerCase()).filter((c) => !isSaleRed(c));
+  const usable = (c: string) => luminance(c) > 0.02 && luminance(c) < 0.88;
+  const out = [...new Set([...fromLogo, ...fromProfile])].filter(usable);
+  return out.length ? out : ["#ff5a36"];
+}

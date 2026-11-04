@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allowedTemplates, balanceConcepts, type Concept } from "@/lib/image-ads/concepts";
+import { allowedTemplates, balanceConcepts, beforeAfterTarget, type Concept } from "@/lib/image-ads/concepts";
 
 const c = (template: Concept["template"], angle = template): Concept => ({ template, angle, persona: "p", awareness: "a", visual: "v", idea: "i" });
 
@@ -25,5 +25,15 @@ describe("balanceConcepts", () => {
     expect(balanceConcepts([c("hero_benefits"), c("listicle"), c("callouts")], 2, { beforeAfter: false, testimonial: false, offer: false })).toHaveLength(2);
     expect(balanceConcepts([c("hero_benefits")], 5, { beforeAfter: false, testimonial: false, offer: false })).toHaveLength(5);
     expect(balanceConcepts([], 3, { beforeAfter: false, testimonial: false, offer: false })).toEqual([]);
+  });
+
+  it("makes about half of the set before/after when the product has an effect", () => {
+    expect(beforeAfterTarget(5, true)).toBe(3);
+    expect(beforeAfterTarget(1, true)).toBe(1);
+    expect(beforeAfterTarget(10, false)).toBe(0);
+    const out = balanceConcepts([c("problem_solution"), c("offer"), c("callouts"), c("handwritten_note"), c("question_hook")], 5, { beforeAfter: true, testimonial: false, offer: true });
+    expect(out.filter((x) => x.template === "before_after")).toHaveLength(3);
+    expect(out[0].template).toBe("before_after");
+    expect(out.map((x) => x.angle)).toContain("handwritten_note");
   });
 });

@@ -226,18 +226,18 @@ function BeforeAfter({ f, st, pal, b, P, cut, W, H, tall }: L<"before_after">) {
     return (
       <Fill style={{ flexDirection: "column", background: pal.bg }}>
         <div style={{ display: "flex", flexDirection: "column", padding: `${ST}px 70px 40px`, gap: 18 }}>
-          <Headline text={f.headline} st={st} pal={pal} width={W - 140} lines={3} max={140} min={68} />
+          <Headline text={f.headline} st={st} pal={pal} width={W - 140} lines={3} max={124} min={64} />
         </div>
-        <div style={{ display: "flex", position: "relative", width: W, flex: 1 }}>
+        <div style={{ display: "flex", position: "relative", width: W, flex: 1, minHeight: 860 }}>
           <Halves P={P} st={st} f={f} pal={pal} W={W} height="100%" size={84} />
-          {cut ? <At style={{ left: (W - prodH * 0.8) / 2, bottom: 20, width: prodH * 0.8, height: prodH }}><Product src={cut} fallback={null} width={prodH * 0.8} height={prodH} /></At> : null}
-          {f.badge ? <At style={{ right: 46, bottom: 60 }}><Badge text={f.badge} pal={pal} size={210} /></At> : null}
+          {cut ? <At style={{ right: 30, bottom: 20, width: 300, height: 380 }}><Product src={cut} fallback={null} width={300} height={380} /></At> : null}
+          {f.badge ? <At style={{ left: W / 2 - 105, bottom: 40 }}><Badge text={f.badge} pal={pal} size={210} /></At> : null}
           <At style={{ left: 40, bottom: 40 }}><Logo brand={b} pal={pal} height={46} onPhoto /></At>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 34, padding: `40px 70px ${SB}px` }}>
           {f.benefits.length ? (
-            <div style={{ display: "flex", flexWrap: "wrap", rowGap: 24, columnGap: 30, width: W - 140 }}>
-              {f.benefits.map((x, i) => <BenefitRow key={i} b={x} pal={pal} size={36} width={(W - 170) / 2} />)}
+            <div style={{ display: "flex", columnGap: 30, width: W - 140 }}>
+              {f.benefits.slice(0, 2).map((x, i) => <BenefitRow key={i} b={x} pal={pal} size={36} width={(W - 170) / 2} />)}
             </div>
           ) : null}
           <Cta text={f.cta} pal={pal} size={50} />
@@ -245,17 +245,17 @@ function BeforeAfter({ f, st, pal, b, P, cut, W, H, tall }: L<"before_after">) {
       </Fill>
     );
   }
-  const prodH = 470;
+  // the effect is the hero: the product sits small in the corner, the headline on a band at the bottom
   return (
     <Fill style={{ background: pal.bg }}>
       <At style={{ left: 0, top: 0 }}><Halves P={P} st={st} f={f} pal={pal} W={W} height={H} size={66} /></At>
-      <Fill style={{ backgroundImage: "linear-gradient(0deg, rgba(8,6,12,0.92) 0%, rgba(8,6,12,0.7) 24%, rgba(8,6,12,0) 46%)" }} />
-      {cut ? <At style={{ left: (W - prodH * 0.8) / 2, top: H * 0.3, width: prodH * 0.8, height: prodH }}><Product src={cut} fallback={null} width={prodH * 0.8} height={prodH} /></At> : null}
-      <At style={{ left: 60, right: 60, bottom: 50, flexDirection: "column", alignItems: "center", gap: 22 }}>
-        <Headline text={f.headline} st={st} pal={{ ...pal, ink: "#ffffff" }} width={W - 120} lines={2} max={88} min={46} align="center" />
-        <Cta text={f.cta} pal={pal} size={34} />
+      <Fill style={{ backgroundImage: "linear-gradient(0deg, rgba(8,6,12,0.9) 0%, rgba(8,6,12,0.62) 22%, rgba(8,6,12,0) 40%)" }} />
+      <At style={{ left: 56, bottom: 48, width: cut ? 700 : W - 112, flexDirection: "column", alignItems: "flex-start", gap: 20 }}>
+        <Headline text={f.headline} st={st} pal={{ ...pal, ink: "#ffffff" }} width={cut ? 700 : W - 112} lines={2} max={86} min={44} />
+        <Cta text={f.cta} pal={pal} size={32} />
       </At>
-      {f.badge ? <At style={{ right: 60, top: 170 }}><Badge text={f.badge} pal={pal} size={170} /></At> : null}
+      {cut ? <At style={{ right: 36, bottom: 36, width: 250, height: 320 }}><Product src={cut} fallback={null} width={250} height={320} /></At> : null}
+      {f.badge ? <At style={{ right: 50, top: 150 }}><Badge text={f.badge} pal={pal} size={170} /></At> : null}
     </Fill>
   );
 }

@@ -10,6 +10,7 @@ import { FalError } from "@/lib/ai/fal";
 import { BUCKET } from "@/lib/storage";
 import { pathsInUse } from "@/lib/clips/library-store";
 import { advance, failStep, loadSet, resetAd, saveEdits } from "@/lib/image-ads/pipeline";
+import { TEMPLATES, type TemplateKey } from "@/lib/image-ads/templates";
 
 const isUuid = (s: string) => /^[0-9a-f-]{36}$/i.test(s);
 
@@ -26,6 +27,8 @@ export async function createImageAdSet(_: unknown, form: FormData): Promise<{ er
     }
   }
   const count = Math.min(20, Math.max(1, Math.round(Number(form.get("count") ?? 10)) || 10));
+  const brief = String(form.get("brief") ?? "").trim().slice(0, 1500);
+  const beforeAfter = form.get("beforeAfter") === "on";
   const [{ data: brand }, { data: product }] = await Promise.all([
     supabase.from("brands").select("name").eq("id", brandId).maybeSingle(),
     isUuid(productId) ? supabase.from("products").select("name").eq("id", productId).maybeSingle() : Promise.resolve({ data: null }),
@@ -34,7 +37,7 @@ export async function createImageAdSet(_: unknown, form: FormData): Promise<{ er
   const date = new Date().toLocaleDateString("pl-PL", { day: "numeric", month: "short", timeZone: "Europe/Warsaw" });
   const id = randomUUID();
   const { error } = await supabase.from("image_ad_sets").insert({
-    id, user_id: user.id, brand_id: brandId, product_id: product ? productId : null, count,
+    id, user_id: user.id, brand_id: brandId, product_id: product ? productId : null, count, settings: { brief, before_after: beforeAfter },
     name: `${(product?.name as string | undefined) ?? brand.name} — ${count} ${count === 1 ? "kreacja" : count < 5 ? "kreacje" : "kreacji"}, ${date}`,
   });
   if (error) return { error: /image_ad_sets/.test(error.message) ? "Uruchom w Supabase migrację 0006_image_ads.sql (instrukcja w README)." : error.message };
@@ -66,12 +69,13 @@ export async function retryImageSetAction(setId: string): Promise<{ ok: boolean 
   return { ok: true };
 }
 
-export async function regenerateImageAdAction(setId: string, adId: string): Promise<{ ok: boolean; error?: string }> {
+export async function regenerateImageAdAction(setId: string, adId: string, change: { template?: string; note?: string } = {}): Promise<{ ok: boolean; error?: string }> {
   const { supabase } = await requireUser();
   const loaded = isUuid(setId) ? await loadSet(supabase, setId) : null;
   const ad = loaded?.ads.find((a) => a.id === adId);
   if (!ad) return { ok: false, error: "Nie znaleziono kreacji." };
-  await resetAd(supabase, ad);
+  const template = (TEMPLATES as readonly string[]).includes(change.template ?? "") ? (change.template as TemplateKey) : undefined;
+  await resetAd(supabase, ad, { template, note: change.note });
   return { ok: true };
 }
 

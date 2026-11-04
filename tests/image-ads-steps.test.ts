@@ -41,4 +41,10 @@ describe("image ads steps", () => {
   it("does earlier stages first", () => {
     expect(nextStep(set([ad("a", "final"), ad("b", "copy")]))).toEqual({ kind: "copy", ids: ["b"] });
   });
+
+  it("polls a creative whose before photo waits for the after photo", () => {
+    expect(nextStep(set([ad("b", "photos", ["waiting", "submitted"])]))).toEqual({ kind: "poll", ids: ["b"], wait: true });
+    expect(nextStep(set([ad("b", "photos", ["waiting", "done"])]))).toEqual({ kind: "poll", ids: ["b"], wait: true });
+    expect(nextStep(set([ad("b", "photos", ["pending", "done"])]))).toEqual({ kind: "submit", ids: ["b"] });
+  });
 });
