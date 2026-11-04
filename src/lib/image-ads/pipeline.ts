@@ -28,7 +28,8 @@ export function photoRecs(template: TemplateKey, briefs: Array<{ prompt: string;
   return briefs.map((x, slot) =>
     template === "before_after" && slot === 0 && briefs.length > 1
       ? { prompt: x.prompt, with_product: false, state: "waiting", edit_of: 1 }
-      : { prompt: x.prompt, with_product: x.with_product && hasRefs, state: "pending" },
+      : // the "after" photo of a before/after always shows the real product in the scene
+        { prompt: x.prompt, with_product: (x.with_product || (template === "before_after" && slot === 1)) && hasRefs, state: "pending" },
   );
 }
 
@@ -347,6 +348,13 @@ export function applyReview(a: ImageAdRow, r: AdReview): Partial<ImageAdRow> {
   return { review: { first: r }, fields, style: style.success ? style.data : a.style, copy, photos, round: 1, stage: redo ? "photos" : "render" };
 }
 
+/** The real product photo, small, for the Kontroler to compare with. */
+async function refThumb(url: string): Promise<string> {
+  const sharp = (await import("sharp")).default;
+  const buf = await sharp(await fetchBytes(url)).resize(420, 420, { fit: "inside" }).flatten({ background: "#ffffff" }).jpeg({ quality: 80 }).toBuffer();
+  return buf.toString("base64");
+}
+
 async function reviewItems(supabase: SupabaseClient, ads: ImageAdRow[]) {
   return Promise.all(ads.map(async (a, i) => ({
     key: `k${i + 1}`, template: a.template, fields: a.fields as Fields, copy: a.copy as AdCopy, style: a.style as AdStyle,
@@ -356,7 +364,8 @@ async function reviewItems(supabase: SupabaseClient, ads: ImageAdRow[]) {
 
 async function stepReview(supabase: SupabaseClient, set: ImageAdSetRow, ctx: Ctx, ads: ImageAdRow[], final: boolean) {
   const key = await getProviderKey(supabase, "anthropic");
-  const out = await reviewAds(key, ctx, await reviewItems(supabase, ads), final);
+  const ref = ctx.refs[0] ? await refThumb(ctx.refs[0]).catch(() => null) : null;
+  const out = await reviewAds(key, ctx, await reviewItems(supabase, ads), final, ref);
   for (const [i, a] of ads.entries()) {
     const r = out[`k${i + 1}`];
     const patch: Partial<ImageAdRow> = !r

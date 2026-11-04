@@ -23,7 +23,7 @@ export const AD_SIZE: Record<AdFormat, { width: number; height: number }> = { "1
 /** What a layout is for — shown to the Strateg, who picks the layouts for a set. */
 export const TEMPLATE_INFO: Record<TemplateKey, { label: string; when: string; photos: 0 | 1 | 2; cutout: boolean }> = {
   hero_benefits: { label: "Produkt + korzyści z ikonami", when: "uniwersalny: mocny nagłówek, produkt w scenie, 3–4 korzyści z ikonami, CTA, pasek zaufania (Ceramikker, Raypath Detox)", photos: 1, cutout: false },
-  before_after: { label: "Przed / po", when: "produkt daje widoczny efekt — najmocniejszy visual; ekran dzielony PRZED | PO, produkt na środku (Ceramikker Zero Ice, EcoBen, Hairup)", photos: 2, cutout: true },
+  before_after: { label: "Przed / po", when: "produkt daje widoczny efekt — najmocniejszy visual; ekran dzielony PRZED | PO pokazuje EFEKT na tym, na co działa produkt (skóra nóg, włosy, szyba), ten sam kadr; produkt jest wygenerowany w scenie PO, nigdy doklejony (Ceramikker Zero Ice, EcoBen, Hairup)", photos: 2, cutout: false },
   callouts: { label: "Strzałki do cech", when: "produkt fizyczny z konkretnymi cechami; packshot na środku, 3–4 podpisy ze strzałkami (LALU, Senaria, Torriden)", photos: 0, cutout: true },
   us_vs_them: { label: "My kontra inni", when: "jest wyraźna przewaga nad typowym zamiennikiem; dwie kolumny ✕ / ✓ (Mood Magic, PsiBufet)", photos: 0, cutout: true },
   sticky_notes: { label: "Karteczki post-it", when: "naturalne zdjęcie produktu na blacie + 2–3 odręczne karteczki: problem, gwarancja, promocja (Benilo, Orthomax)", photos: 1, cutout: false },
@@ -116,8 +116,8 @@ export function fitFont(text: string, o: { font: keyof typeof GLYPH; width: numb
 
 /** What each field means — for the Copywriter and the Kontroler. */
 export const FIELD_GUIDE: Record<TemplateKey, string> = {
-  hero_benefits: "eyebrow: krótki nadtytuł (np. „Nowość”, kategoria) albo puste; headline: nagłówek 3–8 słów; benefits: 2–4 × {icon, text} korzyść 2–5 słów; cta; badge: plakietka (np. „-40%”, „1+1 gratis”) TYLKO z realnej oferty, inaczej puste; trust: 0–3 krótkie dowody/bezpieczeństwo zakupu z profilu (np. „Wysyłka 24h”).",
-  before_after: "headline: efekt w 3–8 słowach; before_label/after_label: np. „PRZED”/„PO”; benefits: 0–4 × {icon, text}; cta; badge: realna oferta albo puste.",
+  hero_benefits: "eyebrow: krótki nadtytuł (np. „Nowość”, kategoria) albo puste; headline: nagłówek 3–8 słów; benefits: 2–4 × {icon, text} korzyść 2–5 słów; cta; badge: plakietka max 8 znaków (np. „-40%”, „1+1”) TYLKO z realnej oferty, inaczej puste — bez ceny i dwukropków; trust: 0–3 krótkie dowody/bezpieczeństwo zakupu z profilu (np. „Wysyłka 24h”).",
+  before_after: "headline: efekt w 3–8 słowach; before_label/after_label: np. „PRZED”/„PO”; benefits: 0–4 × {icon, text}; cta; badge: krótka realna oferta, max 8 znaków (np. „-33%”), albo puste — bez ceny i dwukropków.",
   callouts: "headline; subheadline: 1 zdanie co to jest albo puste; callouts: 3–4 cechy konstrukcji/składu, 2–5 słów każda; cta; badge.",
   us_vs_them: "headline; ours_label: nazwa produktu/marki; theirs_label: zamiennik (np. „Zwykłe szczoteczki”, „Sucha karma”); rows: 3–5 × {ours, theirs} — ta sama cecha z dwóch stron, krótko; cta.",
   sticky_notes: "notes: 2–3 karteczki pisane ręcznie (ból/sytuacja, gwarancja, zachęta), max ~10 słów każda; headline: zwykle puste; badge: ostatnia karteczka z ofertą (np. „DZIŚ -38%”) albo puste.",

@@ -84,7 +84,16 @@ Długość: 300–700 znaków. Bez linków (dodaje je użytkownik w Menedżerze 
 - Miejsce na tekst: szablony z tekstem na zdjęciu (question_hook, testimonial) potrzebują spokojnej, ciemniejszej dolnej
   lub górnej części kadru; hero_benefits 1:1 — wolna lewa strona.
 
+## 6a. Produkt zawsze W scenie
+Produkt na zdjęciu jest wygenerowany razem ze sceną (zdjęcia produktu jako wzór), z prawdziwym światłem, cieniem i skalą.
+Nigdy nie doklejamy wyciętego PNG produktu na zdjęcie sceny — to od razu wygląda sztucznie. Wycięty produkt jest tylko
+w układach „packshot” na jednolitym tle (strzałki do cech, my kontra inni).
+Przed/po: PO = efekt w zbliżeniu + produkt położony logicznie obok (np. na ręczniku przy łydce); PRZED = to samo zdjęcie
+z usuniętym produktem i dodanym problemem. Nigdy metafory (kosmetyczka, szafa, sypialnia) zamiast efektu.
+
 ## 7. Kontroler — lista kontrolna
+0. BŁĘDY KRYTYCZNE najpierw: doklejony produkt / nielogiczna scena, produkt inny niż na zdjęciu referencyjnym,
+   przed/po bez efektu na skórze/obiekcie (metafora), dziwny zapis plakietki — każdy = ocena ≤ 5 i poprawka.
 1. Czy od razu widać, co to za produkt i co daje? (3 sekundy, telefon)
 2. Czy nagłówek jest czytelny i nie zasłania produktu? Czy żaden tekst nie jest ucięty, nie wychodzi poza grafikę i nie
    nachodzi na inny?

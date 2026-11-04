@@ -75,6 +75,7 @@ export async function planConcepts(apiKey: string, ctx: AdContext, count: number
 - Używaj TYLKO szablonów z listy. Nie powtarzaj szablonu, dopóki nie użyjesz pozostałych pasujących do produktu.
 ${ctx.allowed.beforeAfter ? `- PRZED/PO TO PRIORYTET: pierwsza kreacja to before_after, a w całym zestawie ${beforeAfterTarget(count, true)} z ${count} to before_after. KAŻDE before_after pokazuje INNY problem z profilu produktu i ze wskazówek użytkownika (np. jedno ogólne przed/po, kolejne: konkretny problem → efekt). W polu visual opisz dokładnie „PRZED: … / PO: …” — ta sama część ciała / ten sam przedmiot, ten sam kadr.` : "- Produkt nie ma efektu przed/po — nie używaj before_after."}
 - Najpierw najważniejsze problemy klienta z profilu i wskazówek — żaden kluczowy problem nie może zostać pominięty.
+- before_after pokazuje EFEKT NA TYM, NA CO DZIAŁA PRODUKT (skóra, włosy, szyba, plama…), w zbliżeniu — nigdy metaforę ani sytuację dookoła (kosmetyczka, szafa, sypialnia, biurko, wanna). Różne before_after = różne problemy tego samego obiektu (np. truskawkowe nogi, odrosty, podrażnienia, wrastające włoski).
 - Każda kreacja: inny kąt (ból, efekt, oferta, porównanie, emocja/prezent, edukacja, dowód). Pierwsza = najmocniejszy kąt.
 - Pole visual opisuje zdjęcie, które zrobi AI${ctx.hasProductPhotos ? " (mamy zdjęcia produktu jako wzór)" : " (brak zdjęć produktu — produkt opisz słowami)"}.`,
     }],
@@ -125,7 +126,7 @@ export function photosNeeded(template: TemplateKey, cutout: boolean): number {
 }
 
 const SLOT_HINT: Partial<Record<TemplateKey, string>> = {
-  before_after: "2 zdjęcia, KOLEJNOŚĆ WAŻNA: [1] PO = pełny opis sceny z efektem (zbliżenie wypełniające kadr: łydka / twarz / szyba / przedmiot — tak, żeby problem byłby widoczny na telefonie; bez produktu w kadrze). [0] PRZED = polecenie EDYCJI zdjęcia PO, po angielsku, np. \"Edit this photo: keep the exact same leg, framing, light and background; only add clearly visible strawberry legs — dense dark dots in every pore, dark stubble regrowth across the whole calf, red razor bumps. Make the problem obvious even at small size.\" — problem ma być mocno widoczny, ale realistyczny. Produkt wstawiamy osobno w rogu.",
+  before_after: "2 zdjęcia, KOLEJNOŚĆ WAŻNA. Pokazujesz EFEKT na tym, na co działa produkt (dla depilatora: skóra nóg w zbliżeniu; dla kosmetyku: twarz/włosy; dla środka do szyb: szyba) — NIGDY metafora (kosmetyczka, szafa, sypialnia, biurko, wanna). [1] PO = zbliżenie wypełniające kadr z efektem (gładka skóra) ORAZ prawdziwy produkt ze zdjęć referencyjnych położony logicznie w scenie obok (np. leży na ręczniku obok łydki), nie w dłoni; with_product = true. [0] PRZED = polecenie EDYCJI zdjęcia PO, po angielsku: \"Edit this photo: remove the product completely (fill the area naturally); keep the exact same leg, framing, light and background; add clearly visible <problem: e.g. strawberry legs — dense dark dots in every pore, dark stubble regrowth across the whole calf, red razor bumps>. Make the problem obvious even at small size, realistic.\"",
   problem_solution: "2 zdjęcia: [0] problem bez produktu, [1] produkt rozwiązuje problem w tej samej sytuacji.",
   hero_benefits: "1 zdjęcie: produkt w scenie użycia; w 1:1 tekst jest po lewej, więc produkt/obiekt w prawej-środkowej części, spokojne tło po lewej.",
   sticky_notes: "1 zdjęcie: produkt leży na naturalnej powierzchni (blat, podłoga), z góry, wokół wolne miejsce na karteczki.",
@@ -205,9 +206,21 @@ export type AdReview = z.infer<typeof FixSchema>;
 
 export type ReviewItem = { key: string; template: TemplateKey; fields: Fields; copy: AdCopy; style: AdStyle; square: string; tall: string; note?: string };
 
-export async function reviewAds(apiKey: string, ctx: AdContext, items: ReviewItem[], final: boolean): Promise<Record<string, AdReview>> {
+const CRITICAL = `BŁĘDY KRYTYCZNE — każdy oznacza score ≤ 5 i obowiązkową poprawkę (w ocenie końcowej: score ≤ 5 i opis w issues):
+1. Produkt wygląda na DOKLEJONY (wycięty PNG położony na zdjęciu, inne światło, brak cienia, zła skala, unosi się) albo scena jest NIELOGICZNA (np. pusta kosmetyczka z ręcznikiem, a produkt wklejony obok; produkt nie pasuje do sytuacji) → photo_redo: scena z produktem WYGENEROWANYM w niej, with_product: true.
+2. Produkt na zdjęciu różni się od zdjęcia referencyjnego (kształt, kolor, logo, materiał) → photo_redo z with_product: true.
+3. Przed/po NIE pokazuje efektu produktu na tym, na co działa (skóra, włosy, szyba…), tylko metaforę lub sytuację (kosmetyczka, szafa, sypialnia, biurko, wanna), albo różnica PRZED/PO jest słabo widoczna → photo_redo obu zdjęć: slot 1 = PO (zbliżenie efektu + produkt logicznie w scenie obok, with_product: true), slot 0 = PRZED jako polecenie edycji PO po angielsku („Edit this photo: remove the product completely; keep the same framing; add clearly visible <problem>”).
+4. Nagłówek nie mówi wprost efektu / problemu (metafora, okoliczność, niezrozumiały w sekundę) → fields_patch.
+5. Tekst ucięty, nachodzi na inny, dziwny zapis (np. plakietka „-33%: 39,99 zł”) → fields_patch (plakietka max 8 znaków).
+6. Kolor akcentu spoza palety marki → style_patch.`;
+
+export async function reviewAds(apiKey: string, ctx: AdContext, items: ReviewItem[], final: boolean, productRef?: string | null): Promise<Record<string, AdReview>> {
   const schema = z.object(Object.fromEntries(items.map((i) => [i.key, FixSchema])));
-  const content: Anthropic.Messages.ContentBlockParam[] = [{ type: "text", text: contextBlock(ctx) }];
+  const content: Anthropic.Messages.ContentBlockParam[] = [{ type: "text", text: `${contextBlock(ctx)}\n<paleta>${JSON.stringify(ctx.palette)}</paleta>` }];
+  if (productRef) {
+    content.push({ type: "text", text: "Zdjęcie referencyjne prawdziwego produktu (tak ma wyglądać na każdej grafice):" });
+    content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: productRef } });
+  }
   for (const i of items) {
     content.push({ type: "text", text: `<kreacja id="${i.key}" szablon="${i.template}">${JSON.stringify({ pola: i.fields, opis_pol: FIELD_GUIDE[i.template], copy: i.copy, styl: i.style, ...(i.note ? { note: i.note } : {}) })}</kreacja>\nPoniżej ${i.key}: 1:1, potem 9:16.` });
     content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: i.square } });
@@ -216,12 +229,12 @@ export async function reviewAds(apiKey: string, ctx: AdContext, items: ReviewIte
   content.push({
     type: "text",
     text: final
-      ? "Oceń każdą kreację po poprawkach (score + issues). To ocena końcowa — NIE oddawaj poprawek (bez fields_patch, style_patch, photo_redo, copy_patch)."
-      : "Sprawdź każdą kreację wg listy kontrolnej Kontrolera. Oddaj score, issues i tylko potrzebne poprawki. Przy ocenie ≥ 8 bez poważnych problemów nie oddawaj poprawek.",
+      ? `${CRITICAL}\n\nOceń każdą kreację po poprawkach (score + issues). To ocena końcowa — NIE oddawaj poprawek (bez fields_patch, style_patch, photo_redo, copy_patch).`
+      : `${CRITICAL}\n\nNajpierw szukaj błędów krytycznych — przyjrzyj się, czy produkt jest naturalną częścią zdjęcia i czy przed/po pokazuje efekt. Potem lista kontrolna Kontrolera. Oddaj score, issues i potrzebne poprawki. Przy ocenie ≥ 8 bez błędów krytycznych nie oddawaj poprawek.`,
   });
   const r = await structuredCall({
     apiKey,
-    system: await system("Jesteś Kontrolerem Clipzy: oglądasz gotowe grafiki reklam (obie wersje) jak wymagający dyrektor kreatywny i wdrażasz poprawki."),
+    system: await system("Jesteś Kontrolerem Clipzy: oglądasz gotowe grafiki reklam (obie wersje) jak wymagający dyrektor kreatywny, który odrzuca wszystko, co wygląda sztucznie, i wdrażasz poprawki. Lepiej odrzucić za dużo niż przepuścić reklamę z doklejonym produktem."),
     schema,
     maxTokens: 6000,
     content,

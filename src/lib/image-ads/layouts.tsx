@@ -220,7 +220,8 @@ function Halves({ P, st, f, pal, W, height, size }: { P: Array<string | null>; s
   );
 }
 
-function BeforeAfter({ f, st, pal, b, P, cut, W, H, tall }: L<"before_after">) {
+// The product is never pasted over a before/after: it is generated into the "after" photo.
+function BeforeAfter({ f, st, pal, b, P, W, H, tall }: L<"before_after">) {
   if (tall) {
     return (
       <Fill style={{ flexDirection: "column", background: pal.bg }}>
@@ -229,7 +230,6 @@ function BeforeAfter({ f, st, pal, b, P, cut, W, H, tall }: L<"before_after">) {
         </div>
         <div style={{ display: "flex", position: "relative", width: W, flex: 1, minHeight: 860 }}>
           <Halves P={P} st={st} f={f} pal={pal} W={W} height="100%" size={84} />
-          {cut ? <At style={{ right: 30, bottom: 20, width: 300, height: 380 }}><Product src={cut} fallback={null} width={300} height={380} /></At> : null}
           {f.badge ? <At style={{ left: W / 2 - 105, bottom: 40 }}><Badge text={f.badge} pal={pal} size={210} /></At> : null}
           <At style={{ left: 40, bottom: 40 }}><Logo brand={b} pal={pal} height={46} onPhoto /></At>
         </div>
@@ -244,16 +244,15 @@ function BeforeAfter({ f, st, pal, b, P, cut, W, H, tall }: L<"before_after">) {
       </Fill>
     );
   }
-  // the effect is the hero: the product sits small in the corner, the headline on a band at the bottom
+  // the effect is the hero; the headline sits on a band at the bottom
   return (
     <Fill style={{ background: pal.bg }}>
       <At style={{ left: 0, top: 0 }}><Halves P={P} st={st} f={f} pal={pal} W={W} height={H} size={66} /></At>
       <Fill style={{ backgroundImage: "linear-gradient(0deg, rgba(8,6,12,0.9) 0%, rgba(8,6,12,0.62) 22%, rgba(8,6,12,0) 40%)" }} />
-      <At style={{ left: 56, bottom: 48, width: cut ? 700 : W - 112, flexDirection: "column", alignItems: "flex-start", gap: 20 }}>
-        <Headline text={f.headline} st={st} pal={{ ...pal, ink: "#ffffff" }} width={cut ? 700 : W - 112} lines={2} max={86} min={44} />
+      <At style={{ left: 56, bottom: 48, width: W - 112, flexDirection: "column", alignItems: "flex-start", gap: 20 }}>
+        <Headline text={f.headline} st={st} pal={{ ...pal, ink: "#ffffff" }} width={W - 112} lines={2} max={86} min={44} />
         <Cta text={f.cta} pal={pal} size={32} />
       </At>
-      {cut ? <At style={{ right: 36, bottom: 36, width: 250, height: 320 }}><Product src={cut} fallback={null} width={250} height={320} /></At> : null}
       {f.badge ? <At style={{ right: 50, top: 150 }}><Badge text={f.badge} pal={pal} size={170} /></At> : null}
     </Fill>
   );
