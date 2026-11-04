@@ -103,7 +103,7 @@ export async function writeCopy(apiKey: string, ctx: AdContext, items: Item[]): 
     io: "input",
     maxTokens: 12000,
     content: [{ type: "text", text: `${contextBlock(ctx)}\n<kreacje>${JSON.stringify(brief)}</kreacje>\n\nDla każdej kreacji (klucz = id) oddaj fields zgodnie z opisem pól szablonu oraz copy. Teksty na grafice krótkie i czytelne na telefonie.
-PROSTO: nagłówek mówi wprost, co klient dostaje albo jaki problem znika, słowami klienta („Ogolone nogi w jeden wieczór”, „Koniec z truskawkowymi nogami”). Żadnych metafor, porównań, gier słów ani okoliczności dookoła („Nogi gotowe na urlop…” ✗, „Gumka do ścierania dla nóg” ✗). Jedna myśl na grafikę. Ikony korzyści wybieraj z listy dozwolonych. Nie wymyślaj liczb, cen, promocji, gwarancji ani opinii spoza profilu.` }],
+PROSTO: nagłówek mówi wprost, co klient dostaje albo jaki problem znika, słowami klienta („Ogolone nogi w jeden wieczór”, „Koniec z truskawkowymi nogami”). Żadnych metafor, porównań, gier słów ani okoliczności dookoła („Nogi gotowe na urlop…” ✗, „Gumka do ścierania dla nóg” ✗). Jedna myśl na grafikę. Ikony korzyści wybieraj z listy dozwolonych. Nie wymyślaj liczb, cen, promocji, gwarancji ani opinii spoza profilu. Zawartość zestawu („Depli + …”) wymieniaj tylko, gdy pole oferta w profilu produktu wprost ją podaje.` }],
   });
   return r as Record<string, { fields: Fields; copy: AdCopy }>;
 }
@@ -151,7 +151,8 @@ export async function photoPrompts(apiKey: string, ctx: AdContext, items: Array<
     system: await system("Jesteś Fotografem Clipzy. Piszesz prompty do modelu obrazu (fal.ai nano-banana) dla zdjęć do reklam statycznych."),
     schema,
     maxTokens: 6000,
-    content: [{ type: "text", text: `${contextBlock(ctx)}\n<kreacje>${JSON.stringify(brief)}</kreacje>\n\nDla każdej kreacji oddaj dokładnie tyle zdjęć, ile ile_zdjec. ${ctx.hasProductPhotos ? "Gdy produkt jest w kadrze: \"the exact product from the reference images, unchanged shape, colors, label and logo\"." : "Nie mamy zdjęć produktu — opisz produkt słowami dokładnie wg profilu."} Każdy prompt kończ: "photorealistic, square 1:1, no text, no letters, no captions, no watermark".` }],
+    content: [{ type: "text", text: `${contextBlock(ctx)}\n<kreacje>${JSON.stringify(brief)}</kreacje>\n\nDla każdej kreacji oddaj dokładnie tyle zdjęć, ile ile_zdjec. ${ctx.hasProductPhotos ? "Gdy produkt jest w kadrze: \"the exact product from the reference images, unchanged shape, colors, label and logo\"." : "Nie mamy zdjęć produktu — opisz produkt słowami dokładnie wg profilu."} Każdy prompt kończ: "photorealistic, square 1:1, no text, no letters, no captions, no watermark".
+W kadrze z produktem jest TYLKO produkt ze zdjęć referencyjnych — żadnych dodatkowych akcesoriów, opakowań, rękawic, pokrowców ani zestawów, których nie widać na zdjęciach produktu (dopisz w prompcie: "no other accessories, no packaging, nothing attached to the product"). Rekwizyty sceny (ręcznik, kubek) tak, ale nic, co wygląda na część produktu lub zestawu.` }],
   });
   const out: Record<string, { photos: PhotoBrief[]; focus: AdStyle["focus"] }> = {};
   for (const i of need) {
@@ -208,7 +209,7 @@ export type ReviewItem = { key: string; template: TemplateKey; fields: Fields; c
 
 const CRITICAL = `BŁĘDY KRYTYCZNE — każdy oznacza score ≤ 5 i obowiązkową poprawkę (w ocenie końcowej: score ≤ 5 i opis w issues):
 1. Produkt wygląda na DOKLEJONY (wycięty PNG położony na zdjęciu, inne światło, brak cienia, zła skala, unosi się) albo scena jest NIELOGICZNA (np. pusta kosmetyczka z ręcznikiem, a produkt wklejony obok; produkt nie pasuje do sytuacji) → photo_redo: scena z produktem WYGENEROWANYM w niej, with_product: true.
-2. Produkt na zdjęciu różni się od zdjęcia referencyjnego (kształt, kolor, logo, materiał) → photo_redo z with_product: true.
+2. Produkt na zdjęciu różni się od zdjęcia referencyjnego (kształt, kolor, logo, materiał) albo ma dodatki, których nie ma na zdjęciu referencyjnym (rękawica, pokrowiec, opakowanie, zestaw) → photo_redo z with_product: true i dopiskiem "no other accessories, nothing attached to the product"; teksty o zestawie usuń (fields_patch), chyba że oferta w profilu go podaje.
 3. Przed/po NIE pokazuje efektu produktu na tym, na co działa (skóra, włosy, szyba…), tylko metaforę lub sytuację (kosmetyczka, szafa, sypialnia, biurko, wanna), albo różnica PRZED/PO jest słabo widoczna → photo_redo obu zdjęć: slot 1 = PO (zbliżenie efektu + produkt logicznie w scenie obok, with_product: true), slot 0 = PRZED jako polecenie edycji PO po angielsku („Edit this photo: remove the product completely; keep the same framing; add clearly visible <problem>”).
 4. Nagłówek nie mówi wprost efektu / problemu (metafora, okoliczność, niezrozumiały w sekundę) → fields_patch.
 5. Tekst ucięty, nachodzi na inny, dziwny zapis (np. plakietka „-33%: 39,99 zł”) → fields_patch (plakietka max 8 znaków).
