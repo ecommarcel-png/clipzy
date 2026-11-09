@@ -12,7 +12,8 @@ import { falUpload, submitVoid, voidStatus } from "@/lib/ai/fal-video";
 import type { ImageJob } from "@/lib/ai/fal-image";
 import { FalError } from "@/lib/ai/fal";
 import { CHUNK_FRAMES, SAMPLE_FPS, planChunks, textBand, textSegments, type Band, type Chunk, type TextSegment } from "./plan";
-import { chunkMask, compose, cutChunk, sampleFrames } from "./media";
+import { chunkMask, compose, cutChunk, findFlashes, maskFiles, sampleFrames, sourceFrames } from "./media";
+import type { Flash } from "./flash";
 import { tick, type JobStage } from "./steps";
 
 // Text remover pipeline: every server action moves all of the user's jobs one step on
@@ -25,7 +26,7 @@ export type TextJob = {
   id: string; user_id: string; name: string; src_path: string; stage: JobStage;
   info: { width?: number; height?: number; fps?: number; duration?: number; frames?: number; hasAudio?: boolean; warning?: string };
   /** checks: how many times the finished film went back to Gemini to look for leftover text */
-  plan: { band?: Band; segments?: TextSegment[]; pieces?: Piece[]; checks?: number };
+  plan: { band?: Band; segments?: TextSegment[]; pieces?: Piece[]; checks?: number; flashes?: Flash[] };
   out_path: string | null; file_id: string | null; error: string | null; created_at: string;
 };
 
@@ -65,17 +66,23 @@ async function detect(supabase: SupabaseClient, job: TextJob) {
     if (p.duration > MAX_SECONDS + 0.5) throw new Error(`Film ma ${Math.round(p.duration)} s — maksymalnie ${MAX_SECONDS} s.`);
     const fps = p.fps && p.fps > 1 && p.fps <= 120 ? p.fps : 30;
     const frames = Math.max(1, Math.round(p.duration * fps));
-    const [cuts, shotsFrames] = await Promise.all([sceneCuts(src, 0.2), sampleFrames(src, dir)]);
+    const size = { width: p.width!, height: p.height! };
+    // Gemini looks at 2 frames a second; captions that flash for a frame are found frame by frame
+    const [cuts, shotsFrames, flashes] = await Promise.all([sceneCuts(src, 0.2), sampleFrames(src, dir), findFlashes(src, size)]);
     const bounds = [0, ...cuts.filter((c) => c > 0.05 && c < p.duration - 0.05), p.duration];
     const shots = bounds.slice(0, -1).map((start, k) => ({ start, end: bounds[k + 1] }));
     const scan = await scanCaptions(gemini, await Promise.all(shotsFrames.map((f) => readFile(f))), SAMPLE_FPS, shots);
-    const size = { width: p.width!, height: p.height! };
-    const segments = textSegments(scan.frames.map((f) => ({ i: f.i, boxes: f.boxes as [number, number, number, number][] })), size);
+    // a sample that caught a flash is not a caption on screen: the flash fix covers it
+    const onFlash = (i: number) => {
+      const frame = Math.round(((i - 1) / SAMPLE_FPS) * fps);
+      return flashes.some((f) => frame >= f.start - 1 && frame <= f.start + f.len);
+    };
+    const segments = textSegments(scan.frames.filter((f) => !onFlash(f.i)).map((f) => ({ i: f.i, boxes: f.boxes as [number, number, number, number][] })), size);
     const band = textBand(segments, p.height!);
     const info = { width: p.width!, height: p.height!, fps, duration: p.duration, frames, hasAudio: p.hasAudio };
     if (!band || !segments.length) {
-      // nothing to remove: the original is the result
-      await update(supabase, job.id, { info, plan: { segments: [], pieces: [] }, stage: "compose" });
+      // nothing for the model: only flashes to cover (or nothing at all)
+      await update(supabase, job.id, { info, plan: { segments: [], pieces: [], flashes }, stage: "compose" });
       return;
     }
     const shotOf = (frame: number) => Math.max(0, shots.findIndex((s) => frame / fps >= s.start - 1e-3 && frame / fps < s.end - 1e-3));
@@ -83,7 +90,7 @@ async function detect(supabase: SupabaseClient, job: TextJob) {
       const bg = scan.scenes.find((s) => s.shot === shotOf(c.start))?.background;
       return { ...c, prompt: bg?.trim() || "the same scene without any overlaid text or captions, clean natural background, no text", state: "pending" };
     });
-    await update(supabase, job.id, { info, plan: { band, segments, pieces }, stage: "submit" });
+    await update(supabase, job.id, { info, plan: { band, segments, pieces, flashes }, stage: "submit" });
   });
 }
 
@@ -176,7 +183,7 @@ async function badPieces(supabase: SupabaseClient, src: string, film: string, di
 const MAX_CHECKS = 1;
 
 async function finish(supabase: SupabaseClient, job: TextJob) {
-  const { band, segments = [], pieces = [] } = job.plan;
+  const { band, segments = [], pieces = [], flashes = [] } = job.plan;
   const { width = 0, height = 0, fps = 30, duration = 0, hasAudio = false } = job.info;
   const outPath = `${job.user_id}/text-remover/${job.id}/bez-napisow.mp4`;
   let warning: string | undefined;
@@ -184,8 +191,11 @@ async function finish(supabase: SupabaseClient, job: TextJob) {
     const src = path.join(dir, "src.mp4");
     const out = path.join(dir, "out.mp4");
     await download(supabase, job.src_path, src);
+    const [sources, masks] = await Promise.all([sourceFrames(src, dir, flashes.map((f) => f.source)), maskFiles(dir, flashes)]);
+    const flashFiles = flashes.map((f) => ({ ...f, file: sources.get(f.source)!, maskFile: f.mask ? masks.get(f.mask.bits) : undefined }));
     if (!band || !pieces.length) {
-      await writeFile(out, await readFile(src));
+      if (flashes.length) await compose({ src, out, pieces: [], band: null, width, fps, duration, segments: [], hasAudio, flashes: flashFiles });
+      else await writeFile(out, await readFile(src));
     } else {
       const files = await Promise.all(pieces.map(async (p, i) => {
         const res = await fetch(p.url!, { signal: AbortSignal.timeout(120_000) });
@@ -194,7 +204,7 @@ async function finish(supabase: SupabaseClient, job: TextJob) {
         await writeFile(f, Buffer.from(await res.arrayBuffer()));
         return { ...p, file: f };
       }));
-      await compose({ src, out, pieces: files, band, width, fps, duration, segments, hasAudio });
+      await compose({ src, out, pieces: files, band, width, fps, duration, segments, hasAudio, flashes: flashFiles });
       // Kontroler: Gemini looks at the finished film; pieces where text is still visible go back to fal
       const check = await badPieces(supabase, src, out, dir, pieces, fps, band, height);
       if (check.redo.length) {

@@ -27,7 +27,7 @@ export default async function TextRemoverPage() {
     return {
       id: j.id, name: j.name, stage: j.stage, error: j.error, createdAt: j.created_at,
       duration: j.info.duration ?? null, pieces: pieces.length, piecesDone: pieces.filter((p) => p.state === "done").length,
-      noText: j.stage === "done" && !pieces.length, warning: j.info.warning ?? null, checks: j.plan.checks ?? 0,
+      noText: j.stage === "done" && !pieces.length && !(j.plan.flashes ?? []).length, warning: j.info.warning ?? null, checks: j.plan.checks ?? 0,
       out: j.out_path ? urls[j.out_path] ?? null : null, src: urls[j.src_path] ?? null, download: downloads[j.id] ?? null,
     };
   });
