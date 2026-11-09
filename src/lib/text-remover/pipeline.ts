@@ -73,9 +73,12 @@ async function detect(supabase: SupabaseClient, job: TextJob) {
     const shots = bounds.slice(0, -1).map((start, k) => ({ start, end: bounds[k + 1] }));
     const scan = await scanCaptions(gemini, await Promise.all(shotsFrames.map((f) => readFile(f))), SAMPLE_FPS, shots);
     // a sample that caught a flash is not a caption on screen: the flash fix covers it
+    // ffmpeg's fps filter gives sample k the last frame before (k + 0.5) / SAMPLE_FPS: any flash
+    // in that half second may be what Gemini saw (a real caption shows in the samples around too)
     const onFlash = (i: number) => {
-      const frame = Math.round(((i - 1) / SAMPLE_FPS) * fps);
-      return flashes.some((f) => frame >= f.start - 1 && frame <= f.start + f.len);
+      const from = Math.floor(((i - 1.5) / SAMPLE_FPS) * fps);
+      const to = Math.ceil(((i - 0.5) / SAMPLE_FPS) * fps);
+      return flashes.some((f) => f.start + f.len - 1 >= from && f.start <= to);
     };
     const segments = textSegments(scan.frames.filter((f) => !onFlash(f.i)).map((f) => ({ i: f.i, boxes: f.boxes as [number, number, number, number][] })), size);
     const band = textBand(segments, p.height!);
