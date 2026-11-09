@@ -155,9 +155,10 @@ function formatOf(w: number, h: number): string | null {
 
 /**
  * Kontroler: Gemini compares the finished film with the original, frame by frame. Pieces where
- * text is still visible or the repaint added something that is not in the original go back to fal.
+ * text is still visible go back to fal. Objects the model painted in are only reported: retries
+ * with another seed did not remove them in tests (3 rounds, same result) and cost minutes each.
  */
-async function badPieces(supabase: SupabaseClient, src: string, film: string, dir: string, pieces: Piece[], fps: number, band: Band, height: number): Promise<number[]> {
+async function badPieces(supabase: SupabaseClient, src: string, film: string, dir: string, pieces: Piece[], fps: number, band: Band, height: number): Promise<{ redo: number[]; artifacts: string[] }> {
   const gemini = await getProviderKey(supabase, "gemini");
   const a = path.join(dir, "check-src");
   const b = path.join(dir, "check-out");
@@ -166,11 +167,13 @@ async function badPieces(supabase: SupabaseClient, src: string, film: string, di
   const n = Math.min(orig.length, clean.length);
   const pairs = await Promise.all(Array.from({ length: n }, async (_, k) => ({ original: await readFile(orig[k]), cleaned: await readFile(clean[k]) })));
   const r = await checkCleanFilm(gemini, pairs, SAMPLE_FPS, { from: band.y / height, to: (band.y + band.h) / height });
-  const times = [...r.text, ...r.artifacts.map((x) => x.t)];
-  return pieces.map((p, i) => [p, i] as const).filter(([p]) => times.some((t) => t >= p.start / fps - 0.25 && t < (p.start + p.len) / fps + 0.25)).map(([, i]) => i);
+  const redo = pieces.map((p, i) => [p, i] as const).filter(([p]) => r.text.some((t) => t >= p.start / fps - 0.25 && t < (p.start + p.len) / fps + 0.25)).map(([, i]) => i);
+  const fmt = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+  const artifacts = [...new Set(r.artifacts.map((a) => fmt(a.t)))];
+  return { redo, artifacts };
 }
 
-const MAX_CHECKS = 2;
+const MAX_CHECKS = 1;
 
 async function finish(supabase: SupabaseClient, job: TextJob) {
   const { band, segments = [], pieces = [] } = job.plan;
@@ -193,14 +196,17 @@ async function finish(supabase: SupabaseClient, job: TextJob) {
       }));
       await compose({ src, out, pieces: files, band, width, fps, duration, segments, hasAudio });
       // Kontroler: Gemini looks at the finished film; pieces where text is still visible go back to fal
-      const left = await badPieces(supabase, src, out, dir, pieces, fps, band, height);
-      if (left.length) {
+      const check = await badPieces(supabase, src, out, dir, pieces, fps, band, height);
+      if (check.redo.length) {
         if ((job.plan.checks ?? 0) < MAX_CHECKS) {
-          const next = pieces.map((p, i) => (left.includes(i) ? { ...p, state: "pending" as const, job: undefined, url: undefined } : p));
+          const next = pieces.map((p, i) => (check.redo.includes(i) ? { ...p, state: "pending" as const, job: undefined, url: undefined } : p));
           await update(supabase, job.id, { plan: { ...job.plan, pieces: next, checks: (job.plan.checks ?? 0) + 1 }, stage: "submit" });
           return false;
         }
-        warning = "W kilku miejscach mógł zostać ślad napisu albo drobna usterka tła — sprawdź film.";
+        warning = "W kilku miejscach mógł zostać ślad napisu — sprawdź film.";
+      }
+      if (check.artifacts.length) {
+        warning = `${warning ? `${warning} ` : ""}Model mógł dorysować coś w miejscu napisu (${check.artifacts.slice(0, 6).join(", ")}${check.artifacts.length > 6 ? "…" : ""}) — obejrzyj te momenty.`;
       }
     }
     const { error } = await supabase.storage.from(BUCKET).upload(outPath, await readFile(out), { contentType: "video/mp4", upsert: true });
