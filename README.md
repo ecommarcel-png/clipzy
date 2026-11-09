@@ -69,7 +69,7 @@ Gotowe grafiki trafiają do **Twoich plików** (z copy do skopiowania). Na karci
 4. Wynik wraca tylko w miejsce napisów (miękka krawędź); reszta obrazu i dźwięk zostają oryginalne.
 5. **Kontroler (Gemini)** porównuje gotowy film z oryginałem: kawałki z resztką napisu idą raz do poprawki (inne ziarno); dorysowane przedmioty są zgłaszane jako ostrzeżenie z sekundami.
 
-**Migające napisy** (ten sam napis wstawiony na 1–2 klatki, rozsiany po filmie) są szukane osobno, klatka po klatce, bez modelu: `flash.ts` znajduje nagłe łaty, które wracają w tym samym miejscu, potwierdza je dopasowaniem do wzoru napisu, a ffmpeg zakrywa litery (z kilkupikselowym marginesem) pikselami z sąsiedniej czystej klatki tego samego ujęcia. Film tylko z takimi napisami nie idzie do fal.ai — gotowy w ok. 20–40 s i za darmo.
+**Migające napisy** (ten sam napis wstawiony na 1–2 klatki, rozsiany po filmie) są szukane osobno, klatka po klatce, bez modelu: `flash.ts` szuka klatek, w których nagle przybywa ostrych krawędzi (litery) w porównaniu z sąsiednimi — odporne na ruch kamery — potem porównuje je parami (ten sam napis jest identyczny piksel w piksel, tło nie), potwierdza dopasowaniem do wzoru napisu, a ffmpeg zakrywa litery (z kilkupikselowym marginesem) pikselami z sąsiedniej czystej klatki tego samego ujęcia. Film tylko z takimi napisami nie idzie do fal.ai — gotowy w ok. 20–40 s i za darmo.
 
 Gotowe filmy trafiają do „Twoich plików”. Czas zależy od limitu równoczesnych zleceń konta fal (nowe konto: 2 naraz; limit rośnie z wydatkami, do 40). Migracja: `0007_text_remover.sql`. Klucze: Gemini i fal.
 

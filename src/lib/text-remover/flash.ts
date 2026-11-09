@@ -12,22 +12,24 @@ export type OverlayMask = { w: number; h: number; bits: string };
  * does not show a rectangular patch.
  */
 export type Flash = { start: number; len: number; source: number; box: Box; mask?: OverlayMask };
-type Seed = { i: number; len: number; box: Box };
-
-/** a pixel "changed" between two frames */
-const CHANGED = 40;
-/** a pixel stayed the same between the two reference frames */
-const STABLE = 18;
 /** a template pixel matches */
 const MATCH = 16;
 /** share of template pixels that must match for a frame to show the overlay */
 export const HIT = 0.75;
 /** longer runs are ordinary captions (Gemini + the model handle those) */
 export const MAX_RUN = 3;
+/** gradient that counts as a sharp edge (letters, outlines) */
+const EDGE = 40;
+/** edge counts are kept per TILE×TILE square */
+const TILE = 12;
+/** the most suspicious frames compared pairwise */
+const MAX_CANDIDATES = 60;
+/** sharp-edge pixels two flashes must share, at the same place and value */
+const MIN_SHARED = 40;
 
-/** Size of the small frames used for the search: the long side 256 px, even numbers. */
+/** Size of the small frames used for the search: the long side 384 px, even numbers. */
 export function smallSize(width: number, height: number): { w: number; h: number } {
-  const s = 256 / Math.max(width, height);
+  const s = 384 / Math.max(width, height);
   const even = (n: number) => Math.max(2, Math.round((n * s) / 2) * 2);
   return { w: even(width), h: even(height) };
 }
@@ -42,108 +44,139 @@ function percentile(hist: Uint32Array, total: number, p: number): number {
   return hist.length - 1;
 }
 
+/** 1 where the frame has a sharp edge (to the right or below). */
+function edgeMap(f: Uint8Array, w: number, h: number): Uint8Array {
+  const e = new Uint8Array(w * h);
+  for (let y = 0; y < h - 1; y++) {
+    for (let x = 0; x < w - 1; x++) {
+      const p = y * w + x;
+      if (Math.abs(f[p + 1] - f[p]) > EDGE || Math.abs(f[p + w] - f[p]) > EDGE) e[p] = 1;
+    }
+  }
+  return e;
+}
+
+function tileCounts(e: Uint8Array, w: number, h: number): Uint16Array {
+  const tw = Math.floor(w / TILE);
+  const th = Math.floor(h / TILE);
+  const t = new Uint16Array(tw * th);
+  for (let y = 0; y < th * TILE; y++) {
+    const row = ((y / TILE) | 0) * tw;
+    for (let x = 0; x < tw * TILE; x++) if (e[y * w + x]) t[row + ((x / TILE) | 0)]++;
+  }
+  return t;
+}
+
+type Candidate = { i: number; score: number; tiles: Uint8Array };
+
 /**
- * Frames where a compact, dense patch appears that is not in a steady reference pair next to it,
- * while the rest of the frame matches that reference: the candidate flashes.
+ * Where an overlay flashes. Step 1: frames where some squares suddenly get many more sharp edges
+ * than in the frames around them (letters appearing for a frame or two) — robust to camera
+ * movement, which changes the picture but not how much fine detail it has. Step 2: those frames
+ * compared pairwise: a flashed caption is identical, pixel for pixel, every time it appears, while
+ * the scene behind it is not. Pairs that share enough sharp pixels at the same place form a group.
  */
-export function findSeeds(frames: Uint8Array[], w: number, h: number): Seed[] {
+export function findOverlays(frames: Uint8Array[], w: number, h: number): Array<{ box: Box; frames: number[] }> {
   const n = frames.length;
-  const px = w * h;
-  const minPix = Math.max(24, Math.round(0.004 * px));
-  const mask = new Uint8Array(px);
+  const tw = Math.floor(w / TILE);
+  const th = Math.floor(h / TILE);
+  if (n < 3 || !tw || !th) return [];
+  const edges = new Map<number, Uint8Array>();
+  const edgeOf = (i: number) => {
+    let e = edges.get(i);
+    if (!e) edges.set(i, (e = edgeMap(frames[i], w, h)));
+    return e;
+  };
+  const E = frames.map((_, i) => tileCounts(edgeOf(i), w, h));
+  edges.clear();
+
+  const cands: Candidate[] = [];
+  for (let i = 0; i < n; i++) {
+    for (let len = 1; len <= 2 && i + len <= n; len++) {
+      const before = i > 0 ? E[i - 1] : null;
+      const after = i + len < n ? E[i + len] : null;
+      if (!before && !after) continue;
+      const tiles = new Uint8Array(tw * th);
+      let count = 0;
+      let score = 0;
+      for (let t = 0; t < tiles.length; t++) {
+        const cur = len === 1 ? E[i][t] : Math.min(E[i][t], E[i + 1][t]);
+        const nb = Math.max(before?.[t] ?? 0, after?.[t] ?? 0);
+        if (cur - nb >= 12 && cur >= 2 * nb + 6) {
+          tiles[t] = 1;
+          count++;
+          score += cur - nb;
+        }
+      }
+      if (count >= 3) {
+        cands.push({ i, score, tiles });
+        break;
+      }
+    }
+  }
+  const top = cands.sort((a, b) => b.score - a.score).slice(0, MAX_CANDIDATES);
+
+  // pairs of candidates that show the same sharp pixels at the same place
   const xs = new Uint32Array(w);
   const ys = new Uint32Array(h);
-  const seeds: Seed[] = [];
-
-  // `a`,`b`: the steady reference pair; `other`: the frame on the run's other side, which must
-  // differ too — otherwise the change belongs to the reference side (a caption that starts or a
-  // flash next door), not to this run
-  const test = (i: number, len: number, a: number, b: number, both: boolean, other: number): Seed | null => {
-    const A = frames[a];
-    const B = frames[b];
-    const O = other >= 0 && other < n ? frames[other] : null;
-    xs.fill(0);
-    ys.fill(0);
-    let count = 0;
-    for (let p = 0; p < px; p++) {
-      mask[p] = 0;
-      if (Math.abs(A[p] - B[p]) >= STABLE) continue;
-      let ok = true;
-      for (let j = i; j < i + len && ok; j++) {
-        const v = frames[j][p];
-        if (Math.abs(v - A[p]) <= CHANGED || (both && Math.abs(v - B[p]) <= CHANGED) || (O && Math.abs(v - O[p]) <= CHANGED)) ok = false;
+  const pairs: Array<{ a: number; b: number; box: Box }> = [];
+  for (let a = 0; a < top.length; a++) {
+    for (let b = a + 1; b < top.length; b++) {
+      const A = top[a];
+      const B = top[b];
+      if (Math.abs(A.i - B.i) < 4) continue;
+      const ea = edgeOf(A.i);
+      const eb = edgeOf(B.i);
+      const fa = frames[A.i];
+      const fb = frames[B.i];
+      xs.fill(0);
+      ys.fill(0);
+      let count = 0;
+      for (let ty = 0; ty < th; ty++) {
+        for (let tx = 0; tx < tw; tx++) {
+          const t = ty * tw + tx;
+          if (!A.tiles[t] || !B.tiles[t]) continue;
+          for (let y = ty * TILE; y < (ty + 1) * TILE; y++) {
+            for (let x = tx * TILE; x < (tx + 1) * TILE; x++) {
+              const p = y * w + x;
+              if (ea[p] && eb[p] && Math.abs(fa[p] - fb[p]) < 12) {
+                count++;
+                xs[x]++;
+                ys[y]++;
+              }
+            }
+          }
+        }
       }
-      if (!ok) continue;
-      mask[p] = 1;
-      count++;
-      xs[p % w]++;
-      ys[(p / w) | 0]++;
-    }
-    if (count < minPix) return null;
-    const x0 = percentile(xs, count, 0.02);
-    const x1 = percentile(xs, count, 0.98);
-    const y0 = percentile(ys, count, 0.02);
-    const y1 = percentile(ys, count, 0.98);
-    const area = (x1 - x0 + 1) * (y1 - y0 + 1);
-    if (count / area < 0.2 || area / px > 0.15) return null;
-    // outside the patch the flash frame is the reference frame
-    let diff = 0;
-    let outside = 0;
-    const F = frames[i];
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        if (x >= x0 && x <= x1 && y >= y0 && y <= y1) continue;
-        diff += Math.abs(F[y * w + x] - A[y * w + x]);
-        outside++;
-      }
-    }
-    if (!outside || diff / outside >= 3) return null;
-    return { i, len, box: { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 } };
-  };
-
-  for (let i = 0; i < n; i++) {
-    let hit: Seed | null = null;
-    for (let len = 1; len <= 2 && !hit && i + len <= n; len++) {
-      const a = i - 1;
-      const b = i + len;
-      // both neighbours, or two frames on one side (the flash may sit right at a cut)
-      if (a >= 0 && b < n) hit = test(i, len, a, b, true, -1);
-      if (!hit && b + 1 < n) hit = test(i, len, b, b + 1, false, a);
-      if (!hit && a - 1 >= 0) hit = test(i, len, a, a - 1, false, b);
-    }
-    if (hit) {
-      seeds.push(hit);
-      i += hit.len - 1;
+      if (count < MIN_SHARED) continue;
+      const x0 = percentile(xs, count, 0.02);
+      const x1 = percentile(xs, count, 0.98);
+      const y0 = percentile(ys, count, 0.02);
+      const y1 = percentile(ys, count, 0.98);
+      pairs.push({ a, b, box: { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 } });
     }
   }
-  return seeds;
-}
 
-function iou(p: Box, q: Box): number {
-  const ix = Math.max(0, Math.min(p.x + p.w, q.x + q.w) - Math.max(p.x, q.x));
-  const iy = Math.max(0, Math.min(p.y + p.h, q.y + q.h) - Math.max(p.y, q.y));
-  const inter = ix * iy;
-  const union = p.w * p.h + q.w * q.h - inter;
-  return union > 0 ? inter / union : 0;
-}
-
-/** Seeds in the same place, at least two of them — one patch alone could be anything. */
-export function groupSeeds(seeds: Seed[]): Array<{ box: Box; frames: number[] }> {
-  const groups: Seed[][] = [];
-  for (const s of seeds) {
-    const g = groups.find((g) => iou(g[0].box, s.box) > 0.5);
-    if (g) g.push(s);
-    else groups.push([s]);
+  // connected candidates → groups (one per overlay; usually a single one)
+  const parent = top.map((_, k) => k);
+  const find = (k: number): number => (parent[k] === k ? k : (parent[k] = find(parent[k])));
+  for (const p of pairs) parent[find(p.a)] = find(p.b);
+  const groups = new Map<number, typeof pairs>();
+  for (const p of pairs) {
+    const r = find(p.a);
+    groups.set(r, [...(groups.get(r) ?? []), p]);
   }
-  return groups
-    .filter((g) => new Set(g.map((s) => s.i)).size >= 2)
-    .map((g) => {
-      const x0 = Math.min(...g.map((s) => s.box.x));
-      const y0 = Math.min(...g.map((s) => s.box.y));
-      const x1 = Math.max(...g.map((s) => s.box.x + s.box.w));
-      const y1 = Math.max(...g.map((s) => s.box.y + s.box.h));
-      return { box: { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, frames: [...new Set(g.map((s) => s.i))] };
-    });
+  return [...groups.values()]
+    .map((ps) => {
+      const x0 = Math.min(...ps.map((p) => p.box.x));
+      const y0 = Math.min(...ps.map((p) => p.box.y));
+      const x1 = Math.max(...ps.map((p) => p.box.x + p.box.w));
+      const y1 = Math.max(...ps.map((p) => p.box.y + p.box.h));
+      const fr = [...new Set(ps.flatMap((p) => [top[p.a].i, top[p.b].i]))].sort((a, b) => a - b);
+      return { box: { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, frames: fr, pairs: ps.length };
+    })
+    .sort((a, b) => b.pairs - a.pairs)
+    .map(({ box, frames }) => ({ box, frames }));
 }
 
 function median(values: number[]): number {

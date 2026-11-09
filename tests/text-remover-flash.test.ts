@@ -1,17 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { dilate, findSeeds, groupSeeds, hitRuns, maskBounds, maskPgm, matchOverlay, packMask, pickSource, smallSize, toFilm } from "@/lib/text-remover/flash";
+import { dilate, findOverlays, hitRuns, maskBounds, maskPgm, matchOverlay, packMask, pickSource, smallSize, toFilm } from "@/lib/text-remover/flash";
 
 const W = 64;
 const H = 64;
 const CAP = { x: 16, y: 10, w: 30, h: 8 };
 
-// a slowly moving scene with a hard cut at frame 40
+// a moving scene (smooth background + a striped object sliding 3 px a frame), hard cut at frame 40
 function scene(t: number): Uint8Array {
   const f = new Uint8Array(W * H);
   const cut = t >= 40;
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
-      const v = cut ? 60 + 40 * Math.cos((x - t * 0.3) / 6) + 20 * Math.sin(y / 5) : 110 + 40 * Math.sin((x + t * 0.3) / 5) + 25 * Math.cos(y / 7);
+      let v = cut ? 60 + 40 * Math.cos((x - t * 0.8) / 6) + 20 * Math.sin(y / 5) : 110 + 40 * Math.sin((x + t * 0.8) / 5) + 25 * Math.cos(y / 7);
+      const ox = (x - ((t * 3) % 80) + 16 + 80) % 80;
+      if (y >= 26 && y < 40 && ox < 20) v = Math.floor(ox / 3) % 2 ? 230 : 20;
       f[y * W + x] = Math.round(v);
     }
   }
@@ -51,7 +53,7 @@ function crop(frames: Uint8Array[], b: { x: number; y: number; w: number; h: num
 describe("flashing captions", () => {
   it("finds every one- and two-frame flash of the same overlay, also at a cut, and leaves ordinary captions out", () => {
     const frames = film();
-    const groups = groupSeeds(findSeeds(frames, W, H));
+    const groups = findOverlays(frames, W, H);
     const runs = groups.flatMap((g) => {
       const b = { x: Math.max(0, g.box.x - 3), y: Math.max(0, g.box.y - 3), w: Math.min(W, g.box.x + g.box.w + 3) - Math.max(0, g.box.x - 3), h: Math.min(H, g.box.y + g.box.h + 3) - Math.max(0, g.box.y - 3) };
       return hitRuns(matchOverlay(crop(frames, b), g.frames).hits);
@@ -72,12 +74,12 @@ describe("flashing captions", () => {
 
   it("a scene without flashes gives nothing", () => {
     const frames = Array.from({ length: 30 }, (_, t) => scene(t));
-    expect(groupSeeds(findSeeds(frames, W, H))).toEqual([]);
+    expect(findOverlays(frames, W, H)).toEqual([]);
   });
 
   it("small-frame box maps to even film pixels inside the frame", () => {
-    expect(smallSize(720, 1280)).toEqual({ w: 144, h: 256 });
-    const b = toFilm({ x: 0, y: 36, w: 97, h: 17 }, { w: 144, h: 256 }, { width: 720, height: 1280 });
+    expect(smallSize(720, 1280)).toEqual({ w: 216, h: 384 });
+    const b = toFilm({ x: 0, y: 54, w: 146, h: 26 }, { w: 216, h: 384 }, { width: 720, height: 1280 });
     expect(b.x).toBe(0);
     expect([b.x, b.y, b.w, b.h].every((v) => v % 2 === 0)).toBe(true);
     expect(b.x + b.w).toBeLessThanOrEqual(720);

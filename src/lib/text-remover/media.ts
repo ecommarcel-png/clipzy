@@ -5,7 +5,7 @@ import { readdir } from "node:fs/promises";
 import path from "node:path";
 import ffmpegPath from "ffmpeg-static";
 import { CHUNK_FRAMES, SAMPLE_FPS, boxFilters, type Band, type Chunk, type TextSegment } from "./plan";
-import { dilate, groupSeeds, findSeeds, hitRuns, maskBounds, maskPgm, matchOverlay, packMask, pickSource, smallSize, toFilm, type Box, type Flash } from "./flash";
+import { dilate, findOverlays, hitRuns, maskBounds, maskPgm, matchOverlay, packMask, pickSource, smallSize, toFilm, type Box, type Flash } from "./flash";
 import { writeFile } from "node:fs/promises";
 
 // ffmpeg for the text remover: frames for Gemini, the caption strip + mask for fal,
@@ -61,11 +61,11 @@ export function grayFrames(src: string, w: number, h: number, crop?: Box): Promi
 export async function findFlashes(src: string, film: { width: number; height: number }): Promise<Flash[]> {
   const small = smallSize(film.width, film.height);
   const frames = await grayFrames(src, small.w, small.h);
-  const groups = groupSeeds(findSeeds(frames, small.w, small.h)).slice(0, 3);
+  const groups = findOverlays(frames, small.w, small.h).slice(0, 3);
   const out: Flash[] = [];
   for (const g of groups) {
     // a wide crop: the seed box trims the ends of the text, the overlay mask finds the real edges
-    const wide = toFilm(g.box, small, film, 8);
+    const wide = toFilm(g.box, small, film, 12);
     if (wide.w < 8 || wide.h < 8) continue;
     const half = { w: Math.max(2, Math.round(wide.w / 4) * 2), h: Math.max(2, Math.round(wide.h / 4) * 2) };
     const crops = await grayFrames(src, half.w, half.h, wide);
