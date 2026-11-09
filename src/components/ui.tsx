@@ -8,17 +8,17 @@ export function cx(...parts: Array<string | false | null | undefined>) {
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 
-// Text on orange is ink, never white (brand guide: 5.9:1 vs 3.1:1).
+// Monochrome: the main action is the only white surface on the page.
 const BUTTON: Record<ButtonVariant, string> = {
-  primary: "bg-accent text-on-accent font-bold hover:bg-accent-strong shadow-[0_8px_24px_-10px_rgb(255_90_31/0.7)]",
-  secondary: "bg-surface-2 text-text border border-border hover:border-border-strong hover:bg-surface-3",
+  primary: "bg-accent text-on-accent hover:bg-[#e4e4e4] shadow-[0_1px_0_rgb(255_255_255/0.25)_inset,0_6px_16px_-8px_rgb(0_0_0/0.8)]",
+  secondary: "bg-surface text-text border border-border-strong hover:bg-surface-2",
   ghost: "text-muted hover:text-text hover:bg-surface-2",
-  danger: "bg-danger-soft text-danger hover:brightness-125",
+  danger: "border border-danger/25 bg-danger-soft text-danger hover:bg-danger/15",
 };
 
 export function buttonClass(variant: ButtonVariant = "primary", extra?: string) {
   return cx(
-    "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition",
+    "inline-flex h-9 items-center justify-center gap-2 rounded-lg px-3.5 text-sm font-medium transition-colors",
     "disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
     BUTTON[variant],
     extra,
@@ -34,11 +34,11 @@ export function Button({
 }
 
 export function Card({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cx("glass rounded-[22px] border border-border p-6", className)} {...props} />;
+  return <div className={cx("glass rounded-xl border border-border p-5", className)} {...props} />;
 }
 
 const FIELD =
-  "w-full rounded-xl border border-border bg-bg/70 px-3 py-2 text-sm text-text placeholder:text-faint focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25";
+  "w-full rounded-lg border border-border-strong bg-bg px-3 py-2 text-sm text-text placeholder:text-faint focus:border-[#5a5a5a] focus:outline-none focus:ring-2 focus:ring-white/10";
 
 export function Input({ className, ...props }: ComponentProps<"input">) {
   return <input className={cx(FIELD, className)} {...props} />;
@@ -55,7 +55,7 @@ export function Select({ className, ...props }: ComponentProps<"select">) {
 export function Label({ children, hint, htmlFor }: { children: ReactNode; hint?: ReactNode; htmlFor?: string }) {
   return (
     <label htmlFor={htmlFor} className="mb-1.5 block">
-      <span className="text-sm font-bold text-text">{children}</span>
+      <span className="text-sm font-medium text-text">{children}</span>
       {hint ? <span className="mt-0.5 block text-xs text-faint">{hint}</span> : null}
     </label>
   );
@@ -67,8 +67,8 @@ export function PageHeader({ title, description, actions, back }: { title: strin
       {back ? <div className="mb-3">{back}</div> : null}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-3xl font-extrabold tracking-tight">{title}</h1>
-          {description ? <p className="mt-1.5 max-w-xl text-sm text-muted">{description}</p> : null}
+          <h1 className="text-2xl font-semibold tracking-tight md:text-[28px]">{title}</h1>
+          {description ? <p className="mt-1 max-w-xl text-sm text-muted">{description}</p> : null}
         </div>
         {actions ? <div className="flex gap-2">{actions}</div> : null}
       </div>
@@ -79,11 +79,11 @@ export function PageHeader({ title, description, actions, back }: { title: strin
 type Tone = "neutral" | "ok" | "warn" | "danger" | "accent";
 
 const BADGE: Record<Tone, string> = {
-  neutral: "bg-surface-3 text-muted",
-  ok: "bg-ok-soft text-ok",
-  warn: "bg-warn-soft text-warn",
-  danger: "bg-danger-soft text-danger",
-  accent: "bg-accent-soft text-accent",
+  neutral: "border border-border-strong bg-surface-2 text-muted",
+  ok: "border border-ok/20 bg-ok-soft text-ok",
+  warn: "border border-border-strong bg-warn-soft text-warn",
+  danger: "border border-danger/20 bg-danger-soft text-danger",
+  accent: "border border-white/10 bg-accent-soft text-text",
 };
 
 const DOT: Record<Tone, string> = {
@@ -96,7 +96,7 @@ const DOT: Record<Tone, string> = {
 
 export function Badge({ tone = "neutral", dot, children }: { tone?: Tone; dot?: boolean; children: ReactNode }) {
   return (
-    <span className={cx("inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold", BADGE[tone])}>
+    <span className={cx("inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium", BADGE[tone])}>
       {dot ? <span className={cx("h-1.5 w-1.5 rounded-full", DOT[tone])} aria-hidden /> : null}
       {children}
     </span>
@@ -104,7 +104,7 @@ export function Badge({ tone = "neutral", dot, children }: { tone?: Tone; dot?: 
 }
 
 export function Notice({ tone = "neutral", children }: { tone?: Tone; children: ReactNode }) {
-  return <div className={cx("rounded-xl px-4 py-3 text-sm", BADGE[tone], "font-normal")}>{children}</div>;
+  return <div className={cx("rounded-lg px-4 py-3 text-sm", BADGE[tone], "font-normal")}>{children}</div>;
 }
 
 export function Spinner() {
@@ -137,18 +137,18 @@ export function Disclosure({
   plain?: boolean;
 }) {
   return (
-    <details open={defaultOpen} className={cx("group", plain ? "" : "glass rounded-[22px] border border-border", className)}>
+    <details open={defaultOpen} className={cx("group", plain ? "" : "glass rounded-xl border border-border", className)}>
       <summary
         className={cx(
-          "flex cursor-pointer list-none items-center gap-3 rounded-[22px] focus-visible:outline-2 focus-visible:outline-accent",
-          plain ? "py-1 text-sm text-muted hover:text-text" : "px-6 py-4",
+          "flex cursor-pointer list-none items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-accent",
+          plain ? "py-1 text-sm text-muted hover:text-text" : "px-5 py-4",
         )}
       >
-        <span className={cx("min-w-0 flex-1", plain ? "font-semibold" : "font-bold")}>{title}</span>
+        <span className="min-w-0 flex-1 font-medium">{title}</span>
         {meta ? <span className="text-xs text-faint">{meta}</span> : null}
         <Chevron className="text-muted group-open:rotate-180" />
       </summary>
-      <div className={plain ? "pt-3" : "px-6 pb-6"}>{children}</div>
+      <div className={plain ? "pt-3" : "px-5 pb-5"}>{children}</div>
     </details>
   );
 }

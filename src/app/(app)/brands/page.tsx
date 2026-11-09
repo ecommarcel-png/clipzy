@@ -33,7 +33,7 @@ export default async function BrandsPage() {
           {brands.map((b) => {
             const productCount = (b.products as unknown as Array<{ count: number }>)?.[0]?.count ?? 0;
             return (
-              <Link key={b.id} href={`/brands/${b.id}`} className="group rounded-[22px] focus-visible:outline-2 focus-visible:outline-accent">
+              <Link key={b.id} href={`/brands/${b.id}`} className="group rounded-xl focus-visible:outline-2 focus-visible:outline-accent">
                 <Card className="h-full transition group-hover:border-border-strong">
                   <div className="flex items-center gap-3">
                     <Logo url={b.logo_path ? logos[b.logo_path] : undefined} name={b.name} />

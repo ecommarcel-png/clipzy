@@ -10,7 +10,7 @@ export function ConfirmIconButton({ message, label, children, className }: { mes
       type="submit"
       aria-label={label}
       title={label}
-      className={cx("flex h-6 w-6 items-center justify-center rounded-full bg-[#100c16]/85 text-xs font-bold text-muted transition hover:bg-danger hover:text-white", className)}
+      className={cx("flex h-6 w-6 items-center justify-center rounded-full bg-[#0a0a0a]/85 text-xs font-bold text-muted transition hover:bg-danger hover:text-white", className)}
       onClick={(e) => {
         if (!window.confirm(message)) e.preventDefault();
       }}

@@ -77,7 +77,7 @@ function FileCard({ file: f }: { file: AdFile }) {
   return (
     <li>
       <Card className="flex h-full flex-col gap-3 p-3">
-        <div className="flex h-72 items-center justify-center overflow-hidden rounded-xl bg-[#0d0b10]">
+        <div className="flex h-72 items-center justify-center overflow-hidden rounded-xl bg-[#0a0a0a]">
           {f.url && f.kind === "image" ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={f.url} alt={f.name} className="h-full max-w-full object-contain" />

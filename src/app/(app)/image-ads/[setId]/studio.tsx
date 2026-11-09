@@ -176,7 +176,7 @@ function AdCard({ ad, fmt, busy, onEdit, onRegenerate }: { ad: StudioAd; fmt: "1
   return (
     <li>
       <Card className="flex h-full flex-col gap-3 p-3">
-        <div className={cx("relative flex items-center justify-center overflow-hidden rounded-xl bg-[#0d0b10]", fmt === "1x1" ? "aspect-square" : "aspect-[9/16]")}>
+        <div className={cx("relative flex items-center justify-center overflow-hidden rounded-xl bg-[#0a0a0a]", fmt === "1x1" ? "aspect-square" : "aspect-[9/16]")}>
           {url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={url} alt={ad.copy?.headline ?? ad.label} className="h-full w-full object-contain" />
@@ -225,7 +225,7 @@ function RegenerateDialog({ ad, onClose, onConfirm }: { ad: StudioAd; onClose: (
   const [busy, setBusy] = useState(false);
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 sm:p-10" role="dialog" aria-modal="true" aria-label={`Przegeneruj kreację #${ad.idx + 1}`}>
-      <div className="w-full max-w-lg space-y-4 rounded-3xl border border-border bg-surface p-5 shadow-2xl">
+      <div className="w-full max-w-lg space-y-4 rounded-2xl border border-border bg-surface p-5 shadow-2xl">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-extrabold">Przegeneruj kreację #{ad.idx + 1}</h2>
           <button type="button" onClick={onClose} className="text-sm font-bold text-muted hover:text-text">Zamknij</button>

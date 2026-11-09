@@ -7,14 +7,14 @@ export function ProductTile({ href, name, ready, image }: { href: string; name: 
   return (
     <Link
       href={href}
-      className="group relative block aspect-[4/5] overflow-hidden rounded-[20px] border border-border bg-surface-2 transition hover:border-border-strong focus-visible:outline-2 focus-visible:outline-accent"
+      className="group relative block aspect-[4/5] overflow-hidden rounded-xl border border-border bg-surface-2 transition hover:border-border-strong focus-visible:outline-2 focus-visible:outline-accent"
     >
       {image ? (
         <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center text-4xl font-extrabold text-faint">{name.slice(0, 1).toUpperCase()}</div>
       )}
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#100c16] via-[#100c16]/80 to-transparent p-3 pt-12">
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent p-3 pt-12">
         <div className="line-clamp-2 text-sm font-bold leading-snug">{name}</div>
         <div className="mt-1.5">{ready ? <Badge tone="ok" dot>Gotowy</Badge> : <Badge tone="warn" dot>Do zatwierdzenia</Badge>}</div>
       </div>
@@ -27,7 +27,7 @@ export function AddTile({ href, first }: { href: string; first?: boolean }) {
     <Link
       href={href}
       className={cx(
-        "flex aspect-[4/5] flex-col items-center justify-center gap-2 rounded-[20px] border-2 border-dashed border-border p-4 text-center text-muted transition hover:border-accent hover:text-text",
+        "flex aspect-[4/5] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border p-4 text-center text-muted transition hover:border-accent hover:text-text",
         "focus-visible:outline-2 focus-visible:outline-accent",
       )}
     >

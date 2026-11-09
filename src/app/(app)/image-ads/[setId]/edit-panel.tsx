@@ -75,7 +75,7 @@ export function EditPanel({ setId, ad, palette, onClose, onSaved }: { setId: str
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 sm:p-8" role="dialog" aria-modal="true" aria-label={`Edycja kreacji #${ad.idx + 1}`}>
-      <div className="w-full max-w-5xl rounded-3xl border border-border bg-surface p-5 shadow-2xl">
+      <div className="w-full max-w-5xl rounded-2xl border border-border bg-surface p-5 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-extrabold">Edycja kreacji #{ad.idx + 1} <span className="text-sm font-semibold text-muted">— {ad.label}</span></h2>
           <button type="button" onClick={onClose} className="text-sm font-bold text-muted hover:text-text">Zamknij</button>

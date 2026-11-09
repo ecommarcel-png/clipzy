@@ -58,7 +58,7 @@ export function ProductEditor(props: {
                   <input type="hidden" name="imageId" value={img.id} />
                   <input type="hidden" name="brandId" value={props.brandId} />
                   <input type="hidden" name="productId" value={props.productId} />
-                  <button className="rounded-full bg-[#100c16]/80 px-2 py-0.5 text-xs font-bold text-text" aria-label="Usuń zdjęcie">Usuń</button>
+                  <button className="rounded-full bg-black/80 px-2 py-0.5 text-xs font-bold text-text" aria-label="Usuń zdjęcie">Usuń</button>
                 </form>
               </div>
             ))}

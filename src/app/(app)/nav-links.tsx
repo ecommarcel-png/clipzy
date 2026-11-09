@@ -6,7 +6,7 @@ import { useState, type ReactNode } from "react";
 import { cx } from "@/components/ui";
 
 const icon = (d: ReactNode) => (
-  <svg viewBox="0 0 20 20" className="h-[18px] w-[18px] shrink-0" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+  <svg viewBox="0 0 20 20" className="h-[17px] w-[17px] shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     {d}
   </svg>
 );
@@ -52,10 +52,10 @@ function Item({ link, pathname }: { link: NavLink; pathname: string }) {
   const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
   if (link.soon) {
     return (
-      <span className="flex shrink-0 items-center gap-3 rounded-xl px-3 py-2 text-sm text-faint" title="Wkrótce">
+      <span className="flex shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-sm text-faint" title="Wkrótce">
         {link.icon}
         <span className="flex-1">{link.label}</span>
-        <span className="hidden rounded-full border border-border px-1.5 text-[10px] md:inline">wkrótce</span>
+        <span className="hidden rounded border border-border px-1.5 text-[10px] md:inline">wkrótce</span>
       </span>
     );
   }
@@ -64,11 +64,11 @@ function Item({ link, pathname }: { link: NavLink; pathname: string }) {
       href={link.href}
       aria-current={active ? "page" : undefined}
       className={cx(
-        "flex shrink-0 items-center gap-3 rounded-xl px-3 py-2 text-sm transition",
-        active ? "bg-surface-3 font-bold text-text shadow-[inset_0_1px_0_rgb(255_243_232/0.06)]" : "text-muted hover:bg-surface-2 hover:text-text",
+        "flex shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-sm transition-colors",
+        active ? "bg-surface-2 font-medium text-text shadow-[inset_0_0_0_1px_rgb(255_255_255/0.04)]" : "text-muted hover:bg-surface hover:text-text",
       )}
     >
-      <span className={active ? "text-accent" : undefined}>{link.icon}</span>
+      <span className={active ? "text-text" : "text-faint"}>{link.icon}</span>
       {link.label}
     </Link>
   );
@@ -78,18 +78,18 @@ export function NavLinks() {
   const pathname = usePathname();
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   return (
-    <nav className="flex gap-1 overflow-x-auto md:flex-col md:gap-4">
+    <nav className="flex gap-1 overflow-x-auto md:flex-col md:gap-5">
       {GROUPS.map((g) => {
         // a group with the open page never hides it
         const hasActive = g.links.some((l) => !l.soon && (pathname === l.href || pathname.startsWith(`${l.href}/`)));
         const open = !closed[g.id] || hasActive;
         return (
-          <div key={g.id} className="flex gap-1 md:flex-col">
+          <div key={g.id} className="flex gap-1 md:flex-col md:gap-0.5">
             <button
               type="button"
               onClick={() => setClosed({ ...closed, [g.id]: open })}
               aria-expanded={open}
-              className="hidden items-center gap-2 px-3 pb-1 text-left text-[11px] font-extrabold uppercase tracking-wider text-faint transition hover:text-muted md:flex"
+              className="hidden items-center gap-2 px-2.5 pb-1.5 text-left text-xs font-medium text-faint transition-colors hover:text-muted md:flex"
             >
               <span className="flex-1">{g.label}</span>
               <svg viewBox="0 0 16 16" className={cx("h-3.5 w-3.5 transition-transform", open ? "" : "-rotate-90")} aria-hidden>
@@ -97,7 +97,7 @@ export function NavLinks() {
               </svg>
             </button>
             {/* on phones the menu is one scrolling row, always expanded */}
-            <div className={cx("flex gap-1 md:flex-col", open ? "" : "md:hidden")}>
+            <div className={cx("flex gap-1 md:flex-col md:gap-0.5", open ? "" : "md:hidden")}>
               {g.links.map((l) => <Item key={l.href} link={l} pathname={pathname} />)}
             </div>
           </div>

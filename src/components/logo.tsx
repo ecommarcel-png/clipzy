@@ -13,7 +13,7 @@ export function Logo({ url, name, size = 44 }: { url?: string; name: string; siz
     />
   ) : (
     <div
-      className="flex shrink-0 items-center justify-center rounded-xl bg-accent-soft font-extrabold text-accent"
+      className="flex shrink-0 items-center justify-center rounded-xl border border-border-strong bg-surface-2 font-semibold text-muted"
       style={{ width: size, height: size, fontSize: size * 0.42 }}
     >
       {name.slice(0, 1).toUpperCase()}
@@ -26,7 +26,7 @@ export function ClipzyLogo({ variant = "horizontal", height = 28, className }: {
   const ratio = variant === "horizontal" ? 795 / 238 : variant === "stacked" ? 327 / 372 : 1;
   return (
     <img
-      src={`/brand/clipzy-${variant}-color-on-dark.svg`}
+      src={`/brand/clipzy-${variant}-mono.svg`}
       alt="clipzy"
       width={Math.round(height * ratio)}
       height={height}

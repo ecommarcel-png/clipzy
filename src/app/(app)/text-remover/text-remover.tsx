@@ -101,7 +101,7 @@ export function TextRemover({ userId, jobs }: { userId: string; jobs: JobView[] 
         onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
         onDragLeave={() => setDrag(false)}
         onDrop={(e) => { e.preventDefault(); setDrag(false); void upload(e.dataTransfer.files); }}
-        className={cx("flex cursor-pointer flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed px-6 py-12 text-center transition", drag ? "border-accent bg-accent/10" : "border-border hover:border-border-strong")}
+        className={cx("flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-12 text-center transition", drag ? "border-accent bg-accent/10" : "border-border hover:border-border-strong")}
       >
         <input type="file" accept="video/mp4,video/quicktime,video/webm" multiple className="sr-only" disabled={Boolean(busy)} onChange={(e) => { void upload(e.target.files); e.target.value = ""; }} />
         {busy ? <><Spinner /><span className="text-sm font-semibold">{busy}</span></> : (
@@ -132,7 +132,7 @@ function JobCard({ job: j, onRetry }: { job: JobView; onRetry: () => void }) {
   return (
     <li>
       <Card className="flex h-full flex-col gap-3 p-3">
-        <div className="relative flex h-80 items-center justify-center overflow-hidden rounded-xl bg-[#0d0b10]">
+        <div className="relative flex h-80 items-center justify-center overflow-hidden rounded-xl bg-[#0a0a0a]">
           {url ? <video key={url} src={`${url}#t=0.1`} preload="metadata" controls playsInline className="h-full max-w-full object-contain" /> : null}
           {!done && j.stage !== "error" ? (
             <div className="absolute inset-x-2 top-2 flex"><Badge tone="accent" dot>{stageLabel(j)}</Badge></div>

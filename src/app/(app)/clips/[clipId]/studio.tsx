@@ -24,7 +24,7 @@ import { RenderFailure, prepareVideo, renderInBrowser, sklejkaProps } from "./me
 import { FileName } from "@/components/file-name";
 import { defaultFileName, downloadName, formatRatio } from "@/lib/files";
 
-const Preview = dynamic(() => import("./preview"), { ssr: false, loading: () => <div className="aspect-[4/5] w-full animate-pulse rounded-[18px] bg-surface-2" /> });
+const Preview = dynamic(() => import("./preview"), { ssr: false, loading: () => <div className="aspect-[4/5] w-full animate-pulse rounded-xl bg-surface-2" /> });
 
 type RenderReview = { score: number; verdict: string; issues: Array<{ t: string; severity: string; problem: string; fix: string }>; strengths: string[] } | null;
 
@@ -327,10 +327,10 @@ function Uploader({ data, disabled, onDone }: { data: StudioData; disabled: bool
               {c.fromLibrary || c.kind === "generated" ? (
                 <span className="absolute left-1 top-1 flex gap-1">
                   {c.kind === "generated" ? <span className="rounded-full bg-accent px-1.5 py-0.5 text-[9px] font-extrabold text-on-accent">AI</span> : null}
-                  {c.fromLibrary ? <span className="rounded-full bg-[#100c16]/80 px-1.5 py-0.5 text-[9px] font-bold">Biblioteka</span> : null}
+                  {c.fromLibrary ? <span className="rounded-full bg-[#0a0a0a]/80 px-1.5 py-0.5 text-[9px] font-bold">Biblioteka</span> : null}
                 </span>
               ) : null}
-              <div className="absolute inset-x-1 bottom-1 flex items-center gap-1 rounded-full bg-[#100c16]/80 px-2 py-0.5 text-[10px]">
+              <div className="absolute inset-x-1 bottom-1 flex items-center gap-1 rounded-full bg-[#0a0a0a]/80 px-2 py-0.5 text-[10px]">
                 <StatusDot status={c.status} />
                 <span className="truncate">{c.status === "error" ? c.error : c.name}</span>
               </div>

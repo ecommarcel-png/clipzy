@@ -6,8 +6,8 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Clipzy",
     start_url: "/brands",
     display: "standalone",
-    theme_color: "#FF5A1F",
-    background_color: "#18131F",
+    theme_color: "#0A0A0A",
+    background_color: "#0A0A0A",
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
