@@ -42,7 +42,7 @@ const GROUPS: Array<{ id: string; label: string; links: NavLink[] }> = [
       { href: "/clips", label: "Sklejki", icon: ICONS.clips },
       { href: "/ai-video", label: "AI nagrania", icon: ICONS.ai, soon: true },
       { href: "/image-ads", label: "Image ads", icon: ICONS.image },
-      { href: "/text-remover", label: "Usuwanie napisów", icon: ICONS.eraser, soon: true },
+      { href: "/text-remover", label: "Usuwanie napisów", icon: ICONS.eraser },
       { href: "/meta-ads", label: "Meta Ads", icon: ICONS.meta, soon: true },
     ],
   },

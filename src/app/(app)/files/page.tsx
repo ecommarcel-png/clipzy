@@ -50,7 +50,9 @@ export default async function FilesPage() {
       ? { href: `/clips/${r.clip_projects.id}`, label: "Otwórz sklejkę" }
       : r.image_ad_sets?.id
         ? { href: `/image-ads/${r.image_ad_sets.id}`, label: "Otwórz zestaw" }
-        : null,
+        : r.tool === "text-remover"
+          ? { href: "/text-remover", label: "Usuwanie napisów" }
+          : null,
     copy: r.meta?.copy ?? null,
     createdAt: r.created_at,
     review: typeof r.review?.score === "number" ? { score: r.review.score } : null,

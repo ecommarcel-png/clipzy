@@ -13,7 +13,7 @@ export const FAL_IMAGE_PRICE = 0.12;
 export type ImageJob = { requestId: string; statusUrl: string; responseUrl: string };
 export type ImageStatus = { state: "queued" | "running" | "done" | "failed"; url?: string; error?: string };
 
-async function call(apiKey: string, url: string, init?: RequestInit, timeout = 60_000) {
+export async function falCall(apiKey: string, url: string, init?: RequestInit, timeout = 60_000) {
   const res = await fetch(url, {
     ...init,
     headers: { Authorization: `Key ${apiKey}`, "Content-Type": "application/json", ...(init?.headers ?? {}) },
@@ -52,20 +52,20 @@ export async function submitImage(apiKey: string, r: { prompt: string; imageUrls
   const endpoint = refs.length ? FAL_IMAGE_EDIT : FAL_IMAGE;
   const body: Record<string, unknown> = { prompt: r.prompt, num_images: 1, aspect_ratio: "1:1", resolution: "2K", output_format: "jpeg", safety_tolerance: "5" };
   if (refs.length) body.image_urls = refs;
-  const json = await call(apiKey, `https://queue.fal.run/${endpoint}`, { method: "POST", body: JSON.stringify(body) });
+  const json = await falCall(apiKey, `https://queue.fal.run/${endpoint}`, { method: "POST", body: JSON.stringify(body) });
   const { request_id, status_url, response_url } = json as { request_id?: unknown; status_url?: unknown; response_url?: unknown };
   if (typeof request_id !== "string" || typeof status_url !== "string" || typeof response_url !== "string") throw new FalError("fal.ai nie przyjął zlecenia na zdjęcie.");
   return { requestId: request_id, statusUrl: status_url, responseUrl: response_url };
 }
 
 export async function imageStatus(apiKey: string, job: ImageJob): Promise<ImageStatus> {
-  const s = await call(apiKey, job.statusUrl);
+  const s = await falCall(apiKey, job.statusUrl);
   const status = String(s.status ?? "");
   if (status === "IN_QUEUE") return { state: "queued" };
   if (status === "IN_PROGRESS") return { state: "running" };
   if (status !== "COMPLETED") return { state: "failed", error: status || "nieznany status" };
   try {
-    const url = resultImage(await call(apiKey, job.responseUrl));
+    const url = resultImage(await falCall(apiKey, job.responseUrl));
     return url ? { state: "done", url } : { state: "failed", error: "brak obrazu w odpowiedzi" };
   } catch (e) {
     // e.g. a request blocked by the safety filter reports COMPLETED with an error body
@@ -75,7 +75,7 @@ export async function imageStatus(apiKey: string, job: ImageJob): Promise<ImageS
 
 /** Product photo without background (PNG with alpha). */
 export async function cutout(apiKey: string, imageUrl: string): Promise<string> {
-  const json = await call(apiKey, `https://fal.run/${FAL_CUTOUT}`, { method: "POST", body: JSON.stringify({ image_url: imageUrl, output_format: "png" }) }, 120_000);
+  const json = await falCall(apiKey, `https://fal.run/${FAL_CUTOUT}`, { method: "POST", body: JSON.stringify({ image_url: imageUrl, output_format: "png" }) }, 120_000);
   const url = resultImage(json);
   if (!url) throw new FalError("fal.ai nie zwrócił wyciętego produktu.");
   return url;

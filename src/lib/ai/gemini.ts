@@ -127,3 +127,87 @@ Oceń: hook 0–3 s (obraz + dźwięk + tekst), problem i efekt, czy każde uję
 Zwróć WYŁĄCZNIE JSON: {"score": 1-10, "verdict": "gotowe"|"do_poprawy", "issues": [{"t": "mm:ss", "severity": "krytyczna|ważna|drobna", "problem": str, "fix": str}], "strengths": [str]}. Pisz po polsku.`;
   return ask(apiKey, data, "video/mp4", prompt, RenderReview);
 }
+
+// ---------- text remover ----------
+
+/** Fast model for caption boxes: same answers as the default model here, ~14 s instead of ~3 min. */
+export const SCAN_MODEL = process.env.GEMINI_SCAN_MODEL ?? "gemini-3.7-flash";
+
+const Box = z.array(z.coerce.number()).length(4);
+export const CaptionScan = z.object({
+  frames: z.array(z.object({ i: z.coerce.number().int(), boxes: z.array(Box).default([]) })).default([]),
+  scenes: z.array(z.object({ shot: z.coerce.number().int(), background: z.string() })).default([]),
+});
+export type CaptionScan = z.infer<typeof CaptionScan>;
+
+/**
+ * Where the burned-in captions are, on frames sampled at `sampleFps`, plus — per shot — what the
+ * scene behind them looks like (an English prompt for the inpainting model).
+ */
+export async function scanCaptions(apiKey: string, frames: Buffer[], sampleFps: number, shots: Array<{ start: number; end: number }>): Promise<CaptionScan> {
+  const ai = client(apiKey);
+  const prompt = `Each image is one frame of a vertical video, sampled at ${sampleFps} fps (frame i is at t = (i-1)/${sampleFps} s).
+Find ALL overlaid caption text / burned-in text: TikTok/Reels-style captions, text stickers, subtitles, emojis that belong to the caption, watermarks with usernames.
+Ignore text that physically exists in the scene (product labels, logos printed on objects, signs on walls).
+Shots of the video (s): ${JSON.stringify(shots.map((s, k) => ({ shot: k, start: Number(s.start.toFixed(2)), end: Number(s.end.toFixed(2)) })))}.
+Return ONLY JSON: {"frames":[{"i":1,"boxes":[[ymin,xmin,ymax,xmax],...]}], "scenes":[{"shot":0,"background":"..."}]}
+- frames: EVERY frame, boxes normalised 0-1000, tight around each text line including emojis and the text outline/shadow. Empty list when there is no overlaid text.
+- scenes: for every shot that has overlaid text, one short English phrase describing ONLY the surfaces and textures directly underneath the text area — what an empty continuation of the background would look like there: wall colour, ceiling, out-of-focus light, hair, skin, sky (e.g. "a softly lit plain pink wall with blurry warm bokeh", "smooth blonde hair and a plain light grey ceiling"). NEVER name objects, products, tools, people's actions or anything else in the frame — the painter would draw them into the caption area. End with ", clean background, no text, no objects".`;
+  const parts = [{ text: prompt }, ...frames.flatMap((f, k) => [{ text: `frame ${k + 1}` }, { inlineData: { mimeType: "image/jpeg", data: f.toString("base64") } }])];
+  let lastErr: unknown = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const r = await ai.models.generateContent({ model: SCAN_MODEL, contents: [{ role: "user", parts }], config: { responseMimeType: "application/json", temperature: 0 } });
+      const parsed = CaptionScan.safeParse(parseJson(r.text ?? ""));
+      if (parsed.success) return parsed.data;
+      lastErr = new GeminiError("Gemini zwrócił wynik w złym formacie.");
+    } catch (e) {
+      lastErr = e;
+      if (/429|RESOURCE_EXHAUSTED|503|UNAVAILABLE|overloaded/i.test(String(e))) await new Promise((res) => setTimeout(res, 6000 * (attempt + 1)));
+      else if (!(e instanceof SyntaxError)) break;
+    }
+  }
+  throw lastErr instanceof GeminiError ? lastErr : friendly(lastErr);
+}
+
+export const FilmCheck = z.object({
+  frames: z.array(z.object({ i: z.coerce.number().int(), text: z.coerce.boolean().default(false), artifact: z.string().default("") })).default([]),
+});
+
+/**
+ * Kontroler of a cleaned film: frames (sampled at `sampleFps`) where overlaid text is still visible
+ * or where the repainted strip (top `band.from`–`band.to` of the frame height, 0–1) shows something
+ * that does not belong in the scene. Returns the times (s).
+ */
+export async function checkCleanFilm(apiKey: string, pairs: Array<{ original: Buffer; cleaned: Buffer }>, sampleFps: number, band: { from: number; to: number }): Promise<{ text: number[]; artifacts: Array<{ t: number; what: string }> }> {
+  const ai = client(apiKey);
+  const prompt = `Frames of a vertical ad video, sampled at ${sampleFps} fps (frame i is at t = (i-1)/${sampleFps} s). For each frame you get the ORIGINAL (with burned-in captions) and the CLEANED version, where an AI removed the captions by repainting the horizontal strip from ${Math.round(band.from * 100)}% to ${Math.round(band.to * 100)}% of the frame height.
+For EVERY frame report, judging the CLEANED version:
+- "text": true if ANY of the overlaid caption text, letters or caption emojis is still visible (even partly or faded). Ignore text physically in the scene (product labels, logos).
+- "artifact": a short description ONLY if the cleaned strip shows something that is NOT in the original and does not belong in the scene: a coloured blob, a new object (e.g. a green clip on the hair), glowing spots, smears, broken or doubled shapes. Anything that is also in the original (the product, hands, hair, furniture) is NOT an artifact. Empty string when the strip looks natural.
+Return ONLY JSON: {"frames":[{"i":1,"text":false,"artifact":""}, ...]}`;
+  const parts = [{ text: prompt }, ...pairs.flatMap((p, k) => [
+    { text: `frame ${k + 1} ORIGINAL` }, { inlineData: { mimeType: "image/jpeg", data: p.original.toString("base64") } },
+    { text: `frame ${k + 1} CLEANED` }, { inlineData: { mimeType: "image/jpeg", data: p.cleaned.toString("base64") } },
+  ])];
+  let lastErr: unknown = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const r = await ai.models.generateContent({ model: SCAN_MODEL, contents: [{ role: "user", parts }], config: { responseMimeType: "application/json", temperature: 0 } });
+      const parsed = FilmCheck.safeParse(parseJson(r.text ?? ""));
+      if (parsed.success) {
+        const t = (i: number) => (i - 1) / sampleFps;
+        return {
+          text: parsed.data.frames.filter((f) => f.text).map((f) => t(f.i)),
+          artifacts: parsed.data.frames.filter((f) => f.artifact.trim()).map((f) => ({ t: t(f.i), what: f.artifact.trim() })),
+        };
+      }
+      lastErr = new GeminiError("Gemini zwrócił wynik w złym formacie.");
+    } catch (e) {
+      lastErr = e;
+      if (/429|RESOURCE_EXHAUSTED|503|UNAVAILABLE|overloaded/i.test(String(e))) await new Promise((res) => setTimeout(res, 6000 * (attempt + 1)));
+      else if (!(e instanceof SyntaxError)) break;
+    }
+  }
+  throw lastErr instanceof GeminiError ? lastErr : friendly(lastErr);
+}

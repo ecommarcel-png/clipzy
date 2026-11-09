@@ -59,7 +59,19 @@ Każdy profil marki i produktu przechodzi pętlę jakości (`knowledge/rezyser/S
 
 Gotowe grafiki trafiają do **Twoich plików** (z copy do skopiowania). Na karcie kreacji: pobieranie 1:1 / 9:16, copy z „Kopiuj”, **Edytuj** (teksty, wygląd, copy — bez AI, przerysowuje się od razu) i **Przegeneruj**. Strona musi być otwarta, gdy zespół pracuje; po powrocie wznawia od miejsca, w którym skończył. Baza wiedzy agentów: `knowledge/image-ads/SKILL.md`. Klucze: Anthropic i fal. Koszt: ok. 0,12 $ za zdjęcie AI (przed/po = 2) + Claude.
 
-W kolejnych etapach: AI nagrania, usuwanie napisów, integracja z Meta API.
+## Usuwanie napisów
+
+**Usuwanie napisów:** wrzucasz kilka filmów naraz (do 10, każdy do 60 s), a Clipzy zamalowuje wypalone napisy (np. z TikToka):
+
+1. **Gemini** (`gemini-3.7-flash`, ~15 s) wykrywa napisy na klatkach co 0,5 s i opisuje tło pod nimi; ffmpeg znajduje cięcia ujęć.
+2. Z filmu wycinany jest tylko pas z napisami, dzielony na kawałki ≤ 77 klatek, nigdy przez cięcie ujęcia (krótkie ujęcia dopełniane kopią ostatniej klatki — maska też).
+3. **fal.ai VOID** (z dopracowaniem, ~0,10 $ za kawałek) zamalowuje napis według maski (czarny = usuń).
+4. Wynik wraca tylko w miejsce napisów (miękka krawędź); reszta obrazu i dźwięk zostają oryginalne.
+5. **Kontroler (Gemini)** porównuje gotowy film z oryginałem: kawałki z resztką napisu albo dorysowanym przedmiotem idą do poprawki (do 2 razy, z innym ziarnem).
+
+Gotowe filmy trafiają do „Twoich plików”. Czas zależy od limitu równoczesnych zleceń konta fal (nowe konto: 2 naraz; limit rośnie z wydatkami, do 40). Migracja: `0007_text_remover.sql`. Klucze: Gemini i fal.
+
+W kolejnych etapach: AI nagrania, integracja z Meta API.
 
 ## Wdrożenie (jednorazowo)
 
@@ -71,7 +83,8 @@ W kolejnych etapach: AI nagrania, usuwanie napisów, integracja z Meta API.
    - `0003_clips.sql` — projekty sklejek, ich pliki oraz zgoda na wideo i audio w magazynie `media`,
    - `0004_library.sql` — biblioteka materiałów (nagrania i ujęcia AI do ponownego użycia),
    - `0005_files.sql` — „Twoje pliki”: archiwum gotowych reklam (zostają po usunięciu sklejki lub marki),
-   - `0006_image_ads.sql` — image ads: zestawy reklam graficznych (1:1 + 9:16 + copy).
+   - `0006_image_ads.sql` — image ads: zestawy reklam graficznych (1:1 + 9:16 + copy),
+   - `0007_text_remover.sql` — usuwanie napisów z filmów.
 2. **Authentication → URL Configuration:**
    - *Site URL:* adres strony na Vercelu, np. `https://clipzy.vercel.app`
    - *Redirect URLs:* dodaj `https://clipzy.vercel.app/auth/confirm`

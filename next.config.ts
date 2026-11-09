@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
     "/clips/**": ["./node_modules/ffmpeg-static/ffmpeg"],
     // Image ads: graphics are drawn on the server with these fonts (Polish letters).
     "/image-ads/**": ["./assets/fonts/*.ttf"],
+    // Text remover: cuts, masks and the final film are made with ffmpeg on the server.
+    "/text-remover": ["./node_modules/ffmpeg-static/ffmpeg"],
   },
   // Native binary + its path resolution must stay outside the bundle.
   serverExternalPackages: ["ffmpeg-static"],
