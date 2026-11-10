@@ -6,18 +6,19 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
 import { Badge, Button, Card, Disclosure, Notice, Spinner, Textarea, cx } from "@/components/ui";
 import { FORMAT_SIZE, FPS, type EditPlan, type Format } from "@/lib/clips/plan";
-import { editCaptions, finalize, normalizeMix, setPackshot, type Mix } from "@/lib/clips/edit";
+import { editCaptions, finalize, normalizeMix, setPackshot, swapSource, type Mix, type Side } from "@/lib/clips/edit";
+import { spokenBetween } from "@/lib/clips/new-shot";
 import { composeVariant, decomposeVariant } from "@/lib/clips/variants";
 import type { PlayerRef } from "@remotion/player";
 import type { CaptionChunk, VoSegment } from "@/lib/clips/timeline";
 import type { ControlReport } from "@/lib/ai/control";
 import { plural } from "@/lib/plural";
 import {
-  analyzeBatchAction, feedbackAction, missingAction, planAction, pollAction, registerUploads, restoreDirectorAction, reviewRenderAction, saveEditsAction,
+  analyzeBatchAction, feedbackAction, missingAction, newShotAction, newShotStatusAction, planAction, pollAction, registerUploads, restoreDirectorAction, reviewRenderAction, saveEditsAction,
   pipelineStateAction, saveRenderAction, scriptAction, voiceoverAction,
 } from "../actions";
 import { nextStep } from "@/lib/clips/steps";
-import { QuickEdit, type Draft } from "./quick-edit";
+import { QuickEdit, type Draft, type ShotJob } from "./quick-edit";
 import { ScriptCard as VoiceScriptCard, type ScriptView } from "./script-card";
 import { getVoice } from "@/lib/voices";
 import { RenderFailure, prepareVideo, renderInBrowser, sklejkaProps } from "./media";
@@ -58,13 +59,17 @@ export type StudioData = {
   brand: { name: string; logoUrl: string | null; accent: string; swatches: string[]; logoColors: string[] };
   product: { name: string | null };
   packshotUrl: string | null;
+  /** what this sklejka is about (picked in the form) */
+  focus: { problems: string[]; angles: string[] } | null;
+  /** all sklejki of the series (this one included), in order; empty outside a series */
+  batch: Array<{ id: string; name: string; index: number; status: string; hasPlan: boolean; scriptWaiting: boolean; focus: { problems: string[]; angles: string[] } | null }>;
 };
 
 // a voiceover file is needed only when the user brings their own recording
 const needsVoFile = (p: StudioData["project"]) => p.settings.voiceover && p.settings.voiceover_mode !== "generate";
 
 const RUNNING = new Set(["analyzing", "generating", "planning"]);
-const MAX_STEPS = 120; // safety net: a sklejka needs ~10–30 steps
+const MAX_STEPS = 120; // safety net per sklejka: one needs ~10–30 steps
 const MAX_TRIES = 2; // the same step failing twice in a row (e.g. a timeout) stops the loop
 
 export function Studio({ data }: { data: StudioData }) {
@@ -82,44 +87,20 @@ export function Studio({ data }: { data: StudioData }) {
 
   // One step at a time: read the real state from the server, do the next step, repeat.
   // (Server Actions run one at a time per tab anyway; parallel work happens on the server.)
+  // In a series this sklejka goes first, then the others in turn — they share the materials.
+  const series = data.batch.filter((b) => b.id !== p.id);
   const runPipeline = useCallback(async () => {
     if (looping.current) return;
     looping.current = true;
     setRunning(true);
     setError(null);
-    const tries = new Map<string, number>();
     const note = (m: string) => setLog((l) => [...l, m]);
     try {
-      for (let i = 0; i < MAX_STEPS; i++) {
-        const st = await pipelineStateAction(p.id);
-        if (!st.ok) throw new Error(st.error);
-        const step = nextStep(st.state);
-        if (step.kind === "done" || step.kind === "wait_user") break; // wait_user: the script card takes over
-        const key = step.kind === "analyze" ? `analyze:${step.ids.join(",")}` : step.kind;
-        const n = (tries.get(key) ?? 0) + 1;
-        tries.set(key, n);
-        if (n > MAX_TRIES && step.kind !== "poll") throw new Error("Ten krok nie przechodzi — spróbuj ponownie za chwilę albo sprawdź pliki.");
-        try {
-          if (step.kind === "analyze") {
-            const r = await analyzeBatchAction(p.id, step.ids);
-            if (!r.ok) throw new Error(r.error);
-            for (const f of r.failed ?? []) note(`${f.name}: ${f.error}`);
-          } else if (step.kind === "poll") {
-            await new Promise((res) => setTimeout(res, 8000));
-            const r = await pollAction(p.id);
-            if (!r.ok) throw new Error(r.error);
-          } else {
-            const fn = step.kind === "script" ? scriptAction : step.kind === "voiceover" ? voiceoverAction : step.kind === "missing" ? missingAction : planAction;
-            const r = await fn(p.id);
-            if (!r.ok) throw new Error(r.error);
-            if (r.message) note(r.message);
-          }
-        } catch (e) {
-          // a dropped connection or a server timeout: try the same step once more
-          if (n >= MAX_TRIES) throw e;
-          note(`Ponawiam: ${e instanceof Error ? e.message : String(e)}`);
-        }
-        router.refresh(); // only for the view; decisions use pipelineStateAction
+      await runOne(p.id, "", note, true);
+      for (const s of series) {
+        if (s.hasPlan) continue;
+        await runOne(s.id, `Sklejka ${s.index}: `, note, false).catch((e) => note(`Sklejka ${s.index}: ${e instanceof Error ? e.message : String(e)}`));
+        router.refresh();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -128,6 +109,51 @@ export function Studio({ data }: { data: StudioData }) {
       setRunning(false);
       router.refresh();
     }
+
+    async function runOne(id: string, prefix: string, note: (m: string) => void, own: boolean) {
+      const tries = new Map<string, number>();
+      for (let i = 0; i < MAX_STEPS; i++) {
+        const st = await pipelineStateAction(id);
+        if (!st.ok) throw new Error(st.error);
+        // a sklejka of the series without materials or without its voiceover file waits for the user
+        if (!own && st.blocked) {
+          note(`${prefix}${st.blocked === "no_media" ? "czeka na nagrania" : "czeka na plik lektora"}`);
+          return;
+        }
+        const step = nextStep(st.state);
+        if (step.kind === "done") return;
+        if (step.kind === "wait_user") {
+          if (!own) note(`${prefix}skrypt gotowy — otwórz sklejkę, popraw i kliknij „Generuj lektora”`);
+          return; // the script card takes over
+        }
+        const key = step.kind === "analyze" ? `analyze:${step.ids.join(",")}` : step.kind;
+        const n = (tries.get(key) ?? 0) + 1;
+        tries.set(key, n);
+        if (n > MAX_TRIES && step.kind !== "poll") throw new Error("Ten krok nie przechodzi — spróbuj ponownie za chwilę albo sprawdź pliki.");
+        try {
+          if (step.kind === "analyze") {
+            const r = await analyzeBatchAction(id, step.ids);
+            if (!r.ok) throw new Error(r.error);
+            for (const f of r.failed ?? []) note(`${f.name}: ${f.error}`);
+          } else if (step.kind === "poll") {
+            await new Promise((res) => setTimeout(res, 8000));
+            const r = await pollAction(id);
+            if (!r.ok) throw new Error(r.error);
+          } else {
+            const fn = step.kind === "script" ? scriptAction : step.kind === "voiceover" ? voiceoverAction : step.kind === "missing" ? missingAction : planAction;
+            const r = await fn(id);
+            if (!r.ok) throw new Error(r.error);
+            if (r.message) note(`${prefix}${r.message}`);
+          }
+        } catch (e) {
+          // a dropped connection or a server timeout: try the same step once more
+          if (n >= MAX_TRIES) throw e;
+          note(`${prefix}Ponawiam: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        router.refresh(); // only for the view; decisions use pipelineStateAction
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the series list only matters at start
   }, [p.id, router]);
 
   // the page was reloaded while the Reżyser was working — carry on
@@ -188,9 +214,52 @@ export function Studio({ data }: { data: StudioData }) {
             </ul>
           </Card>
         ) : null}
+        {data.focus && (data.focus.angles.length || data.focus.problems.length) ? <FocusCard focus={data.focus} /> : null}
+        {data.batch.length > 1 ? <SeriesCard batch={data.batch} current={p.id} running={running} /> : null}
         {p.voiceover?.feedback ? <ScriptCard vo={p.voiceover} /> : null}
       </aside>
     </div>
+  );
+}
+
+function FocusCard({ focus }: { focus: NonNullable<StudioData["focus"]> }) {
+  return (
+    <Card className="py-4">
+      <div className="text-sm font-bold">O czym jest ta sklejka</div>
+      <ul className="mt-2 space-y-1.5 text-xs text-muted">
+        {focus.angles.map((a) => <li key={`a${a}`}><span className="text-faint">Kąt:</span> {a}</li>)}
+        {focus.problems.map((x) => <li key={`p${x}`}><span className="text-faint">Problem:</span> {x}</li>)}
+      </ul>
+    </Card>
+  );
+}
+
+function SeriesCard({ batch, current, running }: { batch: StudioData["batch"]; current: string; running: boolean }) {
+  const label = (b: StudioData["batch"][number]) =>
+    b.hasPlan ? { text: b.status === "rendered" ? "Gotowa" : "Do renderu", tone: "ok" as const }
+      : b.scriptWaiting ? { text: "Skrypt czeka na Ciebie", tone: "warn" as const }
+        : b.status === "error" ? { text: "Błąd", tone: "danger" as const }
+          : RUNNING.has(b.status) ? { text: "W toku", tone: "accent" as const }
+            : { text: "W kolejce", tone: "neutral" as const };
+  return (
+    <Card className="py-4">
+      <div className="text-sm font-bold">Seria: {batch.length} {plural(batch.length, "sklejka", "sklejki", "sklejek")}</div>
+      <p className="mt-1 text-xs text-faint">Wspólne nagrania. Reżyser robi je po kolei — zacznij tutaj, resztę weźmie sam{running ? "" : " po kliknięciu „Zrób sklejkę”"}.</p>
+      <ul className="mt-3 space-y-1.5">
+        {batch.map((b) => {
+          const st = label(b);
+          return (
+            <li key={b.id}>
+              <a href={`/clips/${b.id}`} aria-current={b.id === current ? "page" : undefined} className={cx("flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors", b.id === current ? "bg-surface-2" : "hover:bg-surface-2")}>
+                <span className="w-5 shrink-0 text-xs text-faint">{b.index}.</span>
+                <span className="min-w-0 flex-1 truncate" title={b.name}>{b.focus?.angles[0] ?? b.focus?.problems[0] ?? b.name}</span>
+                <Badge tone={st.tone} dot>{st.text}</Badge>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
   );
 }
 
@@ -406,6 +475,65 @@ function Result({ data, renders, onChanged }: { data: StudioData; renders: Studi
   const setEditDraft = (d: Draft) => setDraft({ ...d, plan: k > 1 ? decomposeVariant(d.plan, draft.plan, k, hookEnds) : d.plan });
   const duration = plan.shots.reduce((m, s) => Math.max(m, s.end), 0);
 
+  // "Wygeneruj nowe ujęcie": the Reżyser writes it, fal makes it, then it replaces the shot by itself
+  const [jobs, setJobs] = useState<Array<ShotJob & { k: number; assetId?: string; applied?: boolean }>>([]);
+  const patch = (i: number, side: Side, kk: number, v: Partial<ShotJob & { assetId: string; applied: boolean }>) =>
+    setJobs((all) => all.map((j) => (j.i === i && j.side === side && j.k === kk ? { ...j, ...v } : j)));
+  async function newShot(i: number, side: Side, note: string) {
+    const shot = plan.shots[i];
+    if (!shot || shot.type === "packshot") return;
+    const kk = k;
+    const current = shot.type === "clip" ? shot.src.asset : side === "bottom" ? shot.bottom.asset : shot.top.asset;
+    setJobs((all) => [...all.filter((j) => !(j.i === i && j.side === side && j.k === kk)), { i, side, k: kk, state: "starting" }]);
+    const r = await newShotAction(p.id, { start: shot.start, end: shot.end, say: spokenBetween(props.captions, shot.start, shot.end), note, current });
+    if (!r.ok || !r.assetId) return patch(i, side, kk, { state: "error", error: r.ok ? "fal.ai nie przyjął zlecenia." : r.error });
+    patch(i, side, kk, { state: "generating", purpose: r.message, assetId: r.assetId });
+    onChanged(); // the shot shows in the AI list at once
+    for (let n = 0; n < 90; n++) {
+      await new Promise((res) => setTimeout(res, 8000));
+      const st = await newShotStatusAction(p.id, r.assetId);
+      if (!st.ok) continue; // a dropped request: ask again next time
+      if (st.state === "generating") continue;
+      if (st.state === "error") return patch(i, side, kk, { state: "error", error: st.error });
+      onChanged(); // the new file (link, length) arrives with the refresh; the swap waits for it
+      return patch(i, side, kk, { state: "ready" });
+    }
+    patch(i, side, kk, { state: "error", error: "fal.ai generuje to ujęcie wyjątkowo długo — zajrzyj tu za kilka minut, trafi na listę plików." });
+  }
+  // the page was reloaded while a new shot was being made: finish it in the background
+  // (it lands in the list of files; the user picks it in the shot's file menu)
+  useEffect(() => {
+    const pending = data.assets.filter((a) => a.kind === "generated" && (a.status === "generating" || a.status === "uploaded")).map((a) => a.id);
+    if (!pending.length) return;
+    let stop = false;
+    void (async () => {
+      let left = pending;
+      for (let n = 0; n < 90 && left.length && !stop; n++) {
+        await new Promise((res) => setTimeout(res, 8000));
+        const next: string[] = [];
+        for (const id of left) {
+          const st = await newShotStatusAction(p.id, id);
+          if (st.ok && st.state === "generating") next.push(id);
+        }
+        if (next.length < left.length) onChanged();
+        left = next;
+      }
+    })();
+    return () => {
+      stop = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, for what was pending when the page opened
+  }, []);
+
+  // a finished shot goes into its place once the refreshed list has it (state adjusted while
+  // rendering, guarded by `applied`, so it happens exactly once)
+  const readyJob = jobs.find((j) => j.state === "ready" && !j.applied && j.k === k && j.assetId && mediaAssets.some((a) => a.id === j.assetId));
+  if (readyJob?.assetId) {
+    const shot = plan.shots[readyJob.i];
+    if (shot && shot.type !== "packshot") setEditDraft({ ...editDraft, plan: finalize(swapSource(plan, readyJob.i, readyJob.assetId, infos, readyJob.side), infos).plan });
+    patch(readyJob.i, readyJob.side, readyJob.k, { applied: true });
+  }
+
   async function save(refresh = true): Promise<boolean> {
     setSaving(true);
     setMessage(null);
@@ -485,6 +613,8 @@ function Result({ data, renders, onChanged }: { data: StudioData; renders: Studi
           else setMessage({ tone: "danger", text: r.error });
         }}
         onSeek={seek}
+        jobs={jobs.filter((j) => j.k === k)}
+        onNewShot={(i, side, note) => void newShot(i, side, note)}
       />
 
       {renders.length ? <Renders renders={renders} projectId={p.id} onChanged={onChanged} /> : null}

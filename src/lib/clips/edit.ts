@@ -47,7 +47,7 @@ export function resizeShot(plan: EditPlan, i: number, delta: number): EditPlan {
   return p;
 }
 
-type Side = "main" | "top" | "bottom";
+export type Side = "main" | "top" | "bottom";
 
 function srcOf(shot: Shot, side: Side) {
   if (shot.type === "clip") return shot.src;

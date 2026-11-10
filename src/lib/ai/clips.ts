@@ -6,6 +6,7 @@ import { clipsKnowledge, knowledgeText } from "@/lib/knowledge";
 import { EditPlan, ICONS, cleanIntervals, type AssetInfo } from "@/lib/clips/plan";
 import type { Phrase } from "@/lib/clips/timeline";
 import type { ClipAnalysis } from "./gemini";
+import { focusBlock, type Focus } from "@/lib/clips/focus";
 
 // Claude as the Reżyser of a sklejka: what is missing, the edit plan, the
 // Kontroler review and turning user feedback into lasting brand preferences.
@@ -20,6 +21,8 @@ export type ClipsContext = {
   hasPackshot: boolean;
   /** hook versions: text and where each version's hook ends (seconds, after pause cutting) */
   hooks?: Array<{ wersja: number; tekst: string; koniec_s: number }>;
+  /** problems / angles the user picked for this sklejka */
+  focus?: Focus;
 };
 
 function round(n: number) {
@@ -50,7 +53,7 @@ export function contextBlock(ctx: ClipsContext): string {
 <biblioteka_sfx>${JSON.stringify(ctx.library.sfx)}</biblioteka_sfx>
 <ustawienia>${JSON.stringify({ muzyka: ctx.settings.music, formaty: ctx.settings.formats, uwagi_uzytkownika: ctx.settings.notes, packshot_ze_zdjecia_produktu: ctx.hasPackshot })}</ustawienia>${
     ctx.hooks && ctx.hooks.length > 1 ? `\n<hooki>${JSON.stringify(ctx.hooks)}</hooki>` : ""
-  }`;
+  }${focusBlock(ctx.focus) ? `\n${focusBlock(ctx.focus)}` : ""}`;
 }
 
 // ---------- 1) missing shots ----------
@@ -85,6 +88,40 @@ export async function missingShots(apiKey: string, ctx: ClipsContext): Promise<M
         text: `${contextBlock(ctx)}
 
 Zadanie: sprawdź, czy każde ważne zdanie lektora (hook, problem, przed/po, efekt WOW, mechanizm) da się zilustrować DOSŁOWNIE nagraniami z <materialy>. Wygeneruj tylko to, czego naprawdę brakuje i co podniesie skuteczność (najczęściej: pokazanie problemu — np. podrażnienia, zacięcia, bólu, bałaganu — którego klient nie nagrał). Najwyżej 3 ujęcia, a jedno zlecenie może zawierać 2–3 krótkie ujęcia z twardymi cięciami (taniej). Nie generuj czegoś, co już jest w nagraniach — także w ujęciach AI z wcześniejszych sklejek (pliki typu generated z opisem celu): jeśli pasują do tego lektora, użyj ich zamiast generować nowe. Każde ujęcie kosztuje użytkownika kilka dolarów. Nie generuj fałszywych efektów działania produktu. Gdy nic nie brakuje — pusta lista.`,
+      },
+    ],
+  });
+}
+
+// ---------- 1b) one new shot on demand (editor: „Wygeneruj nowe ujęcie”) ----------
+
+export const NewShot = z.object({
+  purpose: z.string().describe("krótko po polsku: co pokazuje ujęcie (to zobaczy użytkownik na liście plików)"),
+  mode: z.enum(["t2v", "reference"]).describe("reference = w kadrze ma być produkt (zdjęcia produktu jako wzór); t2v = bez produktu (np. problem)"),
+  prompt: z.string().describe("prompt po angielsku dla Seedance 2.5: JEDNO ciągłe ujęcie bez cięć, pionowe 9:16, realistyczne, nagrane telefonem (UGC), co dokładnie w kadrze, ruch kamery, światło; bez tekstu, napisów i logo"),
+});
+export type NewShot = z.infer<typeof NewShot>;
+
+export async function designShot(
+  apiKey: string,
+  ctx: ClipsContext,
+  target: { start: number; end: number; say: string; note: string; current: string },
+): Promise<NewShot> {
+  const docs = await clipsKnowledge();
+  const ask = target.note.trim() ? `\n<prosba_uzytkownika>${target.note.trim()}</prosba_uzytkownika>` : "";
+  return structuredCall({
+    apiKey,
+    system: `${DIRECTOR}\n\n${knowledgeText(docs)}`,
+    schema: NewShot,
+    maxTokens: 3000,
+    content: [
+      {
+        type: "text",
+        text: `${contextBlock(ctx)}
+
+<ujecie_do_wymiany>${JSON.stringify({ od_s: round(target.start), do_s: round(target.end), lektor_mowi_wtedy: target.say || "(bez lektora w tym miejscu)", obecne_ujecie: target.current })}</ujecie_do_wymiany>${ask}
+
+Zadanie: użytkownik chce w tym miejscu reklamy NOWE ujęcie wygenerowane przez AI zamiast obecnego. Zaprojektuj jedno ujęcie, które DOSŁOWNIE ilustruje to, co lektor wtedy mówi (albo prośbę użytkownika — ona jest nadrzędna), inne niż obecne i niż nagrania z <materialy>. Problem pokazuj bez produktu (t2v); produkt w użyciu — reference. Nie pokazuj fałszywych efektów działania produktu.`,
       },
     ],
   });

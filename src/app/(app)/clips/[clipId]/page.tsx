@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { getBrand, getProduct, getProductImages } from "@/lib/data";
-import { loadProject } from "@/lib/clips/pipeline";
+import { batchSiblings, loadProject } from "@/lib/clips/pipeline";
 import { signedUrls } from "@/lib/storage";
 import { PageHeader } from "@/components/ui";
 import { BackLink } from "@/components/back-link";
@@ -26,11 +26,12 @@ export default async function ClipPage({ params }: PageProps<"/clips/[clipId]">)
 
   // independent reads in parallel — every round trip to the database adds up on each click
   const renders = assets.filter((a) => a.kind === "render" && a.path);
-  const [brand, product, images, stored] = await Promise.all([
+  const [brand, product, images, stored, siblings] = await Promise.all([
     getBrand(supabase, project.brand_id),
     project.product_id ? getProduct(supabase, project.brand_id, project.product_id).catch(() => null) : Promise.resolve(null),
     project.product_id ? getProductImages(supabase, project.product_id).catch(() => []) : Promise.resolve([]),
     fileNames(supabase, renders.map((a) => a.id)),
+    batchSiblings(supabase, project).catch(() => []),
   ]);
   // finished renders: the name from "Twoje pliki" (fallback: the default one) and a download link under that name
   const renderName = new Map(renders.map((a) => [a.id, stored.get(a.id) ?? defaultFileName({ brand: brand.name, product: product?.name, format: String(a.meta.format ?? "4x5"), variant: Number(a.meta.variant) || null })]));
@@ -84,6 +85,20 @@ export default async function ClipPage({ params }: PageProps<"/clips/[clipId]">)
     brand: { name: brand.name, logoUrl: brand.logo_path ? urls[brand.logo_path] ?? null : null, accent: colors.accent || colors.primary || "#7E9A86", swatches, logoColors: fromLogo },
     product: { name: product?.name ?? null },
     packshotUrl: images[0] ? urls[images[0].storage_path] ?? null : null,
+    focus: project.settings.focus ?? null,
+    batch: project.settings.batch
+      ? [project, ...siblings]
+          .map((s) => ({
+            id: s.id,
+            name: s.name,
+            index: s.settings.batch?.index ?? 0,
+            status: s.status,
+            hasPlan: Boolean(s.plan),
+            scriptWaiting: s.settings.script_status === "ready" && !s.voiceover,
+            focus: s.settings.focus ?? null,
+          }))
+          .sort((a, b) => a.index - b.index)
+      : [],
   };
 
   return (

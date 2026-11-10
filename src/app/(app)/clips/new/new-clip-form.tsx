@@ -7,8 +7,9 @@ import { FORMAT_SIZE, FORMATS } from "@/lib/clips/plan";
 import type { LibraryCard } from "@/lib/clips/library-view";
 import { LibraryPicker } from "./library-picker";
 import { VoicePicker } from "./voice-picker";
+import { FocusPicker, type ProductFocusOptions } from "./focus-picker";
 
-type Brand = { id: string; name: string; products: Array<{ id: string; name: string }> };
+type Brand = { id: string; name: string; products: Array<{ id: string; name: string } & Omit<ProductFocusOptions, "id">> };
 
 export function NewClipForm({
   brands, music, saved, initial, voices,
@@ -22,16 +23,20 @@ export function NewClipForm({
   const [productId, setProductId] = useState(products.find((p) => p.id === initial?.productId)?.id ?? products[0]?.id ?? "");
   const [voiceover, setVoiceover] = useState(true);
   const [voMode, setVoMode] = useState<"upload" | "generate">("generate");
+  const [count, setCount] = useState(1);
+  const product = products.find((p) => p.id === productId) ?? null;
   const brandItems = saved.filter((i) => i.brandId === brandId);
   const [chosen, setChosen] = useState(() => brandItems.filter((i) => i.productId === productId && productId).length);
   const pickBrand = (id: string) => {
     setBrandId(id);
     const first = brands.find((b) => b.id === id)?.products[0]?.id ?? "";
     setProductId(first);
+    setCount(1);
     setChosen(saved.filter((i) => i.brandId === id && i.productId === first && first).length);
   };
   const pickProduct = (id: string) => {
     setProductId(id);
+    setCount(1);
     setChosen(brandItems.filter((i) => i.productId === id && id).length);
   };
 
@@ -52,6 +57,8 @@ export function NewClipForm({
             </Select>
           </div>
         </div>
+
+        <FocusPicker key={`${brandId}:${productId}`} brandId={brandId} product={product} onCount={setCount} />
 
         {brandItems.length ? <LibraryPicker key={`${brandId}:${productId}`} items={brandItems} productId={productId} onCount={setChosen} /> : null}
 
@@ -131,7 +138,9 @@ export function NewClipForm({
         {state.error ? <Notice tone="danger">{state.error}</Notice> : null}
         <Button type="submit" disabled={pending || !brandId}>
           {pending ? <Spinner /> : null}
-          {chosen ? `Dalej: ${voiceover && voMode === "upload" ? "wgraj lektora" : "zrób sklejkę"}` : "Dalej: wgraj nagrania"}
+          {count > 1
+            ? `Dalej: ${chosen ? "zrób" : "wgraj nagrania do"} ${count} ${count < 5 ? "sklejki" : "sklejek"}`
+            : chosen ? `Dalej: ${voiceover && voMode === "upload" ? "wgraj lektora" : "zrób sklejkę"}` : "Dalej: wgraj nagrania"}
         </Button>
       </form>
     </Card>

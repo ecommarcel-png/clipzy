@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { userMessage } from "@/lib/errors";
 import {
-  analyzeAsset, applyFeedback, assetInfo, writeProjectScript, generateVoiceovers, loadProject, makePlan, pollGenerations, processVoiceover, requestMissing, reviewRendered,
+  advanceShot, analyzeAsset, applyFeedback, assetInfo, writeProjectScript, generateVoiceovers, loadProject, makePlan, pollGenerations, processVoiceover, requestMissing, requestShot, reviewRendered,
   type ClipSettings,
 } from "@/lib/clips/pipeline";
 import { FORMATS, EditPlan, sanitizePlan } from "@/lib/clips/plan";
@@ -21,6 +21,8 @@ import { signedUrls } from "@/lib/storage";
 import { defaultFileName } from "@/lib/files";
 import { recordFile } from "@/lib/files-store";
 import { getProviderKey } from "@/lib/api-keys";
+import { getProduct } from "@/lib/data";
+import { focusLabel, planFocus } from "@/lib/clips/focus";
 import type { Provider } from "@/lib/providers";
 
 export type StepResult = { ok: true; message?: string } | { ok: false; error: string };
@@ -52,26 +54,44 @@ export async function createClipProject(_: unknown, form: FormData): Promise<{ e
     formats: formats.length ? formats : ["4x5"],
     notes: String(form.get("notes") ?? "").slice(0, 1000),
   };
-  const id = randomUUID();
-  const { error } = await supabase.from("clip_projects").insert({
-    id,
-    user_id: user.id,
-    brand_id: brandId,
-    product_id: isUuid(productId) ? productId : null,
-    name: String(form.get("name") ?? "").slice(0, 80) || "Nowa sklejka",
-    settings,
+  // a series: N sklejki, each about the problems / angles picked for it (only values from the profile)
+  const product = isUuid(productId) ? await getProduct(supabase, brandId, productId).catch(() => null) : null;
+  const profile = {
+    problems: (product?.profile.problems ?? []).map(String),
+    angles: (product?.profile.ad_angles ?? []).map((a) => (typeof a === "string" ? a : a.angle)).filter(Boolean),
+  };
+  const count = Number(form.get("count") ?? 1);
+  const focus = planFocus(
+    count,
+    Array.from({ length: 5 }, (_, i) => ({ problems: form.getAll(`focus_${i}_problems`), angles: form.getAll(`focus_${i}_angles`) })),
+    profile,
+  );
+  const batchId = randomUUID();
+  const base = String(form.get("name") ?? "").replace(/\s+/g, " ").trim().slice(0, 60) || "Nowa sklejka";
+  const projects = focus.map((f, i) => {
+    const label = focusLabel(f);
+    const name = focus.length > 1 ? `${base} ${i + 1}/${focus.length}${label ? ` — ${label}` : ""}` : label && base === "Nowa sklejka" ? `Sklejka — ${label}` : base;
+    return {
+      id: randomUUID(),
+      user_id: user.id,
+      brand_id: brandId,
+      product_id: product ? productId : null,
+      name: name.slice(0, 80),
+      settings: { ...settings, focus: f, ...(focus.length > 1 ? { batch: { id: batchId, index: i + 1, total: focus.length } } : {}) },
+    };
   });
+  const { error } = await supabase.from("clip_projects").insert(projects);
   if (error) return { error: /relation|does not exist/i.test(error.message) ? "Uruchom w Supabase migrację 0003_clips.sql (instrukcja w README)." : error.message };
   // saved materials chosen in the form: ready at once, no analysis or generation to pay for again
   const fromLibrary = form.getAll("library").map(String).filter(isUuid).slice(0, 60);
   if (fromLibrary.length) {
     try {
-      await attachLibrary(supabase, user.id, { id, brand_id: brandId }, fromLibrary);
+      for (const pr of projects) await attachLibrary(supabase, user.id, { id: pr.id, brand_id: brandId }, fromLibrary);
     } catch (e) {
       return { error: `Nie udało się dodać materiałów z biblioteki: ${userMessage(e)}` };
     }
   }
-  redirect(`/clips/${id}`);
+  redirect(`/clips/${projects[0].id}`);
 }
 
 export async function registerUploads(projectId: string, files: Array<{ id: string; path: string; name: string; kind: "clip" | "voiceover" }>): Promise<StepResult> {
@@ -100,10 +120,16 @@ async function withProject<T>(projectId: string, fn: (ctx: Awaited<ReturnType<ty
 }
 
 // Fresh server state for the pipeline loop — the next step is never decided from stale UI data.
-export async function pipelineStateAction(projectId: string): Promise<{ ok: true; state: PipelineState } | { ok: false; error: string }> {
+export async function pipelineStateAction(projectId: string): Promise<{ ok: true; state: PipelineState; blocked: "no_media" | "no_voiceover" | null } | { ok: false; error: string }> {
   return withProject(projectId, async ({ data }) => {
     const { project, assets } = data;
     const vo = assets.find((a) => a.kind === "voiceover");
+    // what only the user can unblock (a sklejka of a series is not started without it)
+    const blocked = !assets.some((a) => a.kind === "clip" || a.kind === "generated")
+      ? ("no_media" as const)
+      : project.settings.voiceover && project.settings.voiceover_mode !== "generate" && !vo
+        ? ("no_voiceover" as const)
+        : null;
     const state: PipelineState = {
       assets: assets.map((a) => ({ id: a.id, kind: a.kind, status: a.status })),
       voiceover: project.voiceover
@@ -115,8 +141,8 @@ export async function pipelineStateAction(projectId: string): Promise<{ ok: true
       generating: assets.some((a) => a.kind === "generated" && a.status === "generating"),
       hasPlan: Boolean(project.plan),
     };
-    return { ok: true as const, state };
-  }) as Promise<{ ok: true; state: PipelineState } | { ok: false; error: string }>;
+    return { ok: true as const, state, blocked };
+  }) as Promise<{ ok: true; state: PipelineState; blocked: "no_media" | "no_voiceover" | null } | { ok: false; error: string }>;
 }
 
 // Several clips at once inside ONE action: the client dispatches actions one at a time,
@@ -180,6 +206,29 @@ export async function pollAction(projectId: string): Promise<StepResult & { pend
     const r = await pollGenerations(supabase, user.id, data.project, data.assets);
     return { ok: true as const, pending: r.pending };
   }) as Promise<StepResult & { pending?: number }>;
+}
+
+// Editor: "Wygeneruj nowe ujęcie" for one place of the ad.
+export async function newShotAction(
+  projectId: string,
+  target: { start: number; end: number; say: string; note: string; current: string | null },
+): Promise<StepResult & { assetId?: string }> {
+  return withProject(projectId, async ({ supabase, user, data }) => {
+    if (!data.project.plan) return { ok: false as const, error: "Ta sklejka nie ma jeszcze planu." };
+    const start = Math.max(0, Number(target.start) || 0);
+    const end = Math.max(start + 0.3, Number(target.end) || 0);
+    const current = target.current && isUuid(target.current) ? target.current : null;
+    const r = await requestShot(supabase, user.id, data.project, data.assets, { start, end, say: String(target.say ?? ""), note: String(target.note ?? ""), current });
+    return { ok: true as const, assetId: r.id, message: r.purpose };
+  }) as Promise<StepResult & { assetId?: string }>;
+}
+
+export async function newShotStatusAction(projectId: string, assetId: string): Promise<{ ok: true; state: "generating" | "ready" | "error"; error?: string } | { ok: false; error: string }> {
+  return withProject(projectId, async ({ supabase, user, data }) => {
+    const a = data.assets.find((x) => x.id === assetId && x.kind === "generated");
+    if (!a) return { ok: false as const, error: "Nie znaleziono ujęcia." };
+    return { ok: true as const, ...(await advanceShot(supabase, user.id, data.project, a)) };
+  }) as Promise<{ ok: true; state: "generating" | "ready" | "error"; error?: string } | { ok: false; error: string }>;
 }
 
 export async function planAction(projectId: string): Promise<StepResult> {

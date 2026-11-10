@@ -14,7 +14,7 @@ import { posterPathFor, saveToLibrary } from "@/lib/clips/library-store";
 import { analyzeClip, reviewRender, type ClipAnalysis, type RenderReview } from "@/lib/ai/gemini";
 import { transcribe } from "@/lib/ai/scribe";
 import { submitShot, shotStatus } from "@/lib/ai/fal";
-import { missingShots, planEdit, reviewPlan, scriptFeedback, interpretFeedback, type ClipsContext, type ScriptFeedback } from "@/lib/ai/clips";
+import { designShot, missingShots, planEdit, reviewPlan, scriptFeedback, interpretFeedback, type ClipsContext, type ScriptFeedback } from "@/lib/ai/clips";
 import { controlLoop, type ControlReport } from "@/lib/ai/control";
 import { tighten, captionChunks, type TightTimeline, type CaptionChunk, type Word } from "@/lib/clips/timeline";
 import { cleanIntervals, sanitizePlan, type AssetInfo, type EditPlan } from "@/lib/clips/plan";
@@ -24,6 +24,8 @@ import { fixBrandName } from "@/lib/clips/names";
 import { writeScript, HOOK_VARIANTS, type Script } from "@/lib/ai/script";
 import { getVoice } from "@/lib/voices";
 import { UserError } from "@/lib/errors";
+import type { Batch, Focus } from "@/lib/clips/focus";
+import { shotSeconds } from "@/lib/clips/new-shot";
 
 export type ClipAssetRow = {
   id: string;
@@ -53,6 +55,10 @@ export type ClipSettings = {
   /** generated voiceover: the Reżyser's script, editable until "Generuj lektora" */
   script?: Script;
   script_status?: "ready" | "voiced";
+  /** what this sklejka is about — picked in the form (empty: the Reżyser chooses) */
+  focus?: Focus;
+  /** sklejki made together share their materials and run one after another */
+  batch?: Batch;
 };
 
 export type VoVariant = { asset_id: string; words: Word[]; timeline: TightTimeline; captions: CaptionChunk[]; hookEnd: number; hookText: string };
@@ -154,12 +160,51 @@ export async function analyzeAsset(supabase: SupabaseClient, project: ClipProjec
     }
     await supabase.from("clip_assets").update({ status: "ready", meta, analysis, error: null }).eq("id", asset.id);
     await saveToLibrary(supabase, project, { ...asset, meta, analysis });
+    // a series: the other sklejki get the analysed file as it is (no second analysis)
+    await shareWithBatch(supabase, project, { ...asset, meta, analysis }).catch((e) => console.error("batch share", e));
   } catch (e) {
     await supabase.from("clip_assets").update({ status: "error", error: e instanceof Error ? e.message : String(e) }).eq("id", asset.id);
     throw e;
   } finally {
     unlink(tmp.file).catch(() => {});
   }
+}
+
+/** Sklejki of the same series (without this one). */
+export async function batchSiblings(supabase: SupabaseClient, project: Pick<ClipProjectRow, "id" | "settings">) {
+  const batch = project.settings.batch;
+  if (!batch) return [];
+  const { data } = await supabase
+    .from("clip_projects")
+    .select("id, name, status, settings, plan, voiceover")
+    .eq("settings->batch->>id", batch.id)
+    .neq("id", project.id);
+  return ((data ?? []) as Array<Pick<ClipProjectRow, "id" | "name" | "status" | "settings" | "plan" | "voiceover">>).sort(
+    (a, b) => (a.settings.batch?.index ?? 0) - (b.settings.batch?.index ?? 0),
+  );
+}
+
+// An analysed upload or AI shot goes to every sklejka of the series that is still being made.
+async function shareWithBatch(supabase: SupabaseClient, project: ClipProjectRow, asset: ClipAssetRow) {
+  if ((asset.kind !== "clip" && asset.kind !== "generated") || !asset.path) return;
+  const open = (await batchSiblings(supabase, project)).filter((s) => !s.plan);
+  if (!open.length) return;
+  const { data: have } = await supabase.from("clip_assets").select("project_id").eq("path", asset.path).in("project_id", open.map((s) => s.id));
+  const taken = new Set((have ?? []).map((r) => r.project_id as string));
+  const { data: me } = await supabase.from("clip_assets").select("library_id").eq("id", asset.id).maybeSingle();
+  const rows = open
+    .filter((s) => !taken.has(s.id))
+    .map((s) => ({
+      project_id: s.id,
+      kind: asset.kind,
+      path: asset.path,
+      name: asset.name,
+      status: "ready",
+      meta: { ...asset.meta, from_library: true, shared_from: project.id },
+      analysis: asset.analysis,
+      library_id: me?.library_id ?? null,
+    }));
+  if (rows.length) await supabase.from("clip_assets").insert(rows);
 }
 
 async function brandAndProduct(supabase: SupabaseClient, project: ClipProjectRow): Promise<Pick<ClipsContext, "brand" | "product">> {
@@ -272,6 +317,7 @@ export async function buildContext(supabase: SupabaseClient, project: ClipProjec
     settings: { music: project.settings.music || "auto", formats: project.settings.formats ?? ["4x5"], notes: project.settings.notes ?? "" },
     hasPackshot: images.length > 0,
     hooks: project.voiceover?.variants?.map((v, i) => ({ wersja: i + 1, tekst: v.hookText, koniec_s: Math.round(v.hookEnd * 100) / 100 })),
+    focus: project.settings.focus,
   };
   return { ctx, aliases, images };
 }
@@ -338,6 +384,50 @@ export async function pollGenerations(supabase: SupabaseClient, userId: string, 
     await supabase.from("clip_assets").update({ path: storagePath, status: "uploaded" }).eq("id", a.id);
   }
   return { pending: left };
+}
+
+// 4b) Editor: one new AI shot for a chosen place in the ad — the Reżyser writes the prompt, fal makes it.
+export async function requestShot(
+  supabase: SupabaseClient,
+  userId: string,
+  project: ClipProjectRow,
+  assets: ClipAssetRow[],
+  target: { start: number; end: number; say: string; note: string; current: string | null },
+) {
+  const fal = await getProviderKey(supabase, "fal");
+  const anthropic = await getProviderKey(supabase, "anthropic");
+  const { ctx, images } = await buildContext(supabase, project, assets);
+  const cur = target.current ? assets.find((a) => a.id === target.current) : null;
+  const curText = cur ? `${cur.name}${(cur.analysis as ClipAnalysis | null)?.summary ? ` — ${(cur.analysis as ClipAnalysis).summary}` : ""}` : "brak";
+  const shot = await designShot(anthropic, ctx, { start: target.start, end: target.end, say: target.say.slice(0, 400), note: target.note.slice(0, 600), current: curText.slice(0, 500) });
+  const duration = shotSeconds(target.end - target.start);
+  const urls = shot.mode === "reference" ? await signedUrls(supabase, images.map((i) => i.storage_path).slice(0, 4), 7200) : {};
+  const request_id = await submitShot(fal, { prompt: shot.prompt, duration, mode: shot.mode, imageUrls: Object.values(urls) });
+  const id = randomUUID();
+  const { error } = await supabase.from("clip_assets").insert({
+    id, user_id: userId, project_id: project.id, kind: "generated", name: shot.purpose.slice(0, 80), status: "generating",
+    meta: { request_id, prompt: shot.prompt, purpose: shot.purpose, mode: shot.mode, duration_req: duration, attempts: 1, on_demand: true, note: target.note.slice(0, 600) },
+  });
+  if (error) throw new UserError(error.message);
+  return { id, purpose: shot.purpose, duration };
+}
+
+// 4c) Where that shot is: at fal → copied to storage → analysed (then it can go into the plan).
+export async function advanceShot(supabase: SupabaseClient, userId: string, project: ClipProjectRow, asset: ClipAssetRow): Promise<{ state: "generating" | "ready" | "error"; error?: string }> {
+  let a = asset;
+  if (a.status === "generating") {
+    await pollGenerations(supabase, userId, project, [a]);
+    const { data } = await supabase.from("clip_assets").select("*").eq("id", a.id).maybeSingle();
+    if (!data) return { state: "error", error: "Ujęcie zniknęło." };
+    a = data as ClipAssetRow;
+  }
+  if (a.status === "uploaded" || a.status === "analyzing") {
+    await analyzeAsset(supabase, project, a);
+    return { state: "ready" };
+  }
+  if (a.status === "ready") return { state: "ready" };
+  if (a.status === "error") return { state: "error", error: a.error ?? "Generowanie nie powiodło się." };
+  return { state: "generating" };
 }
 
 const REVISE_BUDGET_MS = 170_000;

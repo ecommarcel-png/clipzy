@@ -3,15 +3,19 @@
 // Quick manual fixes under the preview — instant, no AI. The draft lives in the
 // parent (Result) so the preview and the renderer always show what is edited here.
 import { useState } from "react";
-import { Button, Card, Chevron, Input, Notice, Select, Spinner, cx } from "@/components/ui";
+import { Button, Card, Chevron, Input, Notice, Select, Spinner, Textarea, cx } from "@/components/ui";
 import type { AssetInfo, EditPlan, Shot } from "@/lib/clips/plan";
 import type { CaptionChunk } from "@/lib/clips/timeline";
-import { finalize, nextFragment, removeShot, resizeShot, setMusic, setPackshot, swapSource, type Mix } from "@/lib/clips/edit";
+import { finalize, nextFragment, removeShot, resizeShot, setMusic, setPackshot, swapSource, type Mix, type Side } from "@/lib/clips/edit";
+import { shotCost, shotSeconds } from "@/lib/clips/new-shot";
 import { library } from "@/lib/clips/library";
 
 export type Draft = { plan: EditPlan; captions: string[]; mix: Mix; accent: string };
 
 type Media = { id: string; name: string; kind: string; url: string | null; info: AssetInfo };
+
+/** A new AI shot being made for one place of the ad (shot i, side of a split). */
+export type ShotJob = { i: number; side: Side; state: "starting" | "generating" | "ready" | "error"; error?: string; purpose?: string };
 
 const fmt = (s: number) => `${s.toFixed(1).replace(".", ",")} s`;
 const pct = (v: number) => `${Math.round(v * 100)}%`;
@@ -31,7 +35,12 @@ export function QuickEdit({
   onSeek,
   swatches,
   logoColors,
+  jobs = [],
+  onNewShot,
 }: {
+  /** "Wygeneruj nowe ujęcie": jobs in progress and the call that starts one */
+  jobs?: ShotJob[];
+  onNewShot?: (i: number, side: Side, note: string) => void;
   swatches: string[];
   logoColors: string[];
   draft: Draft;
@@ -59,7 +68,7 @@ export function QuickEdit({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-extrabold">Szybkie poprawki</h2>
-          <p className="text-xs text-faint">Działają od razu w podglądzie, bez AI. Długość reklamy zostaje ta sama — dyktuje ją lektor.</p>
+          <p className="text-xs text-faint">Działają od razu w podglądzie (AI tylko przy „Wygeneruj nowe ujęcie”). Długość reklamy zostaje ta sama — dyktuje ją lektor.</p>
         </div>
         {dirty ? <span className="rounded-full bg-warn-soft px-2.5 py-1 text-xs font-bold text-warn">Niezapisane zmiany</span> : null}
       </div>
@@ -141,11 +150,14 @@ export function QuickEdit({
                   </div>
                 </div>
                 {s.type === "clip" ? (
-                  <SourceRow media={media} value={s.src.asset} onPick={(id) => setPlan(swapSource(plan, i, id, infos))} onNext={() => setPlan(nextFragment(plan, i, infos))} />
+                  <SourceRow media={media} value={s.src.asset} onPick={(id) => setPlan(swapSource(plan, i, id, infos))} onNext={() => setPlan(nextFragment(plan, i, infos))}
+                    gen={onNewShot ? { length: s.end - s.start, job: jobs.find((j) => j.i === i && j.side === "main"), start: (note) => onNewShot(i, "main", note) } : undefined} />
                 ) : s.type === "split" ? (
                   <>
-                    <SourceRow label="Góra" media={media} value={s.top.asset} onPick={(id) => setPlan(swapSource(plan, i, id, infos, "top"))} onNext={() => setPlan(nextFragment(plan, i, infos, "top"))} />
-                    <SourceRow label="Dół" media={media} value={s.bottom.asset} onPick={(id) => setPlan(swapSource(plan, i, id, infos, "bottom"))} onNext={() => setPlan(nextFragment(plan, i, infos, "bottom"))} />
+                    <SourceRow label="Góra" media={media} value={s.top.asset} onPick={(id) => setPlan(swapSource(plan, i, id, infos, "top"))} onNext={() => setPlan(nextFragment(plan, i, infos, "top"))}
+                      gen={onNewShot ? { length: s.end - s.start, job: jobs.find((j) => j.i === i && j.side === "top"), start: (note) => onNewShot(i, "top", note) } : undefined} />
+                    <SourceRow label="Dół" media={media} value={s.bottom.asset} onPick={(id) => setPlan(swapSource(plan, i, id, infos, "bottom"))} onNext={() => setPlan(nextFragment(plan, i, infos, "bottom"))}
+                      gen={onNewShot ? { length: s.end - s.start, job: jobs.find((j) => j.i === i && j.side === "bottom"), start: (note) => onNewShot(i, "bottom", note) } : undefined} />
                   </>
                 ) : null}
               </li>
@@ -251,16 +263,66 @@ function Mini({ danger, className, ...props }: React.ComponentProps<"button"> & 
   );
 }
 
-function SourceRow({ label, media, value, onPick, onNext }: { label?: string; media: Media[]; value: string; onPick: (id: string) => void; onNext: () => void }) {
+function SourceRow({
+  label, media, value, onPick, onNext, gen,
+}: {
+  label?: string; media: Media[]; value: string; onPick: (id: string) => void; onNext: () => void;
+  gen?: { length: number; job?: ShotJob; start: (note: string) => void };
+}) {
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState("");
+  const job = gen?.job;
+  const busy = job && (job.state === "starting" || job.state === "generating");
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-2">
-      {label ? <span className="w-9 text-xs font-bold text-faint">{label}</span> : null}
-      <Select aria-label="Plik ujęcia" value={value} onChange={(e) => onPick(e.target.value)} className="max-w-[260px] flex-1 py-1.5 text-xs">
-        {media.map((m) => (
-          <option key={m.id} value={m.id}>{m.kind === "generated" ? "AI: " : ""}{m.name}</option>
-        ))}
-      </Select>
-      <Mini onClick={onNext} title="Inny moment z tego samego pliku">Inny fragment</Mini>
+    <div className="mt-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {label ? <span className="w-9 text-xs font-bold text-faint">{label}</span> : null}
+        <Select aria-label="Plik ujęcia" value={value} onChange={(e) => onPick(e.target.value)} className="max-w-[260px] flex-1 py-1.5 text-xs" disabled={Boolean(busy)}>
+          {media.map((m) => (
+            <option key={m.id} value={m.id}>{m.kind === "generated" ? "AI: " : ""}{m.name}</option>
+          ))}
+        </Select>
+        <Mini onClick={onNext} title="Inny moment z tego samego pliku" disabled={Boolean(busy)}>Inny fragment</Mini>
+        {gen ? (
+          <Mini onClick={() => setOpen((o) => !o)} disabled={Boolean(busy)} aria-expanded={open} title="Nowe ujęcie wygenerowane przez AI (fal.ai)">
+            ✦ Wygeneruj nowe ujęcie
+          </Mini>
+        ) : null}
+      </div>
+      {busy ? (
+        <p className="mt-2 flex items-center gap-2 text-xs text-muted">
+          <Spinner /> {job.state === "starting" ? "Reżyser pisze ujęcie…" : `Generuję${job.purpose ? `: ${job.purpose}` : ""} — zwykle 2–5 min. Wstawię je tu samo.`}
+        </p>
+      ) : job?.state === "error" ? (
+        <div className="mt-2"><Notice tone="danger">{job.error ?? "Nie udało się wygenerować ujęcia."}</Notice></div>
+      ) : job?.state === "ready" ? (
+        <p className="mt-2 text-xs text-ok">Nowe ujęcie wstawione{job.purpose ? `: ${job.purpose}` : ""}. Zapisz zmiany, jeśli pasuje.</p>
+      ) : null}
+      {gen && open && !busy ? (
+        <div className="mt-2 space-y-2 rounded-lg border border-border bg-surface p-3">
+          <Textarea
+            rows={2}
+            value={note}
+            maxLength={600}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Co ma być w ujęciu? Np. „zbliżenie nogi z kropkami po goleniu”. Puste = Reżyser dobierze do słów lektora."
+            className="text-xs"
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              className="h-8 px-3 text-xs"
+              onClick={() => {
+                gen.start(note);
+                setOpen(false);
+              }}
+            >
+              Wygeneruj ({shotSeconds(gen.length)} s, ok. {shotCost(gen.length).toFixed(2).replace(".", ",")} $)
+            </Button>
+            <Button variant="ghost" className="h-8 px-3 text-xs" onClick={() => setOpen(false)}>Anuluj</Button>
+            <span className="text-[11px] text-faint">Płatne z Twojego konta fal.ai. Ujęcie trafi też do biblioteki produktu.</span>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
