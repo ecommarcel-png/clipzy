@@ -307,16 +307,39 @@ const Captions: React.FC<{ p: SklejkaProps }> = ({ p }) => {
   if (!c) return null;
   const hl = p.vo ? p.plan.caption_highlights.find((h) => c.text.includes(h)) : p.plan.text_plates.find((x) => x.text === c.text)?.highlight ?? undefined;
   const sp = spring({ frame: frame - f(c.start), fps, config: { damping: 14, stiffness: 220, mass: 0.6 } });
-  const parts = hl ? c.text.split(hl) : [c.text];
   const size = p.vo ? L.cap : L.cap * 1.25;
   return (
     <div style={{ position: "absolute", left: 70, width: width - 140, top: height * L.capY - size * 0.75, textAlign: "center", opacity: Math.min(1, sp * 1.6), transform: `scale(${0.9 + 0.1 * sp})` }}>
-      <span style={{ fontFamily: INTER, fontWeight: 700, fontSize: size, lineHeight: 1.22, color: "#fff", letterSpacing: -0.5, textShadow: "0 3px 14px rgba(0,0,0,0.55), 0 1px 3px rgba(0,0,0,0.6)" }}>
-        {parts[0]}
-        {hl ? <span style={{ backgroundColor: readableAccent(p.brand.accent), borderRadius: 14, padding: "0 14px", textShadow: "none" }}>{hl}</span> : null}
-        {hl ? parts.slice(1).join(hl) : null}
-      </span>
+      <CaptionText text={c.text} highlight={hl} size={size} accent={p.brand.accent} />
     </div>
+  );
+};
+
+/**
+ * One caption, the highlighted phrase on the brand colour. Every highlighted word is its own
+ * inline-block: a highlight that wraps onto the next line as ONE inline box is drawn per line by
+ * the browser (preview) but as one rectangle over both lines by the web renderer (the file) —
+ * which covered the words before it.
+ */
+export const CaptionText: React.FC<{ text: string; highlight?: string; size: number; accent: string }> = ({ text, highlight, size, accent }) => {
+  const at = highlight ? text.indexOf(highlight) : -1;
+  const before = at >= 0 ? text.slice(0, at) : text;
+  const after = at >= 0 ? text.slice(at + highlight!.length) : "";
+  const words = at >= 0 ? highlight!.split(/(\s+)/) : [];
+  return (
+    <span style={{ fontFamily: INTER, fontWeight: 700, fontSize: size, lineHeight: 1.22, color: "#fff", letterSpacing: -0.5, textShadow: "0 3px 14px rgba(0,0,0,0.55), 0 1px 3px rgba(0,0,0,0.6)" }}>
+      {before}
+      {words.map((w, i) =>
+        /^\s+$/.test(w) || !w ? (
+          w
+        ) : (
+          <span key={i} style={{ display: "inline-block", backgroundColor: readableAccent(accent), borderRadius: 14, padding: "0 14px", textShadow: "none" }}>
+            {w}
+          </span>
+        ),
+      )}
+      {after}
+    </span>
   );
 };
 
