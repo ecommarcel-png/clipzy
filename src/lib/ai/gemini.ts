@@ -128,6 +128,50 @@ Zwróć WYŁĄCZNIE JSON: {"score": 1-10, "verdict": "gotowe"|"do_poprawy", "iss
   return ask(apiKey, data, "video/mp4", prompt, RenderReview);
 }
 
+// ---------- ad copy: what a finished creative says and shows ----------
+
+// "pusty" / "brak" written out instead of an empty field
+const text = z.string().default("").transform((v) => (/^\s*(pusty|pusta|brak|none|n\/a|-)\s*\.?\s*$/i.test(v) ? "" : v.trim()));
+
+export const CreativeAnalysis = z.object({
+  format: text,
+  hook: text,
+  voiceover: text,
+  on_screen_text: z.array(z.string()).default([]),
+  story: text,
+  problem: text,
+  solution: text,
+  product: text,
+  offer: text,
+  cta: text,
+  tone: text,
+  audience: text,
+  angle: text,
+});
+export type CreativeAnalysis = z.infer<typeof CreativeAnalysis>;
+
+export async function analyzeCreative(apiKey: string, data: Buffer, mimeType: string, product: string): Promise<CreativeAnalysis> {
+  const video = mimeType.startsWith("video/");
+  const prompt = `Jesteś analitykiem reklam Meta Ads (rynek polski). ${video ? "Obejrzyj i odsłuchaj CAŁĄ reklamę wideo." : "Obejrzyj grafikę reklamową."} Reklamowany produkt: ${product}.
+Opisz, co kreacja komunikuje — na tej podstawie copywriter dopisze tekst główny, nagłówek i opis, które mają ją dopełnić.
+Zwróć WYŁĄCZNIE JSON:
+{"format": "np. UGC do kamery / sklejka z lektorem / przed-po / statyk z korzyściami",
+ "hook": "co widać i słychać w pierwszych 2–3 s (dla grafiki: co przyciąga wzrok najpierw)",
+ "voiceover": "${video ? "dosłownie, co mówi lektor / osoba w kadrze (pusty, jeśli nikt nie mówi)" : "pusty"}",
+ "on_screen_text": ["napisy i teksty na kreacji, dosłownie"],
+ "story": "krótko przebieg: scena po scenie albo układ grafiki",
+ "problem": "jaki problem pokazuje / nazywa (pusty, jeśli żaden)",
+ "solution": "jak pokazuje rozwiązanie / efekt",
+ "product": "jak i kiedy pokazuje produkt",
+ "offer": "oferta / cena / promocja widoczna lub wypowiedziana (pusty, jeśli brak)",
+ "cta": "wezwanie do działania (pusty, jeśli brak)",
+ "tone": "ton i emocja",
+ "audience": "do kogo mówi (kto w kadrze, czyim językiem)",
+ "angle": "kąt reklamy jednym zdaniem"}
+Pisz po polsku, konkretnie, bez oceniania jakości.`;
+  return ask(apiKey, data, mimeType, prompt, CreativeAnalysis);
+}
+
 // ---------- text remover ----------
 
 /** Fast model for caption boxes: same answers as the default model here, ~14 s instead of ~3 min. */

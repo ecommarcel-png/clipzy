@@ -85,6 +85,15 @@ export function imageAdsKnowledge() {
   ]);
 }
 
+// Ad copy: primary text, headline and description that finish a ready creative.
+export function adCopyKnowledge() {
+  return bundle([
+    ["Ad copy Clipzy: tekst główny, nagłówek, opis", "ad-copy/SKILL.md"],
+    ["Meta Ads: poziomy świadomości", "meta-ads/references/poziomy-swiadomosci.md"],
+    ["Meta Ads: wypalenie obietnicy", "meta-ads/references/wypalenie-obietnicy.md"],
+  ]);
+}
+
 export function knowledgeText(docs: KnowledgeDoc[]): string {
   return docs.map((d) => `<wiedza tytul="${d.title}">\n${d.content}\n</wiedza>`).join("\n\n");
 }

@@ -73,6 +73,10 @@ Gotowe grafiki trafiają do **Twoich plików** (z copy do skopiowania). Na karci
 
 Gotowe filmy trafiają do „Twoich plików”. Czas zależy od limitu równoczesnych zleceń konta fal (nowe konto: 2 naraz; limit rośnie z wydatkami, do 40). Migracja: `0007_text_remover.sql`. Klucze: Gemini i fal.
 
+## Ad copy
+
+Wrzucasz gotowe kreacje (filmy, grafiki) albo wybierasz reklamy z „Twoich plików”. Gemini ogląda i słucha każdej kreacji (lektor, napisy, problem, rozwiązanie, oferta, kąt), a copywriter (Claude) pisze do niej **tekst główny, nagłówek i opis**, które ją dopełniają: problem → rozwiązanie → produkt → CTA, językiem grupy docelowej z profilu marki i produktu. Zasady: `knowledge/ad-copy/SKILL.md` (copy dopina kreację, limity Meta 125/40/30 znaków, zero zmyślonych liczb). Tekst można poprawić ręcznie albo poprosić o inną wersję; copy reklamy z „Twoich plików” zapisuje się też przy pliku. Migracja: `0008_ad_copy.sql`. Klucze: Gemini i Anthropic.
+
 W kolejnych etapach: AI nagrania, integracja z Meta API.
 
 ## Wdrożenie (jednorazowo)
@@ -87,6 +91,7 @@ W kolejnych etapach: AI nagrania, integracja z Meta API.
    - `0005_files.sql` — „Twoje pliki”: archiwum gotowych reklam (zostają po usunięciu sklejki lub marki),
    - `0006_image_ads.sql` — image ads: zestawy reklam graficznych (1:1 + 9:16 + copy),
    - `0007_text_remover.sql` — usuwanie napisów z filmów.
+   - `0008_ad_copy.sql` — ad copy do gotowych kreacji.
 2. **Authentication → URL Configuration:**
    - *Site URL:* adres strony na Vercelu, np. `https://clipzy.vercel.app`
    - *Redirect URLs:* dodaj `https://clipzy.vercel.app/auth/confirm`
